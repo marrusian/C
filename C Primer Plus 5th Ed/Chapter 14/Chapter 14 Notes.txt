@@ -1,0 +1,461 @@
+- A STRUCTURE DECLARATION is the master plan that DESCRIBES how a structure is put together. It does NOT
+create an ACTUAL data object, but it describes what constitutes such an object (occasionally, structure
+declarations are referred to as "templates"). That is, it tells the compiler HOW to represent the data,
+but it DOESN'T allocate space for the data.
+
+- The syntax of initializing a structure is similar to that used for arrays. C99 and C11 provide DESIGNATED
+INITIALIZERS for STRUCTURES. The syntax is similar to that for designated initializers for arrays. However,
+designated initializers for structures use the DOT operator and MEMBER NAMES instead of brackets and
+indices to identify particular elements. For example:
+     # struct book surprise = { .value = 10.99 };
+- Just as with arrays, a REGULAR INITIALIZER following a DESIGNATED INITIALIZER provides a value for the
+member FOLLOWING the designated member. Also, the LAST VALUE supplied for a particular member is the VALUE
+it GETS. For example, consider this declaration:
+     # struct book gift = { .value = 18.90,
+     #                      .author = "Philionna Pestle",
+     #                       0.25};
+- The value 0.25 is ASSIGNED to the "VALUE" member, because it is the one IMMEDIATELY LISTED AFTER the
+"author" member in the structure declaration. The new value of 0.25 SUPERSEDES the value of 18.90 provided
+earlier.
+
+- Unlike the case for arrays, the name of a structure is NOT the address of the structure; we need to use
+the '&' operator.
+
+- Incidentally, on some systems, the SIZE of a STRUCTURE may be GREATER than the sum of its parts. That's
+because a system's alignment requirements for data MAY cause GAPS. For example, a system may have to place
+each member at an EVEN ADDRESS or at an address that is a MULTIPLE of four. Such structures might end up
+with unused memory blocks in them.
+
+########################################################################################################
+- ANCIENT C implementations did not allow a structure to be used as an argument for a function. This
+limitation was REMOVED in newer implementations, and ANSI C ALLOWS structures to be used as arguments. 
+Therefore, MODERN IMPLEMENTATIONS give us a choice between:
+   1) Passing structures as arguments;
+   2) Passing pointers-to-structures as arguments;
+   3) Passing structure members as arguments.
+
+- When passing structures as arguments, an automatic variable is created in the called function according
+to the structure's template. The members of this structure are then initialized to be COPIES of the values
+held in the corresponding members of the passed structure.
+
+- Modern C implementations ALLOW us to INITIALIZE and ASSIGN one structure to another of the SAME TYPE
+(something we can't do with arrays). This works EVEN IF a structure member happens to be an array. 
+Furthermore, under modern C, including ANSI C, not only can structures be PASSED as FUNCTION ARGUMENTS,
+but they can even be RETURNED as FUNCTION RETURN VALUES.
+
+########################################################################################################
+- "Pointer-to-structure arguments" method"
+    Advantages:
+     - It works on OLDER as well as NEWER C implementations.
+     - It is QUICK; we just pass a SINGLE ADDRESS.
+
+- "Structure arguments and return values" method:
+    Advantages:
+     - It works with COPIES of the ORIGINAL data, which is SAFER than WORKING with the ORIGINAL DATA.
+     - The programming style tends to be CLEARER.
+    Disadvantages:
+     - Older implementations might NOT handle the code.
+     - It wastes TIME and SPACE. 
+
+- In the case of LARGE STRUCTURES, passing a POINTER or passing JUST the REQUIRED MEMBERS as INDIVIDUAL
+ARGUMENTS makes MORE SENSE than passing the ENTIRE structure to function that uses only one or two members.
+
+- Typically, programmers use STRUCTURE POINTERS as FUNCTION ARGUMENTS for reasons of EFFICIENCY, using
+"const" when needed to PROTECT DATA from UNINTENDED changes. Passing structures BY VALUE is most often
+done for structures that are SMALL to begin with.
+
+- Using pointers-to-char to store STRINGS in a STRUCTURE is DANGEROUS (unless we UNDERSTAND the
+IMPLICATIONS). With this method, the strings are stored WHEREVER the COMPILER stores string constants.
+   Advantages:
+    - All the structure holds are the ADDRESSES, which take a total of sizeof(void*) bytes. In particular,
+     the structure allocates NO SPACE to store strings.
+   Disadvantages:
+    - It can be used ONLY with strings that have had SPACE ALLOCATED for them elsewhere, such as
+     STRING CONSTANTS or STRINGS IN ARRAYS. 
+    - Modifying the contents of a POINTER to a STRING CONSTANT causes UNDEFINED BEHAVIOUR (usually SIGSEV).
+
+- One instance in which it DOES MAKE SENSE to use a POINTER in a STRUCTURE to HANDLE a STRING is if we
+use "malloc()" to ALLOCATE MEMORY and use a POINTER to STORE the address. This method has the advantage of
+allocating JUST the amount of space that's needed for a string.
+
+########################################################################################################
+- C99's compound literal feature is available for structures as well. We can use COMPOUND LITERALS to
+create a structure to be used as a FUNCTION ARGUMENT or to be ASSIGNED to ANOTHER STRUCTURE. The SYNTAX
+is to preface a brace-enclosed initializer list with the TYPE NAME in PARANTHESES. For example:
+     # (struct book) {"The Idiot", "Fyodor Dostoyevsky", 6.99}
+
+- If a function EXCEPTS a STRUCTURE, we can pass the COMPOUND LITERAL as the ACTUAL ARGUMENT:
+     # struct rect {double x; double y;};                      // Structure template
+     # double rect_area(struct rect r){return r.x*r.y;}
+     # double area = rect_area( (struct rect) {10.5, 20.0} );  // area = 10.5*20.0
+
+- If the function expects an ADDRESS, we can pass the ADDRESS of a COMPOUND LITERAL:
+     # struct rect {double x; double y;};                        // Structure template
+     # double rect_areap(struct rect *rp){return rp->x*rp->y;}
+     # double area = rect_areap( &(struct rect) {10.5, 20.0} );  // area = 10.5*20.0
+
+- Compound literals occuring OUTSIDE of ANY FUNCTION have STATIC STORAGE DURATION, and those occuring
+inside a BLOCK have AUTOMATIC STORAGE DURATION. The same SYNTAX RULES hold for COMPOUND LITERALS as hold
+for REGULAR INITIALIZER LISTS (that is, we can use designated initializers in a compound literal);
+
+########################################################################################################
+- C99 has a feature called the "FLEXIBLE ARRAY MEMBER". It lets us DECLARE a STRUCTURE for which the
+LAST MEMBER is an ARRAY with SPECIAL PROPERTIES:
+   SP1) The array DOESN'T exist - at least, NOT IMMEDIATELY.
+   SP2) With the RIGHT CODE, we can use the FLEXIBLE ARRAY MEMBER as if it did EXIST and has WHATEVER
+       number of elements we NEED.
+
+- The RULES for declaring a flexible array member are:
+   - The flexible array member MUST be the LAST MEMBER of the structure.
+   - There MUST be at LEAST one OTHER member.
+   - The flexible array is declared like an array, EXCEPT that the BRACKETS are EMPTY.
+
+- Because of the SP1), it is NOT INTENDED that we EVER DECLARE variables of the structure type containing
+a flexible array member. Instead, we are SUPPOSED to DECLARE a POINTER to the structure type containing
+the flexible array member, then use "malloc()" to ALLOCATE ENOUGH SPACE for the ORDINARY CONTENTS of the
+structure PLUS any EXTRA SPACE we want for the FLEXIBLE ARRAY MEMBER.
+
+- Example:
+     # struct flex{
+     #    int count;
+     #    double average;
+     #    double scores[];   // flexible array member
+     #};
+     
+     # struct flex *pf;
+     # pf = malloc(sizeof(struct flex) + 5*sizeof(double)); // allocate a chunk of memory large enough to
+                                                            // store count, average, and an array of five
+                                                            // double values
+
+- Structures with flexible array members DO have some SPECIAL HANDLING REQUIREMENTS:
+   1) DON'T use structure assignment for copying. That would just copy the NONFLEXIBLE members of the
+     structure. Instead, use the "memcpy()" function.
+   2) DON'T use this sort of structure with FUNCTIONS that pass structures BY VALUE. The reason is the
+     SAME; passing an ARGUMENT BY VALUE is like ASSIGNMENT. Instead, use FUNCTIONS that pass the ADDRESS
+     of the structure.
+   3) DON'T use a structure with a flexible array member as an ELEMENT of an ARRAY or a MEMBER of ANOTHER
+     structure.
+
+########################################################################################################
+- C11 provides a feature called "ANONYMOUS STRUCTURES". An anonymous structure is a STRUCTURE MEMBER that
+is an UNNAMED STRUCTURE. Consider the following setup for a nested structure:
+    # struct names {char first[20]; char last[20];};
+    # struct person {int id; struct names name;};  // nested structure member
+    # struct person ted = {8483, {"Ted", "Grass"}};
+
+- Here the "NAME" member is a NESTED STRUCTURE, and we could use an EXPRESSION like "ted.name.first" to
+access "Ted".
+
+- With C11, we can define 'person' using a NESTED UNNAMED MEMBER STRUCTURE:
+    # struct person{
+    #    int id;
+    #    struct {char first[20]; char last[20];};  // anonymous structure
+    #};
+ 
+- We can initialize this structure in the SAME fashion:
+    # struct person ted = {8483, {"Ted", "Grass"}};
+But ACESS is SIMPLIFIED as we use MEMBER NAMES such as 'first' as if they were 'person' members:
+    # puts(ted.first);
+
+- The anonymous feature becomes more USEFUL with NESTED UNIONS.
+
+########################################################################################################
+- Because structures can hold a WIDE variety of information, they are IMPORTANT TOOLS for constructing
+DATABASES. Ultimately, we'd want to be able to SAVE this information in, and RETRIEVE it from, a FILE.
+A DATABASE FILE could contain an ARBITRARY NUMBER of such DATA OBJECTS. The ENTIRE SET of INFORMATION held
+in a structure is TERMED a "RECORD", and the INDIVIDUAL ITEMS are "FIELDS".
+
+- What is perhaps the most obvious way to save a record is the LEAST efficient way, and that is to use
+"fprintf()" to write one field at a time. This setup would become UNWIELDLY for structures with, say,
+30 members. Also, it poses a RETRIEVAL PROBLEM, because the program would NEED some way of telling WHERE
+one fields ENDS and another BEGINS. The problem cam be FIXED by using a FORMAT with FIXED-SIZE FIELDS,
+but the awkwardness remains.
+
+- A BETTER SOLUTION is to use "fread()" and "fwrite()" to READ and WRITE STRUCTURE-SIZED UNITS. However,
+these functions read and write using the BINARY REPRESENTATION that the program uses. The ADVANTAGE is
+that these functions read and write ONE WHOLE RECORD at a time (i.e. one structure-sized chunk of data).
+
+- One DRAWBACK to SAVING data in BINARY REPRESENTATION is that different systems MIGHT use different
+binary representations, so the data file MIGHT NOT be portable. Even on the SAME SYSTEM, different
+compiler settings could result in different binary layouts.
+
+- This method is perhaps the SIMPLEST way to WRITE structures to a file and to RETRIEVE them, but it can
+WASTE SPACE in some cases (like flexible array members or strings), because the UNUSED PARTS of a
+structure are SAVED, too. However, EACH DATA CHUNK being the SAME SIZE makes RETRIEVING the data EASY.
+
+- Another approach is to use VARIABLY SIZED RECORDS. To FACILITATE reading such records from a file, each
+record can begin with a NUMERICAL FIELD specifying the RECORD SIZE. This is a bit more complex and,
+normally, involes "linked structures".
+
+########################################################################################################
+- A 'UNION' is a type that ENABLES us to store DIFFERENT data types in the SAME MEMORY SPACE (but NOT
+simultaneously). By using an ARRAY of UNIONS, we can create an array of EQUAL-SIZED UNITS, each of which
+can hold a VARIETY of DATA TYPES.
+
+- Unions are SET UP in much the same way as STRUCTURES. There is a UNION TEMPLATE and a UNION VARIABLE.
+    # union hold{ int digit; double bifl; char letter; };
+
+- A structure with a similar declaration would be able to hold an 'int' value AND a 'double' value AND a
+'char' value. This UNION, however, can hold an 'int' value OR a 'double' value OR a 'char' value (i.e.
+only ONE VALUE is stored at a time).
+
+- The compiler allocates ENOUGH SPACE for a UNION so that it can hold the LARGEST member (for the union
+'hold', the largest member is of type 'double').
+
+- We can INITIALIZE a union. Because the UNION holds ONLY ONE VALUE, the RULES are DIFFERENT from those
+in a structure. In particular, we have THREE choices:
+   1) Initialize a union to another union of the SAME TYPE.
+   2) Initialize the FIRST ELEMENT of a union.
+   3) Use a DESIGNATED INITIALIZER (C99 feature).
+
+- It is OUR RESPONSIBILITY to write the program so that it KEEPS TRACK of the DATA type CURRENTLY being
+stored in a union. For example:
+     # union hold fit;
+     # fit.digit = 23;   // 23 is stored in fit; 2 bytes used
+     # fit.bigfl = 2.0;  // 23 cleared, 2.0 stored; 8 bytes used
+     # fit.letter = 'h'  // 2.0 cleared, h stored; 1 byte used
+
+- The following statements shows what NOT to do:
+     # fit.letter = 'A';
+     # flnum = 3.02 * fit.bigfl;   // ERROR, ERROR !!
+
+- This is WRONG because a 'CHAR' type is stored, but the next line ASSUMES that the CONTENT of "FIT" is
+a 'DOUBLE' type. However, SOMETIMES it can be USEFUL to use ONE MEMBER to PLACE values into a union and to
+then use a DIFFERENT MEMBER for VIEWING the contents.
+
+- Another place we MIGHT use a union is in a structure for which the stored information DEPENDS on ONE of
+the members. Suppose we have a structure representing an automobile. If the automobile is OWNED by the
+user, we want a structure member describing the OWNER. If the automobile is LEASED, we want the member to
+describe the leasing company. Then:
+      # struct owner {char socsecurity[12]; ... };
+      # struct leasecompany {char name[40]; char headquarters[40]; ... };
+      # union data {struct owner owncar; struct leasecompany leasecar; };
+      # struct car_data{
+      #    char make[15];
+      #    int status;     /* 0 = owned, 1 = leased */
+      #    union data ownerinfo;
+      #    ...
+      #};
+
+- Suppose "flits" is a 'car_data' structure. Then if 'flits.status' were 0, the program could use
+'flits.ownerinfo.owncar.socsecurity', and if 'flits.status' were 1, the program could use
+'flits.ownerinfo.leasecar.name'.
+
+- C11 provides a feature called "ANONYMOUS UNIONS". They work much the same as anonymous structures. That
+is, an ANONYMOUS UNION is an UNNAMED MEMBER UNION of a structure OR a union. For instance, we can REDEFINE
+the 'car_data' structure as follows:
+      # struct car_data{
+      #    char make[15];
+      #    int status;
+      #    union {struct owner owncar; struct leasecompany leasecar;};
+      #    ...
+      #};
+
+- Now if "flits" is a 'car_data' structure, we can use 'flits.owncar.socsecurity' instead of
+'flits.ownerinfo.owncar.socsecurity'.
+
+########################################################################################################
+- C uses the term "NAMESPACE" to identify parts of a program in which a NAME is RECOGNIZED. SCOPE is PART
+of the concept:
+   - Two variables having the same NAME but in DIFFERENT scopes DON'T conflict;
+   - Two variables havin the same NAME in the SAME scope DO conflict.
+
+- There also is a CATEGORY aspect to namespaces. STRUCTURE tags, UNION tags, and ENUMERATION tags in a 
+particular scope ALL SHARE the SAME NAMESPACE, and that NAMESPACE is DIFFERENT from the one used by 
+ORDINARY VARIABLES. This means:
+   - You CAN use the same name for one variable and one tag in the same scope WITHOUT causing an error;
+   - You CAN'T declare TWO TAGS of the same name or TWO VARIABLES of the same name in the same scope.
+
+- However, it can be CONFUSING to use the SAME IDENTIFIER in TWO DIFFERENT ways. Also, C++ DOESN'T allow
+this, because it puts TAGS and VARIABLES into the SAME namespace.
+
+########################################################################################################
+- The 'TYPEDEF' facility is an advanced data feature that enables us to CREATE our OWN NAME for a type.
+It is similar to "#define" in that respect, but with THREE DIFFERENCES:
+   - Unlike "#define", "typedef" is LIMITED to giving symbolic names to TYPES ONLY and NOT to values.
+   - The "typedef" interpretation is performed by the COMPILER, NOT the PREPROCESSOR.
+   - Within its limits, "typedef" is MORE FLEXIBLE than "#define".
+
+- The SAME RULES that govern the VALID NAMES of VARIABLES govern the NAME used for a "typedef".
+
+- Creating a name for an existing type MIGHT seem a bit FRIVOLOUS, but it CAN be useful:
+   - It can be used for DOCUMENTING our INTENTIONS.
+   - It helps increase PORTABILITY.
+
+- SOME features of "typedef" CAN be DUPLICATED with a "#define". For example:
+     # #define BYTE unsigned char  // causes the preprocessor to REPLACE "BYTE" with "unsigned char"
+
+- However, here is one that CAN'T be DUPLICATED with a "#define":
+     # typedef char * STRING;
+- Without the keyword "typedef", this example would identify "STRING" ITSELF as a pointer-to-char. With
+the keyword, it makes "STRING" an IDENTIFIER for pointers-to-char. Therefore:
+     # STRING name, sign;     <=>      # char *name, *sign;
+
+- If, instead, we did this:
+     # #define STRING char *
+Then:
+     # STRING name, sign;     <=>      # char *name, sign;
+
+- The "typedef" keyword can ALSO be used with structures. We can OMIT a tag when using "typedef" to name
+a structure type because if TWO structures are declared WITHOUT a tag, but with IDENTICAL MEMBERS
+(with BOTH member names and types MATCHING), C considers the two structures to be of the SAME TYPE.
+
+- We should bear in mind that "typedef" does NOT create NEW TYPES; instead, it just creates CONVENIENT
+LABELS.
+
+########################################################################################################
+- It is POSSIBLE to declare POINTERS TO FUNCTIONS. Typically, a FUNCTION POINTER is used as an ARGUMENT
+to ANOTHER function, telling the SECOND function WHICH function to use (pretty much like functors in C++).
+For instance, sorting an array involves COMPARING two elements to see WHICH comes first. If the elements
+are NUMBERS, we can use the '>' operator. More generally, the elements MAY be a STRING or a STRUCTURE,
+REQUIRING a FUNCTION CALL do to the COMPARISON. The "qsort()" function from the C library is designed to
+work this way.
+
+- Functions, too, have ADDRESSES, because the machine-language implementation of a function consists of
+code LOADED into MEMORY. A POINTER to a FUNCTION can hold the ADDRESS marking the START of the FUNCTION
+CODE. When DECLARING a FUNCTION POINTER, we have to declare the TYPE of FUNCTION pointed to. To specify
+the FUNCTION TYPE, we SPECIFY the FUNCTION SIGNATURE (that is, the RETURN TYPE for the function and the
+PARAMETER TYPES for a function). For example:
+      # void ToUpper(char *);
+      # void (*pf)(char *);   // pf a pointer-to-function taking a "char *" argument and returning void
+
+- Omitting the first parentheses leads to something quite different:
+      # void *pf(char *);   // pf a function that returns a pointer
+
+- TIP: To declare a pointer to a particular type of function, first DECLARE a function of the DESIRED
+TYPE and then REPLACE the FUNCTION NAME with an EXPRESSION of the FORM (*pf); 'pf' then BECOMES a POINTER
+to a FUNCTION of that type.
+
+- After we have a FUNCTION POINTER, we can ASSIGN to it the ADDRESSES of FUNCTIONS of the PROPER TYPE.
+In this context, the NAME of a function can be used to represent the ADDRESS of the function:
+      # void ToUpper(char *);
+      # void ToLower(char *);
+      # int round(double);
+      # void (*pf)(char *);
+      # pf = ToUpper;            // VALID, ToUpper is address of the function
+      # pf = ToLower;            // VALID, ToLower is address of the function
+      # pf = round;              // INVALID, round is the WRONG TYPE of function
+      # pf = ToLower();          // INVALID, ToLower() is NOT an address
+
+- Just as we can use a DATA POINTER to ACCESS DATA, we can use a FUNCTION POINTER to ACCESS A FUNCTION.
+Strangely, there are TWO LOGICALLY INCONSISTENT SYNTAX RULE for doing so:
+      # void ToUpper(char *); 
+      # void ToLower(char *);
+      # void (*pf)(char *);
+      # char mis[] = "Nina Metier";
+      # pf = ToUpper;
+      # (*pf)(mis);     // apply ToUpper to mis (SYNTAX 1), equivalent to ToUpper(mis) - K&R style
+      # pf = ToLower;
+      # pf(mis);        // apply ToLower to mis (SYNTAX 2), equivalent to ToLower(mis) - Berkeley style
+
+- Functions with return values can be used in TWO DIFFERENT WAYS as arguments to OTHER functions. For
+example:
+      # function1(sqrt);       /* passes ADDRESS of sqrt function */
+      # function2(sqrt(4.0));  /* passes RETURN VALUE (i.e. 2.0) of sqrt function */
+
+- We CAN'T have an array of functions, but we can have an array of FUNCTION POINTERS.
+########################################################################################################
+
+Review Answers:
+
+1. Wrong keyword (should be "struct"), no tag, no semicolon after the "togs" data members, no semicolon
+after the structure declaration.
+
+2. It will print:
+  6 1
+  22 Spiffo Road
+  S p
+
+3. struct month{
+      char name[10];
+      char abrv[3+1];
+      int days;
+      int num;      
+   }; 
+
+4. struct month months[12] = {[1]={"February", "Feb", 28, 2}};
+
+5.
+int total_days(int month_number)
+{
+   if(month_number<1 || month_number>12) return -1;
+
+   int total = 0;
+   for(int i=0; i<month_number; ++i)
+      total += months[i].days;
+
+   return total;
+}
+
+6. 
+  a. LENS larr[10];
+     larr[2].foclen = 500;
+     larr[2].fstop  = 2.0;
+     larr[2].brand  = "Remarkatar";   // or strcpy(larr[2].brand, "Remarkatar");
+
+  b. LENS larr[10] = {[2]={500, 2.0, "Remarkatar"}};
+
+7.
+  a. It will print:
+    6
+    Arcturan
+    cturan
+
+  b. First notation:  deb.title.last
+     Second notation: pb->title.last
+
+  c. 
+    void print_bem(struct bem *pst)
+    {
+       printf("%s %s is a %d-limbed %s.\n", pst->title.first,
+              pst->title.last, pst->limbs, pst->type);
+    }  
+
+8. 
+  a. willie.born;
+  b. pt->born;
+  c. scanf("%d", &willie.born);
+  d. scanf("%d", &pt->born);
+  e. scanf("%20s", willie.name.lname);
+  f. scanf("%20s", pt->name.lname);
+  g. willie.name.fname[2];
+  h. strlen(willie.name.fname)+strlen(willie.name.lname);
+
+9.
+  struct car{
+     char name[25];
+     float hp;
+     double city_mpg;
+     double wbase;
+     int year;
+  }; 
+
+10. 
+  a. 
+    struct gas calculate_mpg(struct gas car)
+    {
+       car.mpg = car.distance/car.gals;
+       return car;
+    }
+
+  b. 
+    void calculate_mpg(struct gas *pst)
+    {
+       pst->mpg = pst->distance/pst->gals;
+    }
+
+11. enum choices {no, yes, maybe};
+
+12. char* (*fp)(char *, char);
+
+13.
+   double f1(double, double);
+   double f2(double, double);
+   double f3(double, double);
+   double f4(double, double);
+
+   double (*arpf[4])(double, double) = {f1, f2, f3, f4};
+
+   (*arpf[1])(10.0, 2.5);
+   arpf[1](10.0,2.5);
+   

@@ -1,0 +1,58 @@
+##########################################################################################################
+- Up until now, it MAY have appeared that there is a ONE-TO-ONE CORRESPONDENCE between a FILE DESCRIPTOR and
+an OPEN FILE. However, this is NOT the case. It is POSSIBLE - and USEFUL - to have MULTIPLE DESCRIPTORS
+referrin to the SAME OPEN FILE. These file descriptors may be OPEN in the SAME PROCESS or in DIFFERENT
+PROCESSES.
+
+- To UNDERSTAND what is going on, we NEED to EXAMINE three DATA STRUCTURES maintained by the KERNEL:
+     a) The PER-PROCESS file descriptor table;
+     b) The SYSTEM-WIDE table of OPEN FILE DESCRIPTIONS (a.k.a. Open file table);
+     c) The (SYSTEM-WIDE) file system i-node table.
+
+- For EACH process, the kernel maintains a table of "OPEN FILE DESCRIPTORS". Each ENTRY in this table RECORDS
+information about a single file descriptor, including:
+     - A set of flags controlling the operation of the file descriptor (there is JUST ONE such flag, the
+       close-on-exec flag);
+     - A REFERENCE to the OPEN FILE DESCRIPTION.
+
+- The kernel maintains a system-wide table of all "OPEN FILE DESCRIPTIONS" (this table is sometimes referred
+to as the "OPEN FILE TABLE", and its entries are sometimes called "OPEN FILE HANDLES"). An open file
+description stores ALL INFORMATION relating to an OPEN FILE, including:
+     - The current FILE OFFSET (as updated by "read()" and "write()", or EXPLICITLY MODIFIED using "lseek()");
+     - Status flags specified when OPENING the file (i.e., the "flags" argument to "open()");
+     - The file ACCESS MODE (read-only, write-only, or read-write, as specified in "open()");
+     - Settings relating to SIGNAL-DRIVEN I/O;
+     - A REFERENCE to the "I-NODE" object for this file.
+
+- Each FILE SYSTEM has a TABLE of I-NODES for ALL FILES RESIDING in the file system. For now, we NOTE that the
+I-NODE for EACH FILE includes the following information:
+     - FILE TYPE (e.g., a regular file, socket, or FIFO) and PERMISSIONS;
+     - A POINTER to a LIST OF LOCKS held on this file;
+     - Various properties of the file, including its SIZE and TIMESTAMPS relating to DIFFERENT TYPES of
+      FILE OPERATIONS.
+
+      Note: Here, we are OVERLOOKING the DISTINCTION between ON-DISK and IN-MEMORY representations of an
+           I-NODE. The ON-DISK I-NODE records the PERSISTENT ATTRIBUTES of a file, such as its TYPE,
+           PERMISSIONS, and TIMESTAMPS. When a file is ACCESSED, an IN-MEMORY COPY of the I-NODE is CREATED,
+           and THIS VERSION of the i-node RECORDS a COUNT of the OPEN FILE DESCRIPTIONS referring to the
+           i-node and the MAJOR and MINOR IDs of the DEVICE from which the i-node was COPIED. The in-memory
+           i-node ALSO RECORDS various EPHEMERAL ATTRIBUTES that are associated with a file while it is open,
+           such as FILE LOCKS.
+
+- We can draw a NUMBER OF IMPLICATIONS from the preceding discussion:
+      a) Two DIFFERENT file descriptors that REFER to the SAME open file description SHARE a FILE OFFSET
+        value. Therefore, if the FILE OFFSET is CHANGED via ONE FILE DESCRIPTOR (as a consequence of calls to
+        "read()" or "write()", or "lseek()") this change is VISIBLE through the OTHER file descriptor. This
+        applies BOTH when:
+              a1) The two file descriptors BELONG to the SAME PROCESS.
+              and
+              a2) When they BELONG to DIFFERENT PROCESSES. 
+
+      b) Similar SCOPE RULES apply when RETRIEVING and CHANGING the OPEN FILE STATUS FLAGS (e.g., 'O_APPEND',
+        'O_NONBLOCK', and 'O_SYNC') using the "fcntl()" F_GETFL and F_SETFL operations.
+ 
+      c) By CONSTRAST, the FILE DESCRIPTOR FLAGS (i.e, the close-on-exec flag) are PRIVATE to the PROCESS and
+        FILE DESCRIPTOR. Modifying these flags DOES NOT affect OTHER file descriptors in the SAME process or
+        a DIFFERENT process.
+
+##########################################################################################################

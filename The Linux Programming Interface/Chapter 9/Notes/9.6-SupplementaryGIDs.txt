@@ -1,0 +1,7 @@
+############################################################################################################
+- The SUPPLEMENTARY GIDs are a SET of ADDITIONAL GROUPS to which a process BELONGS. A new process INHERITS
+these IDs from its PARENT. A LOGIN SHELL obtains its SUPPLEMENTARY GIDs from the SYSTEM GROUP FILE. As noted
+above, these IDs are used in CONJUNCTION with the EFFECTIVE and FILE-SYSTEM IDs to DETERMINE PERMISSIONS for
+ACCESSING FILES, System V IPC objects, and OTHER SYSTEM RESOURCES.
+
+############################################################################################################

@@ -1,0 +1,95 @@
+#############################################################################################################
+- As well as SPECIFYING LIMITS for various system resources, SUSv3 ALSO SPECIFIES various OPTIONS that a UNIX
+implementation MAY SUPPORT. These INCLUDE SUPPORT for FEATURES such as:
+      - Realtime signals;
+      - POSIX shared memory;
+      - Job control;
+      - POSIX threads
+
+- With a FEW EXCEPTIONS, implementations are NOT REQUIRED to SUPPORT these OPTIONS. Instead, SUSv3 allows an
+implementation to ADVISE - at BOTH COMPILE TIME and RUN TIME - WHETHER it supports a PARTICULAR FEATURE.
+
+- An implementation can ADVERTISE SUPPORT for a PARTICULAR SUSv3 OPTION at COMPILE TIME by DEFINING a
+CORRESPONDING CONSTANT in <unistd.h>. Each such constant starts with a PREFIX that INDICATES the STANDARD from
+which it ORIGINATES (e.g., _POSIX_, or _XOPEN_).
+
+- Each option constant, if defined, has one of the following values:
+         a) A value of -1 means that THE OPTION IS NOT SUPPORTED. In this case, header files, data types, and
+            function interfaces associated with the option NEED NOT be defined by the implementation. We MAY
+            NEED to HANDLE this POSSIBILITY by CONDITIONAL COMPILATION using #if preprocessor directives.
+
+         b) A value of 0 means that THE OPTION MAY BE SUPPORTED. An application MUST CHECK at RUN TIME to see
+            WHETHER the option is supported.
+
+         c) A value GREATER than 0 means that THE OPTION IS SUPPORTED. All header files, data types, and
+            function interfaces associated with this option ARE DEFINED and BEHAVE AS SPECIFIED. In MANY
+            CASES, SUSv3 REQUIRES that this positive value be 200112L, a constant CORRESPONDING to the YEAR
+            and MONTH NUMBER in which SUSv3 was APPROVED as a STANDARD (the ANALOGOUS VALUE for SUSv4 is
+            200809L).
+
+- Where a constant is defined with the value 0, an application can use the "sysconf()", and "pathconf()"
+(or "fpathconf()") functions to CHECK AT RUN TIME WHETHER the options is supported. The "name" arguments
+passed to these functions GENERALLY have the SAME FORM as the CORRESPONDING COMPILE-TIME CONSTANTS, but with
+the PREFIX REPLACED by "_SC_" or "_PC_". The implementation MUST AT LEAST PROVIDE the header files, constants,
+and function interfaces NECESSARY to PERFORM THE RUN-TIME CHECK.
+
+                 Note:  SUSv3 is UNCLEAR on WHETHER an UNDEFINED OPTION CONSTANT has the SAME MEANING as
+                      defining the constant with the value 0 ("the option may be supported") or with the
+                      value -1 ("the option is NOT supported"). The standards committee SUBSEQUENTLY RESOLVED
+                      that this case SHOULD MEAN THE SAME as DEFINING the constant with the value -1, and
+                      SUSv4 STATES THIS EXPLICITLY.
+
+-----------------------------------------------------------------------------------------------------
+| Option (constant) name       | Description                                                | Notes |
+| (sysconf()/pathconf() name)  |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_ASYNCHRONOUS_IO       | Asynchronous I/O                                           |       |
+| (_SC_ASYNCHRONOUS_IO)        |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_CHOWN_RESTRICTED      | Only privileged processes can use "chown()" and "fchown()" |   *   |
+| (_PC_CHOWN_RESTRICTED)       | to change the UID and GID of a file to arbitrary values    |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_JOB_CONTROL           | Job Control                                                |   +   |
+| (_SC_JOB_CONTROL)            |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_MESSAGE_PASSING       | POSIX Message Queues                                       |       |
+| (_SC_MESSAGE_PASSING)        |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_PRIORITY_SHEDULING    | Process Scheduling                                         |       |
+| (_SC_PRIORITY_SCHEDULING     |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_REALTIME_SIGNALS      | Realtime Signals Extension                                 |       |
+| (_SC_REALTIME_SIGNALS)       |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_SAVED_IDS             | Processes have saved set-UIDs and saved set-GIDs           |   +   |
+| (none)                       |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_SEMAPHORES            | POSIX Semaphores                                           |       |
+| (_SC_SEMAPHORES)             |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_SHARED_MEMORY_OBJECTS | POSIX Shared Memory Objects                                |       |
+| (_SC_SHARED_MEMORY_OBJECTS)  |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_THREADS               | POSIX Threads                                              |       |
+| (_SC_THREADS)                |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _XOPEN_UNIX                  | The XSI extension is SUPPORTED                             |       |
+| (_SC_XOPEN_UNIX)             |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+
+- Note the following points regarding specific options:
+       a) Certain options are REQUIRED by SUSv3; that is, the COMPILE-TIME CONSTANT ALWAYS EVALUATES to a
+          a value GREATER than 0. Historically, these options were TRULY OPTIONAL, but NOWADAYS they are NOT.
+          These options are MARKED with the character '+' in the "Notes" column (In SUSv4, a range of options
+          that were OPTIONAL in SUSv3 BECOME MANDATORY).
+
+                 Note:  Although such options are REQUIRED by SUSv3, some UNIX systems MAY nevertheless BE
+                      INSTALLED in a NONCONFORMING CONFIGURATION. Thus, for PORTABLE APPLICATIONS, it MAY
+                      BE WORTH CHECKING whether an OPTION that AFFECTS the application is SUPPORTED,
+                      REGARDLESS of WHETHER the STANDARD REQUIRES that OPTION.
+
+       b) For certain options, the COMPILE-TIME CONSTANT MUST have a value OTHER than -1. In other words,
+          EITHER the option MUST BE SUPPORTED or SUPPORT AT RUN TIME MUST BE CHECKABLE. These options are
+          MARKED with the character '*' in the "Notes" column.
+
+#############################################################################################################

@@ -1,0 +1,70 @@
+#############################################################################################################
+- The "calloc()" function ALLOCATES MEMORY for an ARRAY of IDENTICAL ITEMS:
+             DEP: #include <stdlib.h>          PROTO: void *calloc(size_t numitems, size_t size);
+                  RET: Returns pointer to allocated memory on success, or NULL on error
+
+- Unlike "malloc()", "calloc()" INITIALIZES the ALLOCATED MEMORY to 0.
+
+- The "realloc()" function is used to RESIZE (usually ENLARGE) a BLOCK OF MEMORY that was PREVIOUSLY ALLOCATED
+by one of the functions in the "malloc" package:
+             DEP: #include <stdlib.h>          PROTO: void *realloc(void *ptr, size_t size);
+                  RET: Returns pointer to allocated memory on success, or NULL on error    
+
+- The "ptr" argument is a POINTER to a BLOCK OF MEMORY that is to be RESIZED. The "size" argument specifies
+the desired NEW SIZE of the BLOCK.
+
+- On success, "realloc()" RETURNS a POINTER to the LOCATION of the RESIZED BLOCK. This may be DIFFERENT from
+its location BEFORE the CALL. On ERROR, "realloc()" returns NULL and LEAVES the BLOCK pointed to by "ptr"
+UNTOUCHED (SUSv3 REQUIRES this).
+
+- When "realloc()" INCREASES the SIZE of a BLOCK of ALLOCATED MEMORY, it DOESN'T INITIALIZE the ADDITIONALLY
+ALLOCATED bytes.
+
+- Memory allocated using "calloc()" and "realloc()" should be DEALLOCATED with "free()".
+
+              Note: The call "realloc(ptr, 0)" is EQUIVALENT to calling "free(ptr)" followed by "malloc(0)".
+                    If "ptr" is specified as NULL, then "realloc()" is EQUIVALENT to calling "malloc(size)".
+
+- For the USUAL case, where we are INCREASING the SIZE of the BLOCK OF MEMORY, "realloc()" attempts to
+COALESCE the BLOCK with an IMMEDIATELY FOLLOWING block of memory on the FREE LIST, if one exists and is
+LARGE ENOUGH. If the block LIES AT THE END of the HEAP, then "realloc()" EXPANDS the HEAP. If the block of
+memory LIES IN THE MIDDLE of the HEAP, and there is INSUFFICIENT free space IMMEDIATELY following it,
+"realloc()" ALLOCATES a NEW block of memory and COPIES ALL EXISTING DATA from the OLD BLOCK to the NEW BLOCK.
+This LAST CASE is COMMON and CPU-intensive. In general, it is ADVISABLE to MINIMIZE the USE of "realloc()".
+
+- Because "realloc()" MAY MOVE the block of memory, ANY POINTERS that REFERRED to locations INSIDE the block
+BEFORE the "realloc()" call MAY NO LONGER be VALID after the call. The ONLY TYPE OF REFERENCE to a location
+WITHIN the BLOCK that is GUARANTEED to REMAIN VALID is one formed by adding an offset to the pointer to the
+start of the block.
+
+- The "memalign()" and "posix_memalign()" functions are DESIGNED to ALLOCATE MEMORY starting at an address
+ALIGNED at a specified POWER-OF-TWO BOUNDARY, a feature that is useful for some applications:
+             DEP: #include <malloc.h>          PROTO: void *memalign(size_t boundary, size_t size);
+                  RET: Returns pointer to allocated memory on success, or NULL on error
+
+- The "memalign()" function ALLOCATES "size" bytes starting at an address ALIGNED to a MULTIPLE of "boundary"
+which MUST be a POWER-OF-TWO. The ADDRESS of the ALLOCATED MEMORY is RETURNED as the function RESULT.
+
+- The "memalign()" function is NOT PRESENT on all UNIX implementations. Most other UNIX implementations that
+provide "memalign()" REQUIRE the INCLUSION of <stdlib.h> INSTEAD of <malloc.h> in order to obtain the function
+declaration.
+
+- SUSv3 DOESN'T SPECIFY "memalign()", but INSTEAD SPECIFIES a SIMILAR FUNCTION, named "posix_memalign()". This
+function is a RECENT CREATION of the STANDARDS COMMITTEES, and appears on ONLY a FEW UNIX implementations:
+       DEP: #include <stdlib.h>      PROTO: int posix_memalign(void **memptr, size_t alignment, size_t size);
+             RET: Returns 0 on success, or a positive error number on error.
+
+- The "posix_memalign()" function DIFFERS from "memalign()" in TWO RESPECTS:
+        a) The address of the allocated memory is returned in "memptr".
+        b) The memory is aligned to a multiple of "alignment", which must be a power-of-two multiple of
+           sizeof(void*) (4 or 8 bytes on MOST hardware architectures).
+
+- Blocks of memory ALLOCATED using "memalign()" and "posix_memalign()" SHOULD be DEALLOCATED with "free()".
+
+              Note:  On some UNIX implementations, it is NOT POSSIBLE to call "free()" on a BLOCK of memory
+                   ALLOCATED via "memalign()", BECAUSE the "memalign()" implementation USES "malloc()" to
+                   ALLOCATE a BLOCK of memory, and then RETURNS a POINTER to an ADDRESS with a SUITABLE
+                   ALIGNMENT in that block. The "glibc" implementation of "memalign()" DOESN'T SUFFER this
+                   LIMITATION.
+
+#############################################################################################################

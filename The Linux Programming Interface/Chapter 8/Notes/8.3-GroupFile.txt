@@ -1,0 +1,47 @@
+#############################################################################################################
+- For various ADMINISTRATIVE purposes, in particular, CONTROLLING ACCESS to FILES and OTHER SYSTEM RESOURCES,
+it is USEFUL to ORGANIZE USERS into GROUPS.
+
+- The SET OF GROUPS to which a user BELONGS is DEFINED by the combination of the GID field in the USER'S
+PASSWORD ENTRY and the GROUPS under which the user is LISTED in the GROUP FILE. This strange SPLIT of
+information ACROSS TWO FILES is HISTORICAL in origin. In EARLY UNIX implementations, a USER could be a MEMBER
+of ONLY ONE GROUP AT A TIME. A user's INITIAL GROUP MEMBERSHIP at LOGIN was DETERMINED by the GID field of
+the PASSWORD FILE and could be CHANGED thereafter using the "newgrp(1)" command, which REQUIRED the USER to
+SUPPLY the GROUP PASSWORD (IF the GROUP was PASSWORD PROTECTED). 4.2BSD introduced the CONCEPT of MULTIPLE
+SIMULTANEOUS GROUP MEMBERSHIPS, which was later STANDARDIZED in POSIX.1-1990. Under this scheme, the GROUP
+FILE listed the EXTRA GROUP MEMBERSHIPS of EACH USER (The "groups(1)" command DISPLAYS the GROUPS of which the
+SHELL PROCESS is a MEMBER, or, if ONE OR MORE USERNAMES are SUPPLIED as COMMAND-LINE ARGUMENTS, then the
+GROUP MEMBERSHIPS of THOSE USERS).
+
+- The GROUP FILE, "/etc/group", contains ONE LINE for EACH GROUP in the system. Each LINE is COMPOSED of FOUR
+COLON-SEPARATED (:) FIELDS, as in the following examples:
+        users:x:100:
+        jambit:x:106:claus,felli,frank,harti,markus,martin,mtk,paul
+
+- In order, these fields are as follows:
+    1) GROUP NAME - This is the NAME of the GROUP. Like the LOGIN NAME in the PASSWORD FILE, we can CONSIDER
+                    this to be the HUMAN-READABLE (symbolic) IDENTIFIER corresponding to the NUMERIC GROUP
+                    IDENTIFIER.
+ 
+    2) ENCRYPTED PASSWORD - This field contains an OPTIONAL PASSWORD for the GROUP. With the ADVENT of
+                            MULTIPLE GROUP MEMBERSHIPS, GROUP PASSWORDS are nowadays RARELY USED on UNIX
+                            systems. Nevertheless, it is POSSIBLE to PLACE a PASSWORD on a GROUP (a PRIVILEGED
+                            USER can do this using the "gpasswd" command). If a user is NOT A MEMBER of the
+                            GROUP, "newgrp(1)" REQUESTS this password BEFORE starting a new shell whose
+                            group memberships include that group. If PASSWORD SHADOWING is ENABLED, then this
+                            field is IGNORED (in this case, it contains JUST the LETTER 'x') and the ENCRYPTED
+                            PASSWORDS are ACTUALLY KEPT in the SHADOW GROUP FILE, "/etc/gshadow", which can be
+                            ACCESSED ONLY by PRIVILEGED users and programs. GROUP PASSWORDS are ENCRYPTED in
+                            a SIMILAR FASHION to USER PASSWORDS.
+
+    3) GROUP ID (GID) - This is the NUMERIC ID for this GROUP. There is NORMALLY ONE GROUP defined with the
+                        GID 0, named "root" (like the "etc/passwd" record with UID 0, but UNLIKE the UID 0,
+                        this GROUP has NO SPECIAL PRIVILEGES). On Linux 2.2 and EARLIER, GIDs are MAINTAINED
+                        as 16-bit values, ALLOWING the RANGE [0, 65,535]; on Linux 2.4 and LATER, they are
+                        STORED using 32-bits.
+
+    4) USER LIST - This is a COMMA-SEPARATED LIST of NAMES of USERS who are MEMBERS of this GROUP (this list
+                   CONSISTS of USERNAMES rather than UIDs, since, as NOTED EARLIER, UIDs are NOT NECESSARILY
+                   UNIQUE in the PASSWORD FILE).
+
+#############################################################################################################

@@ -1,0 +1,23 @@
+##########################################################################################################
+- A SESSION is a COLLECTION of PROCESS GROUPS (jobs). All of the processes in a session have the same SESSION
+IDENTIFIER (SID). A SESSION LEADER is the process that CREATED the session, and its PID becomes the SID.
+- Sessions are used mainly by job-control shells. All of the process groups created by a job-control shell
+belong to the SAME SESSION as the shell, which is the SESSION LEADER.
+
+- Sessions usually have an associated CONTROLLING TERMINAL. The controlling terminal is established when the
+session leader process FIRST OPENS a terminal device. For a session created by an INTERACTIVE SHELL, this is
+the terminal at which the user LOGGED IN. A terminal may be the controlling terminal of AT MOST ONE SESSION.
+- As a CONSEQUENCE of opening the controlling terminal, the session leader becomes the CONTROLLING PROCESS for
+the terminal. The controlling process RECEIVES a "SIGHUP" singal if a TERMINAL DISCONNECT occurs (e.g., if the
+terminal window is closed).
+- At ANY point in time, one process group in a session is the FOREGROUND PROCESS GROUP (foreground job), which
+may READ INPUT from the terminal and SEND OUTPUT to it. If the user types the INTERRUPT CHARACTER (usually
+Control-C) or the SUSPEND CHARACTER (usually Control-Z) on the controlling terminal, then the TERMINAL DRIVER
+sends a SIGNAL that KILLS or SUSPENDS (i.e. stops) the foreground process group. A session can have ANY NUMBER
+of BACKGROUND PROCESS GROUPS (background jobs), which are CREATED by TERMINATING a COMMAND with the AMPERSAND
+CHARACTER (&).
+
+- Job-control shells provide commands for LISTING all jobs, SENDING SIGNALS to jobs, and MOVING jobs BETWEEN
+the foreground and background.
+
+##########################################################################################################

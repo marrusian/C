@@ -1,0 +1,61 @@
+##########################################################################################################
+- Some programs NEED to create TEMPORARY FILES that are used ONLY WHILE the program is RUNNING, and these
+files should be REMOVED when the program TERMINATES. For example, MANY COMPILERS create temporary files during
+the compilation process. The GNU C library provides a RANGE of LIBRARY FUNCTIONS for this purpose (the VARIETY
+is, in part, a CONSEQUENCE of INHERITANCE from various other UNIX implementations). Here, we describe TWO of
+these functions: "mkstemp()" and "tmpfile()".
+
+- The "mkstemp()" function GENERATES a UNIQUE FILENAME based on a TEMPLATE supplied by the caller and OPENS
+the file, RETURNING a FILE DESCRIPTOR that can be used with I/O system calls.
+
+- Prototype and dependencies:
+         #include <stdlib.h>
+   
+         int mkstemp(char *template);
+                            Returns file descriptor on success, or -1 on error
+
+- The "template" argument takes the form of a PATHNAME in which the LAST 6 characterst MUST BE "XXXXXX". These
+6 characters are REPLACED with a STRING that MAKES the filename UNIQUE, and this MODIFIED STRING is RETURNED
+via the "template" argument. Because "template" is MODIFIED, it MUST be specified as a CHARACTER ARRAY, rather
+than as a STRING CONSTANT.
+
+- The "mkstemp()" funtion CREATES the file with READ and WRITE PERMISSIONS for the FILE OWNER (and NO
+PERMISSIONS for OTHER users), and OPENS it with the 'O_EXCL' flag, GUARANTEEING that the caller has EXCLUSIVE
+ACCESS to the file.
+
+- Typically, a temporary file is UNLINKED (deleted) SOON AFTER it is opened, using the "unlink()" system call.
+Thus, we could employ "mkstemp()" as follows:
+        # int fd;
+        # char template[] = "/tmp/somestringXXXXXX";
+
+        # fd = mkstemp(template);
+        # if(fd == -1)
+        #    errExit("mkstemp");
+        # printf("Generated filename was: %s\n", template);
+        # unlink(template);        /* Name disappears immediately, but the file
+                                      is removed only AFTER close() */
+
+        # /* Use file I/O system calls - read(), write(), etc */
+  
+        # if(close(fd) == -1)
+        #    errExit("close");
+
+       Note:  The "tmpnam()", "tempnam()", and "mktemp()" functions can ALSO be used to GENERATE UNIQUE
+            FILENAMES. However, these functions should be AVOIDED because they CAN create SECURITY HOLES in
+            an application.
+
+- The "tmpfile()" functions creates a UNIQUELY named TEMPORARY FILE that is OPENED for READING and WRITING 
+(the file is opened with the 'O_EXCL' flag to GUARD AGAINST the UNLIKELY POSSIBILITY that ANOTHER PROCESS has
+ALREADY created a file with the SAME NAME).
+
+- Prototype and dependencies:
+       #include <stdio.h>
+    
+       FILE *tmpfile(void);
+                  Returns file pointer on success, or NULL on error;
+
+- On sucess, "tmpfile()" returns a FILE STREAM that can be used with the "stdio" library functions. The
+TEMPORARY FILE is AUTOMATICALLY DELETED when it is CLOSED. To do this, "tmpfile()" makes an INTERNAL CALL to
+"unlink()" to REMOVE the filename IMMEDIATELY AFTER OPENING the file.
+
+##########################################################################################################

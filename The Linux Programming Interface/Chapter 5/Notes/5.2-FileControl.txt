@@ -1,0 +1,14 @@
+##########################################################################################################
+- The "fcntl()" system call performs a RANGE of CONTROL OPERATIONS on an OPEN FILE DESCRIPTOR. 
+
+- Prototype and dependencies:
+      #include <fcntl.h>
+
+      int fcntl(int fd, int cmd, ...);
+                         Return on success DEPENDS on "cmd", or -1 on error
+
+- The "cmd" argument can SPECIFIY a WIDE RANGE of OPERATIONS. As indicated by the ellipsis, the THIRD argument
+to "fcntl()" can be of DIFFERENT TYPES, or it can be OMITTED. The kernel uses the value of the "cmd" argument
+do DETERMINE the DATA TYPE (if any) to EXPECT for this argument.
+
+##########################################################################################################

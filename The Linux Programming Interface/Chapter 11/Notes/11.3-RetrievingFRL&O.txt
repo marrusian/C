@@ -1,0 +1,35 @@
+#############################################################################################################
+- The "pathconf()" and "fpathconf()" functions ALLOW an application to OBTAIN the VALUES of FILE-RELATED
+LIMITS at RUNTIME:
+            DEP: #include <unistd.h>               PROTO: long pathconf(const char *pathname, int name);
+                                                   PROTO: long fpathconf(int fd, int name);
+                                                   RET: Both return value of limit specified by "name", or -1
+                                                               if limit is INDETERMINATE or an ERROR occurred
+
+- The ONLY DIFFERENCE between "pathconf()" and "fpathconf()" is the MANNER in which a FILE or DIRECTORY is
+SPECIFIED. For "pathconf()", specification is BY PATHNAME; for "fpathconf(), specification is VIA a
+(PREVIOUSLY OPENED) FILE DESCRIPTOR.
+
+- The "name" argument is one of the _PC_* constants defined in <unistd.h>, some of which are listed in the
+above table. The following table PROVIDES some FURTHER DETAILS about the _PC_* constants that were previously
+shown: 
+     -----------------------------------------------------------------------------------------------
+     | Constant     | Notes                                                                        |
+     -----------------------------------------------------------------------------------------------
+     | _PC_NAME_MAX | For a DIRECTORY, this yields a value for files in the directory.             |
+     |              | Behaviour for other file types is UNSPECIFIED.                               |
+     | _PC_PATH_MAX | For a DIRECTORY, this yields the MAXIMUM LENGTH for a RELATIVE PATHNAME      |
+     |              | FROM this directory. Behaviour for other file types is UNSPECIFIED.          |
+     | _PC_PIPE_BUF | For a FIFO or PIPE, this yields a value that APPLIES to the REFERENCED FILE. |
+     |              | For a DIRECTORY, the value APPLIES to a FIFO created in THAT DIRECTORY.      |
+     |              | Behaviour for other file types is UNSPECIFIED.                               |
+     -----------------------------------------------------------------------------------------------
+
+- The VALUE of the LIMIT is RETURNED as the FUNCTION RESULT. We can DISTINGUISH between an INDETERMINATE
+RETURN and an ERROR RETURN in the SAME MANNER as for "sysconf()".
+
+- UNLIKE "sysconf()", SUSv3 DOESN'T REQUIRE that the values returned by "pathconf()" and "fpathconf()" remain
+constant over the lifetime of a process, since, for example, a FILE SYSTEM may be DISMOUNTED and REMOUNTED 
+with DIFFERENT CHARACTERISTICS while a process is running.
+
+#############################################################################################################

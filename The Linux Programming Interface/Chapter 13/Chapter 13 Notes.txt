@@ -1,0 +1,532 @@
+- When working with DISK FILES, the "read()" and "write()" system calls DON'T DIRECTLY INITIATE DISK ACCESS.
+Instead, they SIMPLY COPY DATA between a USER-SPACE BUFFER and a BUFFER in the kernel "BUFFER CACHE". For
+example, the following call transfers 3 bytes of data from a BUFFER in USER-SPACE MEMORY to a BUFFER in KERNEL
+SPACE:
+     # write(fd, "abc", 3);
+
+- At this point, "write()" RETURNS. At SOME LATER POINT, the KERNEL WRITES (FLUSHES) its BUFFER to the DISK
+(hence, we say that the system call is NOT "SYNCHRONIZED" with the DISK OPERATION). If, in the interim, ANOTHER
+PROCESS attempts to READ THESE BYTES of the file, then the KERNEL AUTOMATICALLY SUPPLIES the DATA from the
+BUFFER CACHE, RATHER than from (the OUTDATED CONTENTS of) the FILE.
+
+- Correspondingly, for INPUT, the KERNEL READS DATA from the DISK and STORES IT in a KERNEL BUFFER. Calls to
+"read()" FETCH DATA from this BUFFER UNTIL it is EXHAUSTED, at which point the KERNEL READS the NEXT SEGMENT
+of the FILE into the BUFFER CACHE (this is a SIMPLIFICATION; for SEQUENTIAL FILE ACCESS, the KERNEL typically
+PERFORMS FILE READ-AHEAD to TRY to ENSURE that the NEXT BLOCKS of a FILE are READ into the BUFFER CACHE BEFORE
+the reading process REQUIRES them).
+
+- The AIM of this design is to ALLOW "read()" and "write()" to be FAST, since they DON'T NEED TO WAIT on a
+(SLOW) DISK OPERATION. This design is ALSO EFFICIENT, since it REDUCES the NUMBER of DISK TRANSFERS that the
+KERNEL MUST PERFORM.
+
+- The Linux kernel imposes NO FIXED UPPER LIMIT on the SIZE of the BUFFER CACHE. The kernel will ALLOCATE AS
+MANY BUFFER CACHE PAGES as are REQUIRED, LIMITED ONLY by the amount of AVAILABLE PHYSICAL MEMORY and the DEMANDS
+for PHYSICAL MEMORY for OTHER PURPOSES (e.g., holding the text and data pages required by running processes).
+If AVAILABLE MEMORY is SCARCE, then the KERNEL FLUSHES some MODIFIED BUFFER CACHE PAGES to DISK, in order to
+FREE those PAGES for REUSE.
+
+                  Note:  Speaking more precisely, from kernel 2.4 onward, Linux NO LONGER MAINTAINS a SEPARATE
+                       BUFFER CACHE. Instead, FILE I/O BUFFERS are INCLUDED in the PAGE CACHE, which, for
+                       example, ALSO CONTAINS PAGES from MEMORY-MAPPED FILES. Nevertheless, in this discussion,
+                       we use the term "BUFFER CACHE", since that term is HISTORICALLY COMMON on UNIX 
+                       implementations.
+
+- The KERNEL PERFORMS the SAME NUMBER of DISK ACCESSES, REGARDLESS of WHETHER we perform 1000 writes of a single
+byte or a single write of a 1000 bytes.  However, the LATTER is PREFERABLE, since it REQUIRES a SINGLE SYSTEM
+CALL, while the former requires 1000. Although MUCH FASTER THAN DISK OPERATIONS, SYSTEM CALLS nevertheless TAKE
+an APPRECIABLE AMOUNT of TIME, since the kernel must trap the call, check the validity of the system call
+arguments, and transfer data between user space and kernel space (review Section 3.1 for further details).
+
+-----------------------------------------------------------------------
+
+- The impact of performing file I/O using different buffer sizes can be seen in the following table:
+      ------------
+      |Table 13-1|
+      ----------------------------------------------------------
+      | BUF_SIZE |                 Time (seconds)              |
+      |          |---------------------------------------------|
+      |          | Elapsed | Total CPU | User CPU | System CPU |
+      |----------|---------|-----------|----------|------------|
+      | 1        | 107.43  |  107.32   |   8.20   |   99.12    |
+      | 2        |  54.16  |   53.89   |   4.13   |   49.76    |   
+      | 4        |  31.72  |   30.96   |   2.30   |   28.66    |
+      | 8        |  15.59  |   14.34   |   1.08   |   13.26    |
+      | 16       |   7.50  |    7.14   |   0.51   |    6.63    |
+      | 32       |   3.76  |    3.68   |   0.26   |    3.41    |
+      | 64       |   2.19  |    2.04   |   0.13   |    1.91    |
+      | 128      |   2.16  |    1.59   |   0.11   |    1.48    |
+      | 256      |   2.06  |    1.75   |   0.10   |    0.65    |
+      | 512      |   2.06  |    1.03   |   0.05   |    0.98    |
+      | 1024     |   2.05  |    0.65   |   0.02   |    0.63    |
+      |--------------------------------------------------------|
+      | 4096     |   2.05  |    0.38   |   0.01   |    0.38    |
+      | 16384    |   2.05  |    0.34   |   0.00   |    0.33    |
+      | 65536    |   2.05  |    0.32   |   0.00   |    0.32    |     ----------------------------------------------------------
+
+- "Table 13-1" shows the time that a program REQUIRES to COPY a FILE of 100MB on a Linux "ext2" file system
+using DIFFERENT BUFFER SIZE VALUES. 
+
+- Since the TOTAL AMOUNT of DATA TRANSFERRED (and hence the NUMBER of DISK OPERATIONS) is THE SAME for the
+various buffer sizes, what "Table 13-1" ILLUSTRATES is the OVERHEAD of MAKING "read()" and "write()" CALLS.
+With a BUFFER SIZE of 1 BYTE, 100 million calls are made to "read()" and write(). With a BUFFER SIZE of 4096
+BYTES, the NUMBER of INVOCATIONS of EACH system call falls to around 24,000, and NEAR OPTIMAL PERFORMANCE is
+REACHED. Beyond this point, there is NO SIGNIFICANT PERFORMANCE IMPROVEMENT, because the COST of making "read()"
+and "write()" SYSTEM CALLS becomes NEGLIGIBLE COMPARED to the TIME REQUIRED to COPY DATA BETWEEN USER SPACE and
+KERNEL SPACE, and to PERFORM ACTUAL DISK I/O.
+
+                  Note:  The final rows of "Table 13-1" allow us to MAKE ROUGH ESTIMATES of the TIMES REQUIRED
+                       for DATA TRANSFER between USER SPACE and KERNEL SPACE, and for FILE I/O. Since the
+                       number of system calls in these cases is RELATIVELY SMALL, their contribution to the
+                       elapsed and CPU times is NEGLIGIBLE. Thus, we can say that the "System CPU" time is
+                       ESENTIALLY MEASURING the TIME for DATA TRANSFERS between USER SPACE and KERNEL SPACE.
+                       The "Elapsed" time value gives us an ESTIMATE of the TIME REQUIRED for DATA TRANSFER TO
+                       and FROM the DISK (this is MAINLY the TIME REQUIRED for DISK READS).
+
+- In summary, if we are TRANSFERRING a LARGE AMOUNT OF DATA to or from a file, then by BUFFERING DATA in LARGE
+BLOCKS, and thus PERFORMING FEWER SYSTEM CALLS, we can GREATLY IMPROVE I/O PERFORMANCE.
+
+- The data in "Table 13-1" measures a range of factors: the time to perform "read()" and "write()" system calls,
+the time to transfer data between buffers in kernel space and user space, and the time to transfer data between
+kernel buffers and the disk. Let's consider the LAST FACTOR further. Obviously, TRANSFERRING the CONTENTS of
+the INPUT FILE into the BUFFER CACHE is UNAVOIDABLE. However, we already saw that "write()" RETURNS IMMEDIATELY
+after transferring data from user space to kernel buffer cache. Since the RAM SIZE on the test system (4GB)
+FAR EXCEEDS the SIZE of the FILE BEING COPIED (100MB), we can ASSUME that by the time the program completes,
+the OUTPUT FILE has NOT ACTUALLY been WRITTEN to DISK.
+
+- Therefore, the RESULTS of running a program that SIMPLY WRITES ARBITRARY DATA to a FILE using different
+"write()" buffer sizes are shown in the following table:
+      ------------
+      |Table 13-2|
+      ----------------------------------------------------------
+      | BUF_SIZE |                 Time (seconds)              |
+      |          |---------------------------------------------|
+      |          | Elapsed | Total CPU | User CPU | System CPU |
+      |----------|---------|-----------|----------|------------|
+      | 1        |  72.13  |   72.11   |   5.00   |   67.11    |
+      | 2        |  36.19  |   36.17   |   2.47   |   33.70    |  
+      | 4        |  20.01  |   19.99   |   1.26   |   18.73    |
+      | 8        |   9.35  |    9.32   |   0.62   |    8.70    |
+      | 16       |   4.70  |    4.68   |   0.31   |    4.37    |
+      | 32       |   2.39  |    2.39   |   0.16   |    2.23    |
+      | 64       |   1.24  |    1.24   |   0.07   |    1.16    |
+      | 128      |   0.67  |    0.67   |   0.04   |    0.63    |
+      | 256      |   0.38  |    0.38   |   0.02   |    0.36    |
+      | 512      |   0.24  |    0.24   |   0.01   |    0.23    |
+      | 1024     |   0.17  |    0.17   |   0.01   |    0.16    |
+      |--------------------------------------------------------|
+      | 4096     |   0.11  |    0.11   |   0.00   |    0.11    |
+      | 16384    |   0.10  |    0.10   |   0.00   |    0.10    |
+      | 65536    |   0.09  |    0.09   |   0.00   |    0.09    |     ----------------------------------------------------------
+
+- "Table 13-2" shows the costs just for making "write()" system calls and transferring data from user space to
+kernel buffer cache using different "write()" buffer sizes. For larger buffer sizes, we see SIGNIFICANT
+DIFFERENCES from the data shown in "Table 13-1". For example, for a 65-536-BYTE BUFFER SIZE, the "Elapsed" time
+in "Table 13-1" is 2.06 seconds, while for "Table 13-2" is 0.09 seconds. This is because NO ACTUAL DISK I/O is
+being PERFORMED in the LATTER CASE. In other words, the MAJORITY of the TIME REQUIRED for the LARGE BUFFER
+CASES in "Table 13-1" is DUE to the DISK READS.
+
+- As we'll see, when we FORCE OUTPUT OPERATIONS to BLOCK UNTIL DATA is TRANSFERRED to the DISK, the TIMES for
+"write()" calls RISE SIGNIFICANTLY.
+
+#############################################################################################################
+- Buffering of data into LARGE BLOCKS to REDUCE SYSTEM CALLS is EXACTLY what is done by the C library I/O
+functions (e.g, "printf()", "fscanf()", "fgets()", "fputs()", "fgetc()") when operating on disk files. Thus,
+using the "stdio" library RELIEVES US of the TASK of BUFFERING DATA for OUTPUT with "write()" or INPUT via
+"read()".
+
+- The "setvbuf()" function CONTROLS the FORM OF BUFFERING employed by the "stdio" library:
+       DEP: #include <stdio.h>          PROTO: int setvbuf(FILE *stream, char *buf, int mode, size_t size);
+                                        RET: Returns 0 on success, or nonzero on error.
+
+- The "stream" argument IDENTIFIES the FILE STREAM whose BUFFERING is to be MODIFIED. After the stream has been
+opened, the "setvbuf()" call MUST BE MADE BEFORE CALLING ANY OTHER "stdio" function on the stream.
+The "setvbuf()" calls AFFECTS THE BEHAVIOUR of ALL SUBSEQUENT "stdio" OPERATIONS on the SPECIFIED STREAM.
+
+                  Note:  The streams used by the "stdio" library SHOULD NOT BE CONFUSED with the 'STREAMS'
+                       facility of System V. The System V 'STREAMS' facility is NOT IMPLEMENTED in the mainline
+                       Linux kernel.
+
+- The "buf" and "size" arguments SPECIFY the BUFFER to be used for "stream". These arguments MAY BE SPECIFIED
+in TWO WAYS:
+    1) If "buf" is NON-NULL, then it points to a block of memory of "size" bytes that is to be used as the
+       buffer for "stream". Since the buffer pointed to by "buf" is then used by the "stdio" library, it should
+       be EITHER STATICALLY ALLOCATED or DYNAMICALLY ALLOCATED on the HEAP (using "malloc()" or similar).
+       It SHOULD NOT be ALLOCATED as a LOCAL FUNCTION VARIABLE on the STACK, since CHAOS WILL RESULT when that
+       function RETURNS and its STACK FRAME is DEALLOCATED.
+
+    2) If "buf" is NULL, then the "stdio" library AUTOMATICALLY ALLOCATES a BUFFER for use with "stream"
+       (UNLESS we select UNBUFFERED I/O). SUSv3 PERMITS, but does NOT REQUIRE, an implementation to use "size"
+       to DETERMINE the SIZE for this BUFFER. In the "glibc" implementation, "size" is IGNORED IN THIS CASE.
+
+- The "mode" argument SPECIFIES the TYPE OF BUFFERING and has one of the following values:
+
+     '_IONBF' - DON'T BUFFER I/O. Each "stdio()" library call RESULTS in an IMMEDIATE "write()" or "read()"
+                system call. The "buf" and "size" arguments are IGNORED, and CAN BE SPECIFIED as NULL and 0,
+                respectively. This is the DEFAULT for "stderr", so that ERROR OUTPUT is GUARANTEED to APPEAR
+                IMMEDIATELY.
+
+     '_IOLBF' - Employ LINE-BUFFERED I/O. This flag is the DEFAULT for STREAMS REFERRING to TERMINAL DEVICES.
+                For OUTPUT STREAMS, DATA is BUFFERED UNTIL a NEWLINE CHARACTER is OUTPUT (UNLESS the BUFFER
+                FILLS FIRST). For INPUT STREAMS, DATA is READ A LINE AT A TIME.
+
+     '_IOFBF' - Employ FULLY BUFFERED I/O. Data is READ or WRITTEN (via calls to "read()" or "write()") in
+                UNITS EQUAL to the SIZE of the BUFFER. This mode is the DEFAULT for STREAMS REFERRING to DISK
+                FILES.
+
+ - The "setbuf()" function is LAYERED ON TOP of "setvbuf()" and PERFORMS a SIMILAR TASK:
+        DEP: #include <stdio.h>          PROTO: void setbuf(FILE *stream, char *buf);
+
+- The call "setbuf(fp, buf)" is EQUIVALENT to:
+        # setvbuf(fp, buf, (buf != NULL)? _IOFBF : _IONBF, BUFSIZ);
+
+- The "buf" argument is specified EITHER as NULL, for NO BUFFERING, OR as a POINTER to a CALLER-ALLOCATED
+BUFFER of 'BUFSIZ' bytes ('BUFSIZ' is DEFINED in <stdio.h>. In the "glibc" implementation, this CONSTANT has
+the VALUE 8192, which is TYPICAL).
+
+- The "setbuffer()" is SIMILAR to "setbuf()", but ALLOWS the CALLER to SPECIFY the SIZE of "buf":
+        DEP: #define _BSD_SOURCE
+             #include <stdio.h>          PROTO: void setbuffer(FILE *stream, char *buf, size_t size);
+
+- The call "setbuffer(fp, buf, size)" is EQUIVALENT to:
+        # setvbuf(fp, buf, (buf != NULL)? _IOFBF: _IONBF, size);
+
+- The "setbuffer()" function is NOT SPECIFIED in SUSv3, but is AVAILABLE on MOST UNIX implementations.
+
+- REGARDLESS of the CURRENT BUFFERING MODE, at ANY TIME, we can FORCE the DATA in a "stdio" output stream to
+be WRITTEN (i.e., FLUSHED to a KERNEL BUFFER via "write()") using the "fflush()" library function.
+This function FLUSHES the OUTPUT BUFFER for the SPECIFIED "stream":
+        DEP: #include <stdio.h>          PROTO: int fflush(FILE *stream);
+                                         RET: Returns 0 on success, EOF on error.
+
+- If "stream" is NULL, "fflush()" FLUSHES ALL "stdio" BUFFERS.
+
+- The "fflush()" function can ALSO BE APPLIED to an INPUT STREAM. This causes ANY BUFFER INPUT to be DISCARDED
+(the BUFFER will be REFILLED when the program NEXT TRIES to READ from the STREAM).
+
+- A "stdio" buffer is AUTOMATICALLY FLUSHED when the CORRESPONDING STREAM is CLOSED.
+
+- In MANY C library implementations, INCLUDING "glibc", if "stdin" and "stdout" REFER to a TERMINAL, then an
+IMPLICIT "fflush(stdout)" is performed WHENEVER INPUT is READ from "stdin". This has the EFFECT of FLUSHING
+ANY PROMPTS written to "stdout" that DON'T INCLUDE a TERMINATING NEWLINE CHARACTER (e.g., printf("Date: ")).
+However, this BEHAVIOUR is NOT SPECIFIED in SUSv3 or C99 and is NOT IMPLEMENTED in ALL C libraries. PORTABLE
+PROGRAMS should use EXPLICIT "fflush(stdout)" calls to ENSURE that such prompts are DISPLAYED.
+
+                  Note:  The C99 STANDARD makes TWO REQUIREMENTS if a STREAM is opened for BOTH INPUT and
+                       OUTPUT:
+                          R1) An output operation CAN'T BE DIRECTLY FOLLOWED by an input operation WITHOUT an
+                              INTERVENING CALL to "fflush()" OR one of the FILE-POSITIONING FUNCTIONS
+                              ("fseek()", "fsetpos()", or "rewind()").
+                          R2) An input operation CAN'T BE DIRECTLY FOLLOWED by an output operation WITHOUT an
+                              INTERVENING CALL to one of the FILE-POSITIONING FUNCTIONS, UNLESS the input
+                              operations ENCOUNTERED END-OF-FILE.
+
+#############################################################################################################
+- It is POSSIBLE to FORCE FLUSHING of KERNEL BUFFERS for OUTPUT FILES. Sometimes, this is NECESSARY if an
+application (e.g., a database journaling process) MUST ENSURE that OUTPUT has been REALLY WRITTEN to the DISK
+(or AT LEAST to the DISK'S HARDWARE CACHE) before continuing. 
+
+- SUSv3 defines the term "SYNCHRONIZED I/O COMPLETION" to mean "an I/O operation that has EITHER been
+SUCCESSFULLY TRANSFERRED [to the disk] or DIAGNOSED as UNSUCCESSFUL".
+
+- SUSv3 defines TWO DIFFERENT TYPES of "synchronized I/O completion". The DIFFERENCE between the types INVOLVES
+the "metadata" ("data about data") DESCRIBING the FILE, which the KERNEL STORES ALONG with the DATA for a FILE.
+The FILE METADATA includes information such as:
+    - The file owner and group;
+    - File permissions;
+    - File size;
+    - Number of (hard) links to the file;
+    - Timestamps indicating the time of the last file access;
+    - Last file modification;
+    - Last metadata change;
+    - File data block pointers.
+
+- The FIRST TYPE of "synchronized I/O completion" defined by SUSv3 is "SYNCHRONIZED I/O DATA INTEGRITY
+COMPLETION". This is concerned with ENSURING that a FILE DATA UPDATE transfers SUFFICIENT INFORMATION to ALLOW
+a LATER RETRIEVAL of that DATA to proceed.
+ 
+     a) For a READ OPERATION, this means that the REQUESTED FILE DATA has ben TRANSFERRED (from the disk) to
+        the PROCESS. If there were any PENDING WRITE OPERATIONS affecting the requested data, these are
+        TRANSFERRED to the disk BEFORE performing the read.
+
+     b) For a WRITE OPERATION, this means that the DATA SPECIFIED in the WRITE REQUEST has been TRANSFERRED
+        (to the disk) and ALL FILE METADATA required to retrieve that data has ALSO been TRANSFERRED.
+        The KEY POINT to note here is that NOT ALL modified file metadata attributes need to be transferred to
+        allow the file data to be retrieved. An EXAMPLE of a MODIFIED FILE METADATA ATTRIBUTE that would NEED
+        to be TRANSFERRED is the FILE SIZE (if the write operation EXTENDED the file). By CONTRAST, MODIFIED
+        FILE TIMESTAMPS would NOT NEED to be transferred to disk before a subsequent data retrieval could
+        proceed.
+
+- The OTHER TYPE of "synchronized I/O completion" defined by SUSv3 is "SYNCHRONIZED I/O FILE INTEGRITY
+COMPLETION", which is a SUPERSET of "synchronized I/O data integrity completion". The DIFFERENCE with this mode
+of I/O completion is that DURING A FILE UPDATE, -ALL- UPDATED FILE METADATA is TRANSFERRED to disk, EVEN if it
+is NOT NECESSARY for the operation of a SUBSEQUENT READ of the FILE DATA.
+
+----------------------------------------------------------------------------------
+
+- The "fsync()" system call CAUSES the BUFFERED DATA and ALL METADATA ASSOCIATED with the OPEN FILE DESCRIPTOR
+"fd" to be FLUSHED to DISK. Calling "fsync()" FORCES the FILE to the SYNCHRONIZED I/O FILE INTEGRITY COMPLETION
+STATE:
+        DEP: #include <unistd.h>         PROTO: int fsync(int fd);
+                                         RET: Returns 0 on success, or -1 on error.
+
+- An "fsync()" call RETURNS ONLY AFTER the TRANSFER to the DISK DEVICE (or AT LEAST its CACHE) has COMPLETED.
+
+- The "fdatasync()" system call operates SIMILARLY to "fsync()", but ONLY FORCES the FILE to the SYNCHRONIZED
+I/O DATA INTEGRITY COMPLETION STATE:
+        DEP: #include <unistd.h>         PROTO: int fdatasync(int fd);
+                                         RET: Returns 0 on success, or -1 on error.
+
+- Using "fdatasync()" POTENTIALLY REDUCES the number of DISK OPERATIONS from the TWO REQUIRED by "fsync()" to
+ONE. For example, if the file data has changed, but the file size has not, then calling "fdatasync()" ONLY
+FORCES the DATA to be UPDATED. By CONSTRAST, calling "fsync()" would ALSO FORCE the METADATA to be TRANSFERRED
+to DISK.
+
+- Reducing the number of disk I/O operations in this manner is USEFUL for certain applications in which
+PERFORMANCE is CRUCIAL and the ACCURATE MAINTENANCE of CERTAIN METADATA (such as timestamps) is NOT ESSENTIAL.
+This can make a CONSIDERABLE PERFORMANCE DIFFERENCE for applications that are making MULTIPLE FILE UPDATES:
+because the FILE DATA and METADATA normally RESIDE on DIFFERENT PARTS of the DISK, UPDATING them BOTH would
+REQUIRE REPEATED SEEK OPERATIONS backward and forward across the disk.
+
+- In Linux 2.2 and EARLIER, "fdatasync()" is implemented as a call to "fsync()", and thus carries no
+performance gain.
+
+- The "sync()" system call CAUSES ALL KERNEL BUFFERS containing updated file information (i.e., data blocks,
+pointer blocks, metadata, and so on) to be FLUSHED TO DISK.
+        DEP: #include <unistd.h>         PROTO: void sync(void);
+
+- In the Linux implementation, "sync()" RETURNS ONLY AFTER ALL DATA has been TRANSFERRED to the DISK DEVICE
+(or AT LEAST to its CACHE). However, SUSv3 PERMITS an implementation of "sync()" to SIMPLY SCHEDULE the 
+I/O transfer and RETURN BEFORE it has COMPLETED.
+
+                  Note:  A PERMANENTLY RUNNING kernel thread ENSURES that MODIFIED KERNEL BUFFERS are FLUSHED
+                       to DISK if they are NOT EXPLICITLY SYNCHRONIZED within 30 seconds. This is done to
+                       ENSURE that BUFFERS DON'T REMAIN UNSYNCHRONIZED with the CORRESPONDING DISK FILE
+                       (and thus VULNERABLE to LOSS in the event of a system crash) for long periods.
+                         The file "/proc/sys/vm/dirty_expire_centisecs" SPECIFIES the AGE (in centisecs) that
+                       a DIRTY BUFFER MUST REACH BEFORE it is FLUSHED.
+
+                  Note:  Since Linux 2.6.39, the NEW "syncfs()" system call can be used to FLUSH ALL KERNEL
+                       BUFFERS containing UPDATED FILE INFORMATION for a specified FILE SYSTEM
+                       (i.e., a per-file-system "sync()"). The FILE SYSTEM is SPECIFIED using a FILE DESCRIPTOR
+                       that REFERS to an OPEN FILE in the FILE SYSTEM.
+----------------------------------------------------------------------------------
+
+- Specifying the 'O_SYNC' flag when calling "open()" makes ALL SUBSEQUENT OUTPUT "SYNCHRONOUS":
+        # fd = open(pathname, O_WRONLY | O_SYNC);
+
+- After this "open()" call EVERY "write()" to the file AUTOMATICALLY FLUSHES the FILE DATA and METADATA to the
+DISK (i.e., WRITES are PERFORMED ACCORDING to SYNCRHONIZED I/O FILE INTEGRITY COMPLETION).
+
+                  Note:  Older BSD systems used the 'O_FSYNC' flags to provide 'O_SYNC' functionality.
+                       In "glibc", 'O_FSYNC' is DEFINED as a SYNONYM for 'O_SYNC'.
+
+- Using the 'O_SYNC' flag (or making FREQUENT CALLS to "fsync()", "fdatasync()", or "sync()") can STRONGLY
+AFFECT PERFORMANCE:
+      ------------
+      |Table 13-3|
+      ----------------------------------------------------------
+      |          |           Time required (seconds)           |
+      |          |---------------------------------------------|
+      | BUF_SIZE |   Without O_SYNC    |      With O_SYNC      |
+      |          |---------------------------------------------|
+      |          | Elapsed | Total CPU | Elapsed  |  Total CPU |
+      |----------|---------|-----------|----------|------------|
+      | 1        |  0.73   |   0.73    |  1030    |   98.8     |
+      | 16       |  0.05   |   0.05    |   65.0   |    0.40    |  
+      | 256      |  0.02   |   0.02    |    4.07  |    0.03    |
+      | 4096     |  0.01   |   0.01    |    0.34  |    0.03    |
+      ----------------------------------------------------------
+
+- "Table 13-3" shows the TIME REQUIRED to WRITE 1MB to a NEWLY CREATED FILE (on an "ext2" file system) for a
+range of buffer sized with and without 'O_SYNC'.
+
+- As can be seen from the table, 'O_SYNC' INCREASES ELAPSED TIME ENORMOUSLY. Note also the LARGE DIFFERENCES
+between the ELAPSED and CPU TIMES for writes with 'O_SYNC'. This is a CONSEQUENCE of the program BEING BLOCKED
+while EACH BUFFER is ACTUALLY TRANSFERRED to DISK.
+
+- The results in "Table 13-3" OMIT a FURTHER FACTOR that AFFECTS PERFORMANCE when using 'O_SYNC'. Modern disk
+drives have LARGE INTERNAL CACHES, and by DEFAULT, 'O_SYNC' MERELY CAUSES DATA to be TRANSFERRED to the CACHE.
+If we DISABLE CACHING on the disk (using the command "hdparm -W0"), then the PERFORMANCE IMPACT of 'O_SYNC'
+becomes EVEN MORE EXTREME. In the 1-byte case, the ELAPSED TIME RISES from 1030 seconds to around 16,000
+seconds. In the 4096-byte case, the ELAPSED TIME RISES from 0.34 to 4 seconds.
+
+- In summary, if we NEED to FORCE FLUSHING of KERNEL BUFFERS, we should CONSIDER WHETHER we can DESIGN our
+application to use LARGE "write()" BUFFER SIZES or make JUDICIOUS USE of OCCASIONAL CALLS to "fsync()" or
+"fdatasync()", INSTEAD of using the 'O_SYNC' flag when opening the file.
+
+- SUSv3 specifies TWO FURTHER OPEN FILE STATUS FLAGS related to synchronized I/O: 'O_DSYNC' and 'O_RSYNC'.
+
+- The 'O_DSYNC' flag CAUSES WRITES to be PERFORMED ACCORDING to the REQUIREMENTS of SYNCHRONIZED I/O DATA
+INTEGRITY COMPLETION (like "fdatasync()"). This CONSTRASTS with 'O_SYNC', which CAUSES WRITES to be PERFORMED
+ACCORDING to the REQUIREMENTS of SYNCHRONIZED I/O FILE INTEGRITY COMPLETION (like "fsync()").
+
+- The 'O_RSYNC' flag is specified in CONJUNCTION with EITER 'O_SYNC' or 'O_DSYNC', and EXTENDS the WRITE
+BEHAVIOURS of these flags to READ OPERATIONS. Specifying BOTH 'O_RSYNC' and 'O_DSYNC' when opening a file MEANS
+that ALL SUBSEQUENT READS are COMPLETED ACCORDING to the REQUIREMENTS of SYNCHRONIZED I/O DATA INTEGRITY
+COMPLETION (i.e., prior to performing the read, all pending file writes are completed as though carried out
+with 'O_DSYNC'). Specifying BOTH 'O_RSYNC' and 'O_SYNC' when opening a file MEANS that ALL SUBSEQUENT READS are
+COMPLETED ACCORDING to the REQUIREMENTS of SYNCHRONIZED I/O FILE INTEGRITY COMPLETION (i.e., prior to
+performing the read, all pending file writes are completed as though carried out with 'O_SYNC').
+
+- Before kernel 2.6.33, the 'O_DSYNC' and 'O_RSYNC' flags were NOT IMPLEMENTED on Linux, and the "glibc"
+headers defined these constants to be the same as 'O_SYNC' (this ISN'T ACTUALLY CORRECT in the case of
+'O_RSYNC', since 'O_SYNC' DOESN'T PROVIDE any functionality for read operations).
+
+- Starting with kernel 2.6.33, Linux implements 'O_DSYNC', and an implementation of 'O_RSYNC' is LIKELY TO BE
+ADDED in a FUTURE KERNEL RELEASE.
+
+                  Note:  Before kernel 2.6.33, Linux DIND'T FULLY IMPLEMENT 'O_SYNC' semantics. Instead,
+                       'O_SYNC' was implemented as 'O_DSYNC'. To MAINTAIN CONSISTENT BEHAVIOUR for applications
+                       that were BUILD for OLDER KERNELS, applications that were LINKED against OLDER VERSIONS
+                       of the GNU C library CONTINUE TO PROVIDE 'O_DSYNC' semantics for 'O_SYNC', EVEN on
+                       Linux 2.6.33 and later.
+
+#############################################################################################################
+- The "posix_fadvise()" system call ALLOWS a PROCESS to INFORM THE KERNEL about its LIKELY PATTERN for 
+ACCESSING FILE DATA:
+     DEP: #define _XOPEN_SOURCE 600
+          #include <fcntl.h>          PROTO: int posix_fadvise(int fd, off_t offset, off_t len, int advice);
+                                      RET: Returns 0 on success, or a positive error number on error.
+
+- The kernel MAY (but it is NOT OBLIGED to) USE the information provided by "posix_fadvise()" to OPTIMIZE its
+use of the BUFFER CACHE, thereby IMPROVING I/O PERFORMANCE for the process and for the system as a whole.
+Calling "posix_fadvise()" has NO EFFECT on the SEMANTICS of a program. 
+
+- The "fd" argument is a FILE DESCRIPTOR identifying the file about whose access patterns we wish to inform
+the kernel. The "offset" and "len" arguments IDENTIFY the REGION of the file about which advice is being given:
+"offset" specifies the STARTING OFFSET of the REGION, and "len" specifies the SIZE of the REGION in BYTES.
+A "len" value of 0 means ALL BYTES from "offset" to the END-OF-FILE (in kernels BEFORE 2.6.6, a "len" of 0 was
+INTERPRETED LITERALLY as ZERO BYTES).
+
+- The "advice" argument INDICATES the PROCESS'S EXPECTED PATTERN OF ACCESS for the FILE. It is specified as one
+of the following:
+
+    - POSIX_FADV_NORMAL - The process has NO SPECIAL ADVICE to give about access patterns. This is the DEFAULT
+                          BEHAVIOUR if no advice is given for the file. On Linux, this operation SETS the
+                          FILE READ-AHEAD WINDOW to the DEFAULT SIZE (128 kB).
+
+    - POSIX_FADV_SEQUENTIAL - The process EXPECTS to READ DATA SEQUENTIALLY from LOWER OFFSETS to HIGHER 
+                              OFFSETS. On Linux, this operation SETS the FILE READ-AHEAD WINDOW to TWICE the
+                              DEFAULT SIZE (i.e., 256 kB).
+
+    - POSIX_FADV_RANDOM - The process EXPECTS to ACCESS DATA in RANDOM ORDER. On Linux, this option DISABLES
+                          FILE READ-AHEAD.
+
+    - POSIX_FADV_WILLNEED - The process EXPECTS to ACCESS the SPECIFIED FILE REGION in the NEAR FUTURE.
+                            The kernel performs READ-AHEAD to POPULATE the BUFFER CACHE with FILE DATA in the
+                            range specified by "offset" and "len". Subsequent "read()" calls on the file DON'T
+                            BLOCK on DISK I/O; instead, they SIMPLY FETCH DATA from the BUFFER CACHE.
+                            The kernel provides NO GUARANTEES about HOW LONG the DATA FETCHED from the file
+                            will REMAIN RESIDENT in the BUFFER CACHE. If other processes or kernel activites
+                            place a SUFFICIENTLY STRONG DEMAND on MEMORY, then the PAGES will EVENTUALLY be
+                            REUSED. In other words, if MEMORY PRESSURE is HIGH, then we should ENSURE that the
+                            ELAPSED TIME between "posix_fadvise()" call and the subsequent "read()" call(s) is
+                            SHORT (the Linux-specific "readahead()" system call provides EQUIVALENT
+                            FUNCTIONALITY to the 'POSIX_FADV_WILLNEED' operation).
+
+    - POSIX_FADV_DONTNEED - The process EXPECTS NOT to ACCESS the SPECIFIED FILE REGION in the NEAR FUTURE.
+                            This advises the kernel that it can FREE the CORRESPONDING CACHE PAGES (if there
+                            are any). On Linux, this operation is performed in TWO STEPS:
+                               S1) If the UNDERLYING DEVICE is NOT CURRENTLY CONGESTED with a SERIES of QUEUED
+                                   WRITE OPERATIONS, the kernel FLUSHES ANY MODIFIED PAGES in the SPECIFIED
+                                   REGION.
+                               S2) The kernel attempts to FREE ANY CACHE PAGES for the region.
+                            For modified pages in the region, this second step will SUCCEED ONLY IF the PAGES
+                            have been WRITTEN to the UNDERLYING DEVICE in the first step - that is, if the
+                            device's write queue was NOT CONGESTED. Since congestion on the device CAN'T BE
+                            CONTROLLED by the application, an ALTERNATE WAY of ENSURING that the CACHE PAGES
+                            can be FREED is to PRECEDE the 'POSIX_FADV_DONTNEED' operation with a "sync()" or
+                            "fdatasync()" call that specifies "fd".
+
+    - POSIX_FADV_NOREUSE - The process EXPECTS to ACCESS DATA in the SPECIFIED FILE REGION only ONCE, and then
+                           NOT to REUSE IT. This hint tells the kernel that it can FREE the PAGES AFTER they
+                           have been ACCESSED ONCE. On Linux, this operation CURRENTLY has NO EFFECT.
+
+- The specification of "posix_fadvise()" is NEW in SUSv3, and NOT ALL UNIX implementations SUPPORT this
+interface. Linux provides "posix_fadvise()" since kernel 2.6.
+
+#############################################################################################################
+- Starting with kernel 2.4, Linux ALLOWS an application to BYPASS the BUFFER CACHE when PERFORMING DISK I/O,
+thus TRANSFERRING DATA DIRECTLY from USER SPACE to a FILE or DISK DEVICE. This is sometimes termed "DIRECT I/O"
+or "RAW I/O".
+
+                  Note:  The details described here are Linux-specific and are NOT STANDARDIZED by SUSv3.
+                       Nevertheless, MOST UNIX implementations provide SOME FORM of DIRECT I/O ACCESS to
+                       DEVICES and FILES.
+
+- Direct I/O is sometimes MISUNDERSTOOD as being a means of obtaining FAST I/O performance. However, for MOST
+APPLICATIONS, using DIRECT I/O can CONSIDERABLY DEGRADE PERFORMANCE. This is because the kernel applies a
+number of OPTIMIZATIONS to IMPROVE the PERFORMANCE of I/O done VIA the BUFFER CACHE, including:
+    - Performing sequential read-ahead;
+    - Performing I/O in clusters of disk blocks;
+    - Allowing processes accessing the same file to SHARE BUFFERS in the cache. 
+
+- All of these optimizations are LOST when we use DIRECT I/O. Direct I/O is ONLY INTENDED for applications with
+SPECIALIZED I/O REQUIREMENTS. For example, database systems that peform their own caching and I/O optimizations
+don't need the kernel to consume CPU time and memory performing the same tasks.
+
+- We can perform direct I/O EITHER on an INDIVIDUAL FILE or on a BLOCK DEVICE (e.g., a disk). To do this, we
+SPECIFY the 'O_DIRECT' flag when OPENING the FILE or DEVICE with "open()".
+
+- The 'O_DIRECT' flag is effective since kernel 2.4.10. NOT ALL Linux file systems and kernel versions SUPPORT
+the use of this flag. MOST NATIVE file systems SUPPORT 'O_DIRECT', but MANY NON-UNIX file systems (e.g., VFAT)
+DO NOT. It MAY BE NECESSARY to TEST the file system concerned (if a file system doesn't support 'O_DIRECT',
+then "open()" FAILS with the error 'EINVAL') or READ the KERNEL SOURCE CODE to CHECK for this support.
+
+                  Note:  If a file is opened with 'O_DIRECT' by one process, and opened normally
+                       (i.e., so that the buffer cache is used) by another process, then there is NO COHERENCY
+                       between the contents of the buffer cache and the data read or written via DIRECT I/O.
+                       Such scenarios should be AVOIDED.
+
+- Because DIRECT I/O (on BOTH disk devices AND files) INVOLVES DIRECT ACCESS to the DISK, we MUST OBSERVE
+a number of RESTRICTIONS when performing I/O:
+     a) The data buffer being transferred MUST BE ALIGNED on a MEMORY BOUNDARY that is a MULTIPLE of the
+        BLOCK SIZE;
+
+     b) The FILE or DEVICE OFFSET at which data transfer commences MUST BE a MULTIPLE of the BLOCK SIZE;
+
+     c) The LENGTH of the DATA to be transferred MUST BE a MULTIPLE of the BLOCK SIZE.
+
+- Failure to observe ANY of these RESTRICTIONS results in the error 'EINVAL'. In the above list, "BLOCK SIZE"
+means the PHYSICAL BLOCK SIZE of the DEVICE (typically 512 bytes).
+
+                  Note:  When performing DIRECT I/O, Linux 2.4 is MORE RESTRICTIVE than Linux 2.6: the
+                       alignment, length, and offset MUST BE MULTIPLES of the LOGICAL BLOCK SIZE of the
+                       UNDERLYING FILE SYSTEM (typical file system logical block sizes are 1024, 2048, or
+                       4096 bytes).
+
+#############################################################################################################
+- It is POSSIBLE to MIX the use of system calls and the standard C library functions to perform I/O on the
+SAME FILE. The "fileno()" and "fdopen()" functions ASSIST US with this task.
+      DEP: #include <stdio.h>        PROTO: int fileno(FILE *stream);
+                                     RET: Returns file descriptor on success, or -1 on error.
+
+                                     PROTO: FILE *fdopen(int fd, const char *mode);
+                                     RET: Returns (new) file pointer on success, or NULL on error.
+
+- Given a stream, "fileno()" returns the CORRESPONDING FILE DESCRIPTOR (i.e., the one that the "stdio" library
+has opened for this stream). This file descriptor can then be used in the USUAL WAY with I/O system calls such
+as "read()", "write()", "dup()", and "fcntl()".
+
+- The "fdopen()" function is the CONVERSE of "fileno()". Given a file descriptor, it CREATES a CORRESPONDING
+STREAM that uses this descriptor for its I/O. The "mode" agument is THE SAME as for "fopen()"; for example,
+'r' for read, 'w' for write, or 'a' to append. If this argument is NOT CONSISTENT with the ACCESS MODE of the
+FILE DESCRIPTOR "fd", then "fdopen()" FAILS.
+
+- The "fdopen()" function is ESPECIALLY USEFUL for descriptors REFERRING to files OTHER THAN REGULAR FILES.
+For example, the system calls for creating sockets and pipes always return file descriptors. To use the "stdio"
+library with these file types, we must use "fdopen()" to create a CORRESPONDING file stream.
+
+- When using the "stdio" library functions IN CONJUNCTION with I/O system calls to PERFORM I/O on DISK FILES,
+we MUST KEEP BUFFERING ISSUES IN MIND. I/O systems call TRANSFER DATA DIRECTLY to the KERNEL BUFFER CACHE,
+while the "stdio" library WAITS until the stream's user-space buffer is full BEFORE CALLING "write()" to
+TRANSFER that BUFFER to the KERNEL BUFFER CACHE. 
+
+- When INTERMINGLING I/O system calls and "stdio" functions, JUDICIOUS USE of "fflush()" MAY be REQUIRED to
+AVOID this problem. We could ALSO USE "setvbuf()" or "setbuf()" to DISABLE BUFFERING, but doing so MIGHT IMPACT
+I/O PERFORMANCE for the application, since each output operation would then result in the execution of a
+"write()" system call.
+
+                  Note:  SUSv3 goes to some length specifying the requirements for an application to be able
+                       to mix the use of I/O system calls and "stdio" functions.
+

@@ -1,0 +1,31 @@
+- 'PSEUDOCODE' is the art of expressing a program in a natural language that parallels the forms of a
+computer language. Pseudocode is useful for working out the logic of a program. After the logic seems
+right, we can translate the pseudocode to the actual programming code. It has two advantages:
+  1) It enables us to concentrate on the LOGIC and ORGANIZATION of a program and SPARES us from 
+  SIMULTANEOUSLY worrying about how to express the ideas in a computer language.
+  2) It is NOT tied to a particular language, so the same pseudocode can be TRANSLATED into DIFFERENT
+  computer languages.
+
+- Conditional loops often rely on test expressions that make comparisons. Such expressions are termed
+RELATIONAL EXPRESSIONS, and the operators that appear in them are called RELATIONAL OPERATORS. Those are:
+  High precedence group: '<', '<=', '>', '>='
+  Low precedence group: '==', '!='
+
+- In F-P comparisons, we should LIMIT ourselves to using ONLY '<' and '>'. The reason is that ROUND-OFF
+ERRORS can PREVENT two numbers from being equal, even though logically they should be. The "fabs()"
+function, declared in the "math.h" header file, can be handy for F-P tests.
+
+- C99 provides for a "stdbool.h" header file. This header file makes "bool" an alias for "_Bool" and
+defines "true" and "false" as symbolic constants for the values 1 and 0. Including this header file allows
+us to write code that is COMPATIBLE with C++, which defines "bool", "true" and "false" as keywords.
+
+- The comma operator LINKS multiple expressions into one. It has two properties:
+   1) It GUARANTEES that the expressions it separates are evaluated in a left-to-right order (so in other
+   words, the comma is a SEQUENCE POINT, so all side effects to the left of the come take place BEFORE
+   the program moves to the right of the comma).
+   2) The value of the WHOLE comma expression is the value of the RIGHT-HAND MEMBER.
+
+- The comma is also used as a SEPARATOR, so the comma in "char ch, date", for example, is a separator,
+NOT a comma operator.
+
+########################################################################################################

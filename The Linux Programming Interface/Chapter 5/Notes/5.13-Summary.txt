@@ -1,0 +1,32 @@
+- We introduced the CONCEPT of ATOMICITY, which is CRUCIAL to the CORRECT OPERATION of some system calls.
+In particular, the "open() O_EXECL" flag allows the caller to ENSURE that it is the CREATOR of the file and
+the "open() O_APPEND" flag ENSURES that MULTIPLE processes APPENDING DATA to the SAME file DON'T OVERWRITE
+each other's output.
+
+- The "fcntl()" sysetm call performs a variety of FILE CONTROL OPERATIONS, including CHANGING open file STATUS
+FLAGS and DUPLICATING FILE DESCRIPTORS. Duplicating file descriptors is ALSO POSSIBLE using "dup()" and 
+"dup2()".
+
+- We looked at the RELATIONSHIP between FILE DESCRIPTORS, OPEN FILE DESCRIPTIONS (HANDLES), and FILE I-NODES,
+and NOTED that DIFFERENT INFORMATION is ASSOCIATED with each of these three objects. Duplicate file
+descriptors refer to the SAME open file description (handle), and thus SHARE open file STATUS FLAGS and
+the FILE OFFSET.
+
+- We described a number of system calls that EXTEND the functionality of the conventional "read()" and
+"write()" system calls. The "pread()" and "pwrite()" system calls perform I/O at a SPECIFIED file location
+WITHOUT changing the FILE OFFSET. The "readv()" and "writev()" calls perform SCATTER-GATHER I/O.
+The "preadv()" and "pwritev()" calls COMBINE scatter-gather I/O functionality with the ability to perform I/O
+at a SPECIFIED file location.
+
+- The "truncate()" and "ftruncate()" system calls can be used to DECREASE the SIZE of a file, DISCARDING the
+EXCESS bytes, or to INCREASE the SIZE of the file, PADDING with a ZERO-FILLED file hole.
+
+- We briefly introduced the concept of NONBLOCKING I/O.
+
+- The LFS specification DEFINES a SET of EXTENSIONS that ALLOW proccesses running on 32-bit systems to PERFORM
+OPERATIONS on files whose size is TOO LARGE to be represented in 32 bits.
+
+- The numbered files in the "dev/fd" virtual directory allow a process to access its OWN open files via the
+file descriptor numbers, which can be particularly useful in shell commands.
+
+- The "mkstemp()" and "tmpfile()" functions ALLOW an application to CREATE TEMPORARY FILES.

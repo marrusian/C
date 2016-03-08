@@ -1,0 +1,594 @@
+- The term "OPERATING SYSTEM" is commonly used, more narowly, to refer to the CENTRAL SOFTWARE that manages
+and allocates computer resources(i.e., the CPU, RAM, and devices). The term "KERNEL" is often used as a
+synonym for this meaning. The KERNEL greatly simplifies the writing and use of other programs, and
+increases the power and flexibility available to programmers, by providing a SOFTWARE LAYER to MANAGE
+the LIMITED RESOURCES of a computer.
+
+- Typically, the kernel peforms the following tasks:
+  a) Process scheduling: Linux is a PREEMPTIVE MULTITASKING OS. "Multitasking" means that multiple
+                        processes(i.e., running programs) can SIMULTANEOUSLY reside in memory and
+                        each may receive use of the CPU(s). "Preemptive" means that the rules
+                        governing WHICH processes receive use of the CPU and for HOW LONG are
+                        determined by the kernel process scheduler (rather than the process themselves).
+  b) Memory management: The physical memory (RAM) remains a limited resource that the kernel MUST share
+                       among the processes in an equitable and efficient fashion. Like most modern OSs,
+                       Linux employs VIRTUAL MEMORY MANAGEMENT, a technique that confers two main
+                       advantages:
+                         - Process are ISOLATED from one another and from the kernel, so that one process
+                          can't read or modify the memory of another process or the kernel.
+                         - Only PART of a process needs to be kept in memory, thereby lowering the memory
+                          requirements of each process and allowing more processes to be held in RAM
+                          simultaneously. This leads to better CPU utilization.
+  c) File system provision: The kernel provides a FILE SYSTEM on disk, allowing files to be created,
+                           retrieved, updated, deleted, etc.
+  d) Creation/termination of processes: The kernel can load a new program into memory, providing it with
+                                       the resources (e.g, CPU, memory, and access to files) that it needs
+                                       in order to run. Such an instance of a RUNNING PROGRAM is termed a
+                                       PROCESS. Once a process has COMPLETED execution, the kernel ENSURES
+                                       that the resources it uses are FREED for subsequent reuse.
+  e) Access to devices: The devices (mice, monitors, keyboards, disk drives etc) attached to a computer
+                       permit input, output, or both. The kernel provides programs with an interface that
+                       STANDARDIZES and SIMPLIFIES access to devices, while at the same time arbitraring
+                       access by multiple processes to each device.
+  f) Networking: The kernel TRANSMITS and RECEIVES network messages(packets) on behalf of user processes.
+                This task includes routing of network packets to the target system.
+  g) System call API provision: Processes can REQUEST the kernel to perform various tasks using kernel
+                               entry points known as SYSTEM CALLS.
+
+- Modern processors architectures typically allow the CPU to operate in at least TWO DIFFERENT MODES:
+user mode and kernel mode (a.k.a. supervisor mode). Hardware instructions allow switching from one mode
+to another. Correspondingly, areas of virtual memory can be MARKED as being part of USER SPACE or KERNEL
+SPACE. When running in user mode, the CPU can access ONLY memory that is marked as being in user space;
+attempts to access memory in kernel space result in a HARDWARE EXCEPTION. When running in kernel mode, the
+CPU can access BOTH user and kernel memory space. 
+
+- By taking advantage of this hardware design to place the OS in kernel space, OS implementers can ENSURE
+that user processes are NOT ABLE to access the instructions and data structures of the kernel, or to
+perform operations that would adversely effect the operation of the system.
+
+- A running system typically has NUMEROUS PROCESSES. For a process, many things happen ASYNCHRONOUSLY.
+An executing process DOESN'T KNOW when it will next time out, which other process will then be scheduled
+for the CPU (and in what order), or when it will next be scheduled. The delivery of SIGNALS and the
+occurence of interprocess communication events are MEDIATED by the KERNEL, and can occur at ANY TIME for
+a process. Many things happen TRANSPARENTLY for a process. A process DOESN'T KNOW where it is located in
+RAM or, in general, whether a particular part of its memory space is currently resident in memory or held
+in the swap area. Similarly, a process DOESN'T KNOW where on the disk drive the files it acceses are being
+held; it SIMPLY REFERS to the files by name. A process operates in ISOLATION; it CAN'T directly
+communicate with another process. A process CAN'T itself create a new process or even end its own
+existence. Finally, a process CAN'T communicate directly with the I/O devices attached to the computer.
+
+- By contrast, a running system has ONE kernel that KNOWS and CONTROLS EVERYTHING. The kernel facilitates
+the running of ALL processes of the system. The kernel DECIDES WHICH process will next obtain access to
+the CPU, WHEN it will do so, and for HOW LONG. The kernel MAINTAINS data structures containing information
+about all running processes and UPDATES these structures as processes are CREATED, CHANGE state, and
+TERMINATE. The kernel MAINTAINS all of the low-level data structures that enable the FILENAMES used by
+programs to be TRANSLATED into PHYSICAL LOCATIONS on the disk. The kernal also MAINTAINS data structures
+that MAP the virtual memory of each process into the physical mmeory of the computer and the swap area(s)
+on disk. All communication between processes is done VIA MECHANISMS provided by the kernel. In response
+to REQUESTS from processes, the kernel CREATES NEW PROCESSES and TERMINATES EXISTING PROCESSES. Lastly,
+the kernel (in particular, DEVICE DRIVERS) performs ALL DIRECT COMMUNICATION with I/O devices, transferring
+information TO and FROM user processes as required.
+
+##########################################################################################################
+- A SHELL is a special-purpose program designed to read commands typed by a user and execute appropriate
+programs in response to those commands. Such a program is sometimes known as a COMMAND INTERPRETER.
+
+- The term LOGIN SHELL is used to denote the process that is created to RUN A SHELL when the user first
+LOGS IN (or, simply put, it's a shell that asks the user to log in before it gives a prompt).
+
+- Whereas on some OSs the command interpreter is an INTEGRAL PART of the KERNEL, on UNIX systems, the shell
+is a USER PROCESS. Many different shells exists, and different users on the same computer can
+simultaneously use different shells. A number of important shells have appeared over time:
+   a) Bourne shell (sh): This is the oldest of the widely used shells, and was written by Steve Bourne.
+   b) C shell (csh): This shell was written by Bill Joy at the UCB. It provided several useful interactive
+                     features unavailable in the Bourne shell (command history, command-line editing, job
+                     control and aliases). The C shell was NOT backward compatible with the Bourne shell.
+   c) Korn shell (ksh): This shell was written as the SUCCESSOR to the Bourne shell by David Korn at AT&T.
+                        It incorporated interactive features similar to those provided by the C shell,
+                        while maintaining backwards compatibility.
+   d) Bourne again shell (bash): This shell is the GNU project's reimplementation of the Bourne shell.
+                                 It supplies interactive features similar to those available in the C and
+                                 Korn shells. It is probaby the MOST WIDELY used shell on LINUX.
+
+- The shells are designed not merely for interactive use, but also for the interpretation of SHELL SCRIPTS,
+which are TEXT FILES containing SHELL COMMANDS. For this purpose, EACH of the shells has the FACILITIES
+typically associated with programming languages: variables, loop and conditional statements, I/O commands,
+and functions.
+
+##########################################################################################################
+- Each user on the system is UNIQUELY IDENTIFIED, and users may belong to groups.
+
+- Every user of the system has a UNIQUE LOGIN NAME (username) and a corresponding numeric USER ID (UID).
+For each user, these are defined by a line in the system PASSWORD FILE ("/etc/passwd"), which includes
+the following ADDITIONAL INFORMATION:
+   a) Group ID: the numeric group ID of the FIRST of the groups of which the user is a member.
+   b) Home directory: the initial directory into which the user is placed after logging in.
+   c) Login shell: the name of the program to be exercuted to interpret user commands.
+
+- The password record may ALSO include the user's password, in ENCRYPTED FORM. However, for SECURITY
+REASONS, the password is often stored in a separate SHADOW PASSWORD file ("/etc/shadow"), which is readable
+ONLY by PRIVILEGED USERS.
+
+- For administrative purposes (in particular, for CONTROLLING access to files and other system resources)
+it is USEFUL to ORGANIZE users into GROUPS. In EARLY UNIX implementations, a user could be a member of only
+ONE group. Each group is IDENTIFIED by a single line in the system GROUP FILE ("/etc/group"), which
+includes the following INFORMATION:
+   a) Group name: the UNIQUE name of the group.
+   b) Group ID (GID): the numeric ID associated with this group.
+   c) User list: a comma-separated list of LOGIN NAMES of users who are MEMBERS of this groups.
+
+- One user, known as the SUPERUSER, has SPECIAL PRIVILEGES within the system. The superuser account has
+UID 0, and normally has the login name ROOT. On typical UNIX systems, the superuser BYPASSES all permission
+checks in the system (thus, for example, it can access ANY FILE in the system, and can send signals to ANY
+USER PROCESS). The SYSTEM ADMINISTRATOR uses the SUPERUSER ACCOUNT to perform various ADMINISTRATIVE TASKS
+on the system.
+
+##########################################################################################################
+- The KERNEL maintains a SINGLE HIERARCHICAL DIRECTORY structure to organize ALL FILES in the system (this
+contrasts with OSs such as Microsoft Windows, where EACH disk device has its OWN DIRECTORY HIERARCHY). At
+the BASE of this hierarchy is the ROOT DIRECTORY, named '/' (slash). All files and directories are
+CHILDREN or further removed DESCENDANTS of the root directory.
+
+- Within the file system, each file is marked with a TYPE, indicating WHAT KIND of file it is. One of these
+file types denotes ORDINARY DATA FILES, which are usually called REGULAR or PLAIN files, to DISTINGUISH
+them from other file types. These other file types include DEVICES, PIPES, DIRECTORIES, and SYMBOLIC LINKS.
+- The term FILE is commonly used to denote a FILE of ANY TYPE, not just a regular file.
+
+- A DIRECTORY is a SPECIAL FILE whose contents take the form of a TABLE of filenames coupled with
+references to the corresponding files. This filename-plus-reference association is called a LINK, and files
+may have MULTIPLE LINKS, and thus MULTIPLE NAMES, in the same or in different directories.
+- Directories may contain links BOTH to FILES and to OTHER DIRECTORIES. The links between directories
+ESTABLISH the DIRECTORY HIERARCHY.
+- Every directory contains AT LEAST two entries: 
+   a) '.' (dot), which is a link to the directory ITSELF;
+   b) '..' (dot-dot), which is a link to its PARENT DIRECTORY, the directory ABOVE in the hierarchy.
+  Note: Every directory, EXCEPT the ROOT DIRECTORY, has a parent.
+
+- Like a normal link, a SYMBOLIC LINK provides an ALTERNATIVE NAME for a file. But whereas a normal link
+is a filename-plus-pointer entry in a directory list, a symbolic link is a SPECIALLY MARKED FILE containing
+the name of ANOTHER FILE (in other words, a symbolic link has a filename-plus-pointer entry in a directory,
+and the file REFFERED TO by the POINTER contains a STRING that NAMES ANOTHER FILE). This latter file is
+often called the TARGET of the symbolic link, and it is common to say that the symbolic link "points" or
+"refers" to the target file. When a pathname is specified in a system call, in most circumstances, the
+kernel AUTOMATICALLY DEREFERENCES (or synonymously, FOLLOWS) each symbolic link in the pathname, REPLACING
+it with the filename to which it points. This process may hapen recursively if the target of a symbolic
+link is itself a symbolic link (the kernel IMPOSES LIMITS on the NUMBER OF DEREFERENCES to handle the
+possibility of CIRCULAR CHAINS of symbolic links). If a symbolic link refers to a file that DOESN'T EXISTS,
+it is said to be a DANGLING LINK.
+- Often, HARD LINK and SOFT LINK are used as alternative terms for NORMAL and SYMBOLIC LINKS. 
+
+- On most Linux file systems, file names can be up to 255 characters long. Filenames may contain ANY
+characters except slashes (/) and null characters (\0). However, it is ADVISABLE to employ ONLY the
+65-character set ([-._a-zA-Z0-9]) that is refferd to in SUSv3 as the PORTABLE FILENAME CHARACTER SET.
+- We should AVOID the use of characters in filenames that are NOT in the portable filename character set,
+because those caracters may have SPECIAL MEANINGS within some contexts. If a filename containing characters
+with special meanings APPEARS in such contexts, then these characters must be ESCAPED (\) to INDICATE that
+they SHOULD NOT be INTERPRETED with those special meanings.
+- We should also AVOID filenames beginning with a hyphen (-), since such filenames may be MISTAKEN for
+OPTIONS when specified in a shell command.
+
+- A PATHNAME is a STRING consisting of an OPTIONAL INITIAL SLASH (/) followed by a SERIES of filenames
+separated by slashes. All but the last of these component filenames identifies a DIRECTORY (or a symbolic
+link that RESOLVES to a directory). The series of component filenames PRECEDING the FINAL SLASH is
+sometimes referred to as the DIRECTORY PART of a pathname, while the name FOLLOWING the FINAL SLASH is
+sometimes referred to as the FILE or BASE PART of the pathname.
+- A pathname describes the LOCATION of a file within the SDH, and is either ABSOLUTE or RELATIVE:
+   a) An ABSOLUTE PATHNAME begins with a slash (/) and specifies the location of a file with RESPECT TO THE
+      ROOT DIRECTORY. Examples are: "/usr/include", "/home/mtk/.bashrc", "/" etc.
+   b) A RELATIVE PATHNAME specifies the location of a file RELATIVE TO A PROCESS'S CURRENT WORKING
+      DIRECTORY, and is DISTINGUISHED from an absolute pathname by the ABSENCE of an initial slash.
+      Examples are: "include/sys/types.h", "../mtk/.bashrc" etc.
+
+- Each process has a CURRENT WORKING DIRECTORY (sometimes just referred to as the process's WORKING
+DIRECTORY or CURRENT DIRECTORY). This is the process's "current location" within the SDH, and it is from
+this directory that relative pathnames are interpreted for the process. 
+- A process INHERITS its CWD from its PARENT PROCESS. A LOGIN SHELL has its initial CWD set to the
+location named in the HOME DIRECTORY FIELD of the user's PASSWORD FILE ENTRY.
+
+- Each file has an ASSOCIATED user ID (UID) and group ID (GID) that DEFINE the OWNER of the file and the
+group to which it BELONGS. The ownership of a file is used to DETERMINE the ACCESS RIGHTS available to
+users of the file.
+- For the purpose of ACCESSING a file, the system DIVIDES users into THREE CATEGORIES:
+   a) The OWNER of the file (sometimes termed the USER of the file);
+   b) The users who are members of the group matching the file's GID (termed GROUP);
+   c) The rest of the world (termed OTHER).
+- Three permission bits may be set for EACH of these categories of users:
+   a) READ permission allows the contents of the file to be READ;
+   b) WRITE permission allows MODIFICATION of the contents of the file;
+   c) EXECUTE permission allows EXECUTION of the file, which is either a PROGRAM or a SCRIPT to be
+      processed by some interpreter.
+- These permissions may ALSO be set on DIRECTORIES, although their meanings are SLIGHTLY DIFFERENT:
+   a) READ permission allows the contents of (i.e., the filenames in) the directory to be LISTED;
+   b) WRITE permission allows the contents of the directory to be CHANGED (i.e., filenames can be ADDED,
+      REMOVED, and CHANGED);
+   c) EXECUTE (sometimes called SEARCH) permission allows ACCESS to files WITHIN the directory (subject to
+      the permissions on the files themselves).
+
+##########################################################################################################
+- One of the DISTINGUISHING FEATURES of the I/O model on UNIX systems is the concept of UNIVERSALITY of
+I/O. This means that the same system calls (open(), read(), write(), close(), etc) are used to perform I/O
+on ALL TYPES OF FILES, including DEVICES (the kernel TRANSLATES the application's I/O requests into
+APPROPRIATE filesystem or device-driver operations that peform I/O on the target file or device). Thus,
+a program employing these system calls will work on ANY TYPE of file.
+- The kernel essentially provides ONE FILE TYPE: a sequential stream of bytes, which, in the case of disk
+files, disks, and tape devices, can be RANDOMLY ACCESSED using the lseek() system call.
+- UNIX systems have no EOF character; the end of a file is DETECTED by a READ that RETURNS NO DATA.
+
+- The I/O system calls refer to OPEN FILES using a FILE DESCRIPTOR (a usually small non-negative integer).
+A FILE DESCRIPTOR is typically OBTAINED by a CALL to open(). 
+- Normally, a process INHERITS three open file descriptors when it is started by the shell:
+   a) Descriptor 0 is STANDARD INPUT, the file from which the process TAKES its INPUT;
+   b) Descriptor 1 is STANDARD OUTPUT, the file to which the process WRITES its OUTPUT;
+   c) Descriptor 2 is STANDARD ERROR, the file to which the process WRITES ERROR MESSAGES and notification
+      of exceptional or abnormal conditions.
+- In an interactive shell or program, these three descriptors are normally connected to the terminal. In
+the STDIO library, these descriptors correspond to the file streams STDIN, STDOUT, and STDERR.
+
+- To perform file I/O, C programs typically employ I/O functions contained in the standard C library. This
+set of functions, referred to as the STDIO library, is LAYERED ON TOP of the I/O system calls (open(),
+close(), read(), write(), etc).
+
+##########################################################################################################
+- PROGRAMS normally exist in TWO FORMS. The first form is SOURCE CODE, human-readable text consisting of
+a series of statements written in a programming language. To be executed, source code MUST BE CONVERTED
+to the SECOND FORM: BINARY MACHINE-LANGUAGE instructions that the computer can understand (this CONSTRASTS
+with a SCRIPT, which is a text file containing commands to be DIRECTLY PROCESSED by a program such as a 
+shell or other command interpreter). The two meanings of the term PROGRAM are normally considered
+synonymous, since the step of COMPILING and LINKING converts source code into semantically equivalent
+binary machine code.
+
+- A FILTER is the name often applied to a program that READS its input from STDIN, performs some
+transformation of that input, and WRITES the TRANSFORMED DATA to STDOUT. Examples of filters include: cat,
+grep, tr, sort, wc, sed, and awk.
+
+##########################################################################################################
+- Put most simply, a PROCESS is an INSTANCE of an EXECUTING PROGRAM. When a program is EXECUTED, the kernel
+LOADS the code of the program into virtual memory, ALLOCATES space for program variables, and SETS UP
+kernel bookkeeping data structures to RECORD various information (such as PID, termination status, UIDs,
+GIDs) about the process.
+- From a KERNEL POV, processes are the entities among which the kernel must SHARE the VARIOUS RESOURCES
+of the computer. For resources that are LIMITED, such as memory, the kernel INITIALLY ALLOCATES some amount
+of the resource to the process, and ADJUSTS this allocation over the lifetime of the process in REPONSE to
+the DEMANDS of the process and the OVERALL SYSTEM DEMAND for that resource. When the process TERMINATES,
+all such resources are RELEASED for REUSE by other processes. Other resources, such as the CPU and NETWORK
+BANDWITH, are RENEWABLE, but MUST be shared EQUITABLY among all processes.
+
+- A process is LOGICALLY DIVIDED into the following parts (known as SEGMENTS):
+  a) Text: the instructions of the program.
+  b) Data: the static variables used by the program.
+  c) Heap: an area from which programs can DYNAMICALLY ALLOCATED extra memory.
+  d) Stack: a piece of memory that GROWS and SHRINKS as functions are CALLED and RETURN and that is used
+            to allocated storage for LOCAL VARIABLES and FUNCTION CALL LINKAGE INFORMATION.
+
+- A process can CREATE a NEW PROCESS using the "fork()" system call. The process that calls "fork()" is
+referred to as the PARENT PROCESS, and the new process is referred to as the CHILD PROCESS. The kernel
+CREATES the child process by MAKING a DUPLICATE of the parent process. The child INHERITS COPIES of the
+parent's data, stack, and heap segments, which it may then MODIFY INDEPENDENTLY of the parent's copies
+(the program text, which is placed in memory marked as READ-ONLY, is SHARED by the two processes).
+- The child process goes on EITHER to execute a DIFFERENT SET OF FUNCTIONS in the same code as the parent,
+or, frequently, to use the "execve()" system call to LOAD and EXECUTE an ENTIRELY NEW PROGRAM.
+An "execve()" call DESTROYS the existing text, data, stack, and heap segments, REPLACING them with NEW
+SEGMENTS based on the code of the new program.
+
+- A process can TERMINATE in one of TWO WAYS:
+   a) By REQUESTING its own termination using the "_exit()" system call (or the "exit()" lib. function).
+   b) By BEING KILLED by the delivery of a signal.
+- In either case, the process yields a TERMINATION STATUS, a small nonnegative integer value that is
+AVAILABLE FOR INSPECTION by the PARENT PROCESS using the "wait()" system call. In the case of a call to
+"_exit()", the process EXPLICITLY specifies its OWN TERMINATION STATUS. If a process is KILLED by a SIGNAL,
+the termination status is set ACCORDING to the TYPE OF SIGNAL that CAUSED THE DEATH of the process
+(sometimes we refer to the argument passed to "_exit()" as the EXIT STATUS of the process, as distinct
+from the termination status).
+- By convention, a termination status of 0 indicates that the process SUCCEEDED, and a NONZERO STATUS 
+indicates that SOME ERROR OCCURED.
+  Note: Most shells make the termination status of the LAST EXECUTED PROGRAM available via a shell variable
+        named "$?".
+
+- Each process has a number of ASSOCIATED UIDs and GIDs. These include:
+   a) REAL USER ID and REAL GROUP ID: These IDENTIFY the user and group to which the PROCESS BELONGS. A
+      new process INHERITS these IDs from ITS PARENT. A LOGIN SHELL gets its RUID and RGID from the
+      CORRESPONDING FIELDS in the SYSTEM PASSWORD FILE.
+   b) EFFECTIVE USER ID and EFFECTIVE GROUP ID: These two IDs (in conjunction with the SUPPLEMENTARY GIDs)
+      are used in DETERMINING the PERMISSIONS that the process has when ACCESSING PROTECTED RESOURCES such
+      as FILES and INTERPROCESS COMMUNICATION OBJECTS. Typically, the process's EIDs have the SAME VALUES
+      as the corresponding RIDs. Changing the EIDs is a MECHANISM that ALLOWS A PROCCESS to ASSUME the
+      PRIVILEGES of ANOTHER USER or GROUP.
+   c) SUPPLEMENTARY GROUP IDs: These IDs identify ADDITIONAL GROUPS to which a process belongs. A new
+      process INHERITS its SGIDs from its PARENT. A LOGIN SHELL gets its SGIDs from the SYSTEM GROUP FILE.
+
+- Traditionally, on UNIX systems, a PRIVILEGED PROCESS is one whose EUID is 0 (superuser). Such a process
+BYPASSES the PERMISSION RESTRICTIONS normally applied by the kernel. By contrast, the term UNPRIVILEGED is
+applied to processes run by OTHER USERS. Such processes have a NONZERO EUID and MUST ABIDE by the
+PERMISSION RULES ENFORCED by the KERNEL.
+- A process may be PRIVILEGED because it was CREATED by ANOTHER PRIVILEGED PROCESS (for example, by a login
+shell started by root). Another way a process MAY BECOME PRIVILIGED is via the set-UID MECHANISM, which
+allows a process to ASSUME AN EUID that is the SAME as the UID of the program file that it is EXECUTING.
+
+- Since kernel 2.2, Linux DIVIDES the PRIVILEGES traditionally accorded to the superuser into a SET of
+DISTINCT UNITS called CAPABILITIES. Each privileged operation is ASSOCIATED with a PARTICULAR CAPABILITY,
+and a process can peform an operation ONLY IF it has the corresponding capability. A traditional superuser
+process (EUID of 0) corresponds to a process with ALL CAPABILITIES ENABLED.
+- Granting a SUBSET of capabilities to a process allows it to perform SOME of the operations normally
+permitted to the superuser, while PREVENTING IT from performing others.
+
+- When BOOTING the SYSTEM, the kernel CREATES a SPECIAL PROCESS called "init", the "PARRENT OF ALL
+PROCESSES", which is DERIVED from the program file "/sbin/init". All processes on the system are CREATED
+(using "fork()") EITHER by "init" or by one of ITS DESCENDANTS. The "init" process ALWAYS has the PID 1 and
+runs with SUPERUSER PRIVILEGES. The "init" process CAN'T BE KILLED (not even by the superuser), and it
+TERMINATES ONLY when the SYSTEM is SHUT DOWN. The MAIN TASK of "init" is to CREATE and MONITOR a range of
+processes required by a running system.
+
+- A DAEMON is a special-purpose process that is CREATED and HANDLED by the SYSTEM in the SAME WAY as other
+processes, but which is DISTINGUISHED by the following characteristics:
+  a) It is LONG-LIVED. A daemon process is often started at SYSTEM BOOT and remains in existence until the
+     SYSTEM IS SHUT DOWN.
+  b) It RUNS in the BACKGROUND, and has NO CONTROLLING TERMINAL from which it can read input or to which it
+     can write output.
+- Examples of DAEMON PROCESSES include: 
+  - "syslogd", which records messages in the system log;
+  - "httpd", which serves web pages via the HTTP.
+
+- Each process has an ENVIRONMENT LIST, which is a set of ENVIRONMENT VARIABLES that are MAINTAINED within
+the USER-SPACE MEMORY of the process. Each element of this list consists of a NAME and an ASSOCIATED VALUE.
+When a NEW PROCESS is created via "fork()", it INHERITS a COPY of its PARENT'S ENVIRONMENT. Thus, the
+environment provides a MECHANISM for a parent process to COMMUNICATE INFORMATION to a child process. When
+a process REPLACES the program that it is running using "exec()", the new program EITHER inherits the
+environment used by the OLD PROGRAM or recives a NEW ENVIRONMENT specified as part of the "exec()" call.
+- Environment variables are CREATED with the "EXPORT" command in most shells. C programs can ACCESS the
+environment using an EXTERNAL VARIABLE (char **environ), and various library functions allow a process to
+RETRIEVE and MODIFY VALUES in its environment.
+- Environment variables are used for a VARIETY OF PURPOSES. For example, the shell DEFINES and USES a range
+of variables that can be accessed by SCRIPTS and PROGRAMS executed from the shell. These include the
+variables HOME, PATH, TERM, BASH_VERSION, SHELL etc.
+
+- Each process CONSUMES RESOURCES, such as: open files, memory, and CPU time. Using the "setrlimit()"
+system call, a process can ESTABLISH UPPER LIMITS on its consumption of various resources. Each such
+RESOURCE LIMIT has TWO ASSOCIATED VALUES:
+  a) A SOFT LIMIT, which limits the amount of the resource that the process MAY CONSUME.
+  b) A HARD LIMIT, which is a CEILING on the value to which the soft limit MAY BE ADJUSTED.
+- An UNPRIVILEGED PROCESS may change its soft limit for a particular resource to any value IN THE RANGE
+from ZERO up to the CORRESPONDING HARD LIMIT, but can only lower its hard limit.
+- When a new process is created with "fork()", it INHERITS COPIES of its PARENT'S resource limit settings.
+
+##########################################################################################################
+- An OBJECT LIBRARY is a file containing the COMPILED OBJECT CODE for a (usually logically related) set of
+functions that may be called from application programs. Placing code for a set of functions in a SINGLE
+OBJECT LIBRARY eases the tasks of program creation and maintenance. Modern UNIX systems provide TWO TYPES
+of object libraries: STATIC LIBRARIES and SHARED LIBRARIES.
+
+- A STATIC LIBRARY (sometimes also known as an ARCHIVE) is essentially a STRUCTURED BUNDLE of COMPILED
+OBJECT MODULES. To use functions from a static library, we SPECIFY that library in the LINK COMMAND used
+to BUILD a program. After RESOLVING the various function REFERENCES from the main program to the modules
+in the static library, the linker EXTRACTS COPIES of the REQUIRED OBJECT MODULES from the library and
+COPIES these into the RESULTING EXECUTABLE FILE. We say that such a program is STATICALLY LINKED.
+- The fact that EACH statically linked program includes its OWN COPY of the object modules required from
+the library creates a NUMBER OF DISADVANTAGES. One is that the DUPLICATION OF OBJECT CODE in DIFFERENT
+executable files WASTES disk space. A corresponding WASTE OF MEMORY occurs when statically linked programs
+using the SAME LIBRARY FUNCTION are EXECUTED at the SAME TIME; each program requires its own copy of the
+function to RESIDE in memory. Additionally, if a library function REQUIRES MODIFICATION, then, after
+RECOMPILING that function and ADDING IT to the static library, ALL APPLICATIONS that NEED to use the 
+updated function MUST be RELINKED against the library.
+
+- SHARED LIBRARIES were designed to address the problems with static libraries.
+- If a program is linked against a shared library, then, INSTEAD of COPYING OBJECT MODULES from the library
+into the executable, the LINKER just WRITES A RECORD into the EXECUTABLE to INDICATE that at RUN TIME the
+executable NEEDS to use that shared library. When the executable is LOADED INTO MEMORY at RUN TIME, a
+program called DYNAMIC LINKER ensures that the shared libraries REQUIRED by the EXECUTABLE are FOUND and
+LOADED INTO MEMORY, and PEFORMS RUN-TIME LINKING to resolve the function calls in the executable to the
+corresponding DEFINITIONS in the shared libraries. At run time, ONLY A SINGLE COPY of the code of the
+shared library NEEDS to be RESIDENT in memory; all running programs can USE THAT COPY.
+- The fact that a shared library contains the SOLE COMPILED VERSION of a function SAVES disk space. It also
+GREATLY EASES the job of ensuring that programs employ the NEWEST VERSION of a function. Simply REBUILDING
+the shared library with the NEW function definition causes EXISTING PROGRAMS to AUTOMATICALLY use the
+NEW DEFINITION when they are next executed.
+
+##########################################################################################################
+- A running Linux system consists of NUMEROUS PROCESSES, many of which OPERATE INDEPENDENTLY of each other.
+Some processes, however, COOPERATE to achieve their intended purposes, and these processes NEED METHODS OF
+COMMUNICATING with one another and SYNCHRONIZING their actions.
+- One way for processes to communicate is by READING and WRITING information in disk files. However, for
+many applications, this is TOO SLOW and INFLEXIBLE.
+- Therefore, Linux, like all MODERN UNIX implementations, provides a RICH SET OF MECHANISMS for
+INTERPROCESS COMMUNICATION (IPC), including the following:
+  a) SIGNALS, which are used to indicate that an EVENT has OCCURED;
+  b) PIPES (familiar to shell users as the | operator) and FIFOs, which can be used to TRANSFER DATA
+     between processes;
+  c) SOCKETS, which can be used to TRANSFER DATA from one process to another, either on the SAME HOST
+     COMPUTER or on DIFFERENT HOSTS connected by a network;
+  d) FILE LOCKING, which allows a process to LOCK REGIONS OF A FILE in order to PREVENT other processes
+     from READING or UPDATING the file contents;
+  e) MESSAGE QUEUES, which are used to EXCHANGE MESSAGES (packets of data) between processes;
+  f) SEMAPHORES, which are used to SYNCHRONIZE the ACTIONS of processes;
+  g) SHARED MEMORY, which allows TWO OR MORE processes to SHARE A PIECE OF MEMORY. When one process CHANGES
+     the contents of the shared memory, ALL of the OTHER processes can IMMEDIATELY SEE the changes.
+
+##########################################################################################################
+- SIGNALS are often described as "SOFTWARE INTERRUPTS". The arrival of a signal INFORMS a process that SOME
+EVENT or EXCEPTIONAL CONDITION has occured. There are VARIOUS TYPES of signals, each of which IDENTIFIES
+a DIFFERENT EVENT or CONDITION. Each SIGNAL TYPE is identified by a DIFFERENT INTEGER, defined with
+SYMBOLIC NAMES of the form SIGxxxx.
+
+- Signals are SENT to a process by:
+   a) The kernel;
+   b) Another process (with suitable permissions);
+   c) The process itself.
+
+- For example, the KERNEL may send a signal to a process when one of the following occurs:
+   a) the user typed the INTERRUPT CHARACTER (usually Control-C) on the keyboard;
+   b) one of the process's children has terminated;
+   c) a timer (alarm clock) set by the process has expired;
+   d) the process attempted to access an INVALID MEMORY ADDRESS.
+
+- Within the shell, the KILL command can be used to send a signal to a process. The "kill()" system call
+provides the SAME FACILITY within programs.
+
+- When a process RECEIVES a signal, it takes one of the following actions, DEPENDING on the signal:
+   a) it IGNORES the signal;
+   b) it is KILLED by the signal;
+   c) it is SUSPENDED until later being resumed by receipt of a SPECIAL-PURPOSE SIGNAL.
+
+- For most signal types, INSTEAD of accepting the DEFAULT SIGNAL ACTION, a program CAN CHOOSE to IGNORE the
+signal (useful if the default action for the signal is something other than being ignored), or to establish
+a SIGNAL HANDLER. A signal handler is a PROGRAMMER-DEFINED FUNCTION that is AUTOMATICALLY INVOKED when the
+signal is DELIVERED to the process. This function performs some action appropriate to the condition that
+generated the signal.
+
+- In the interval BETWEEN the time it is GENERATED and the time it is DELIVERED, a signal is said to be
+PENDING for a process. Normally, a PENDING SIGNAL is delivered as soon as the receiving process is NEXT
+SCHEDULED to run, or IMMEDIATELY if the process is ALREADY RUNNING. However, it is also possible to BLOCK
+a signal by ADDING IT to the process's SIGNAL MASK. If a signal is generated while it is blocked, it
+remains PENDING until it is LATER UNBLOCKED (i.e., REMOVE from the signal mask).
+
+##########################################################################################################
+- In modern UNIX implementations, each process can have MULTIPLE THREADS of execution. One way of
+ENVISAGING threads is as a SET OF PROCESSES that SHARE the SAME VIRTUAL MEMORY, as well as a RANGE of OTHER
+ATTRIBUTES. Each thread is executing the SAME PROGRAM CODE and SHARES the SAME DATA AREA AND HEAP. However,
+each thread has ITS OWN STACK containing local variables and function call linkage information.
+
+- Threads can COMMUNICATE with each other via the GLOBAL VARIABLES that they SHARE. The threading API provides
+CONDITION VARIABLES and MUTEXES, which are PRIMITIVES that ENABLE the threads of a process to COMMUNICATE and
+SYNCHRONIZE their actions, in particular, their use of shared variables. Threads can ALSO communicate with one
+another using the IPC and SYNCHRONIZATION MECHANISMS described earlier.
+
+- The PRIMARY ADVANTAGES of using threads are that they make it EASY to SHARE DATA (via global variables)
+between COOPERATING THREADS and that some ALGORITHMS TRANSPOSE MORE NATURALLY to a MULTITHREADED IMPLEMENTATION
+than to a MULTIPROCESS IMPLEMENTATION. Furthermore, a multithreaded application can transparently take
+advantage of the possibilities for PARALLEL PROCESSING on multiprocessor hardware.
+
+##########################################################################################################
+- Each program executed by the shell is STARTED in a NEW PROCESS. For example, the SHELL creates THREE
+PROCESSES to execute the following pipeline of commands:
+     $ ls -l | sort -k5n | less
+
+- All major shells (except Bourne Shell) provide an INTERACTIVE FEATURE called JOB CONTROL, which ALLOWS the
+user to SIMULTANEOUSLY EXECUTE and MANIPULATE multiple commands or pipelines. In job-control shells, all of
+the processes in a pipeline are placed in a new PROCESS GROUP (or JOB). In the SIMPLE CASE of a shell command
+line containing a SINGLE COMMAND, a new process group containing JUST A SINGLE PROCESS is created. Each process
+in a process group has the SAME integer PROCESS GROUP IDENTIFIER (PGID), which is the same as the PID of one
+of the processes in the group, termed the PROCESS GROUP LEADER.
+
+- The kernel allows for VARIOUS ACTIONS, notably the DELIVERY OF SIGNALS, to be performed on ALL MEMBERS of a
+PROCESS GROUP. Job-control shells use this feature to allow the user to SUSPEND or RESUME ALL of the processes
+in a pipeline.
+
+##########################################################################################################
+- A SESSION is a COLLECTION of PROCESS GROUPS (jobs). All of the processes in a session have the same SESSION
+IDENTIFIER (SID). A SESSION LEADER is the process that CREATED the session, and its PID becomes the SID.
+- Sessions are used mainly by job-control shells. All of the process groups created by a job-control shell
+belong to the SAME SESSION as the shell, which is the SESSION LEADER.
+
+- Sessions usually have an associated CONTROLLING TERMINAL. The controlling terminal is established when the
+session leader process FIRST OPENS a terminal device. For a session created by an INTERACTIVE SHELL, this is
+the terminal at which the user LOGGED IN. A terminal may be the controlling terminal of AT MOST ONE SESSION.
+- As a CONSEQUENCE of opening the controlling terminal, the session leader becomes the CONTROLLING PROCESS for
+the terminal. The controlling process RECEIVES a "SIGHUP" singal if a TERMINAL DISCONNECT occurs (e.g., if the
+terminal window is closed).
+- At ANY point in time, one process group in a session is the FOREGROUND PROCESS GROUP (foreground job), which
+may READ INPUT from the terminal and SEND OUTPUT to it. If the user types the INTERRUPT CHARACTER (usually
+Control-C) or the SUSPEND CHARACTER (usually Control-Z) on the controlling terminal, then the TERMINAL DRIVER
+sends a SIGNAL that KILLS or SUSPENDS (i.e. stops) the foreground process group. A session can have ANY NUMBER
+of BACKGROUND PROCESS GROUPS (background jobs), which are CREATED by TERMINATING a COMMAND with the AMPERSAND
+CHARACTER (&).
+
+- Job-control shells provide commands for LISTING all jobs, SENDING SIGNALS to jobs, and MOVING jobs BETWEEN
+the foreground and background.
+
+##########################################################################################################
+- A PSEUDOTERMINAL is a PAIR of CONNECTED VIRTUAL DEVICES, known as the MASTER and SLAVE. This device pair
+provides an IPC channel allowing data to be TRANSFERRED in BOTH DIRECTIONS between the two devices.
+
+- The key point about a pseudoterminal is that the SLAVE DEVICE provides an INTERFACE that BEHAVES like a
+terminal, which makes it possible to connect a TERMINAL-ORIENTED PROGRAM to the slave device and then use
+ANOTHER PROGRAM connected to the MASTER DEVICE to DRIVE the terminal-oriented program. Output written by the
+driver program undergoes the usual input processing performed by the terminal driver (for example, in the
+DEFAULT MODE, a carriage return is MAPPED to a newline) and is then passed as input to the terminal-oriented
+program connected to the slave. Anything that the terminal-oriented program WRITES to the slave is PASSED
+(after performing ALL of the usual terminal output processing) as INPUT to the DRIVER PROGRAM. In other words,
+the DRIVER PROGRAM is PERFORMING the function normally performed by the USER at a CONVENTIONAL TERMINAL.
+
+- Pseudoterminals are used in a VARIETY OF APPLICATIONS, most notably in the IMPLEMENTATION of TERMINAL WINDOWS
+provided under an X Window System login and in applications providing network login services, such as TELNET
+and SSH.
+
+##########################################################################################################
+- There are TWO TYPES of TIME that are of interest to a process:
+  a) REAL TIME, which is measured either from some STANDARD POINT (CALENDAR time) or from some FIXED POINT,
+    typically the start, in the life of a process (ELAPSED or WALL CLOCK time). On UNIX systems, calendar time
+    is measured in seconds since midnight on the morning of Januaray 1, 1970, UTC, and coordinated on the base
+    point for timezones defined by the longitudinal line passing through Greenwich, England. This date, which
+    is close to the BIRTH of the UNIX system, is referred to as the Epoch.
+  b) PROCESS TIME (also called CPU TIME), which is the total amount of CPU time that a process has used since
+    starting. CPU time is further divided into:
+       b1) SYSTEM CPU TIME - the time spent EXECUTING CODE in KERNEL MODE (i.e., executing SYSTEM CALLS and
+                             performing other KERNEL SERVICES on BEHALF of the process).
+       b2) USER CPU TIME - the time spent EXECUTING CODE in USER MODE (i.e., executing NORMAL PROGRAM CODE).
+
+- The "time" command displays the real time, the system CPU time, and user CPU time taken to execute the
+processes in a pipeline.
+
+##########################################################################################################
+- A "CLIENT-SERVER APPLICATION" is one that is broken into two component processes:
+   1) a CLIENT, which ASKS the server to CARRY OUT some SERVICE by sending it a REQUEST MESSAGE;
+   2) a SERVER, which EXAMINES the client's REQUEST, PERFORMS appropriate actions, and then sends a RESPONSE
+     MESSAGE back to the client.
+
+- Sometimes, the client and server may engage in an extended dialogue of requests and responses.
+
+- Typically, the client application interacts with a USER, while the server application PROVIDES ACCESS to some
+SHARED RESOURCE. Commonly, there are MULTIPLE INSTANCES of CLIENT PROCESSES communicating with one or a few
+instances of the server process.
+
+- The client and server may reside on the SAME HOST COMPUTER or on SEPARATE HOSTS connected via a NETWORK. To
+communicate with one another, the client and server use the IPC mechanisms.
+- Servers may implement a VARIETY OF SERVICES, such as:
+   a) providing access to a database or other shared information resource;
+   b) providing access to a remote file across a network;
+   c) encapsulating some business logic;
+   d) providing access to a shared hardware resource (e.g., a printer);
+   e) serving web pages.
+
+- Encapsulating a service within a single server is useful for a number of reasons, such as the following:
+   - EFFICIENCY: it may be CHEAPER to provide one instance of a resource (e.g., a printer) that is managed by
+                 a server than to provide the same resource locally on every computer.
+   - CONTROL, COORDINATION, and SECURITY: by holding a resource (especially an information resource) at a
+                                          SINGLE LOCATION, the server can coordinate access to the resource
+                                          (e.g., so that two clients don't simultaneously update the same piece
+                                          of information) or secure it so that it is made available to only
+                                          selected clients.
+   - Operation in a HETEROGENOUS ENVIRONMENT: in a NETWORK, the various clients, and the server, can be running
+                                              on different hardware and operating system platforms.
+
+##########################################################################################################
+- REALTIME APPLICATIONS are those that need to respond in a TIMELY FASHION to input. Frequently, such INPUT
+comes from an EXTERNAL SENSOR or a SPECIALIZED INPUT DEVICE, and OUTPUT taks the form of CONTROLLING some
+EXTERNAL HARDWARE. Examples of applications with REALTIME RESPONSE REQUIREMENTS include automated assembly
+lines, bank ATMs, and aircraft navigation systems.
+
+- Although many realtime applications require RAPID RESPONSES to input, the DEFINING FACTOR is that the
+response is GUARANTEED to be DELIVERED within a CERTAIN DEADLINE TIME after the triggering event.
+
+- The provision of REALTIME RESPONSIVENESS, especially where short response times are DEMANDED, requires
+SUPPORT from the underlying OS. Most OSs DON'T natively provide such support, because the REQUIREMENTS of
+realtime responsiveness can CONFLICT with the requirements of MULTIUSER TIME-SHARING OSs. Traditional UNIX
+implementations are NOT realtime OSs, although realtime variants have been devised. Realtime variants of Linux
+have also been created, and recent Linux kernels are moving toward FULL NATIVE SUPPORT for realtime apps.
+
+- POSIX.1b defined a number of extensions to POSIX.1 for the SUPPORT of realtime applications. These include
+asynchronous I/O, shared memory, memory-mapped files, memory locking, realtime clocks and timers, alternative
+scheduling policies, realtime signals, message queues, and semaphores. Even though they DON'T STRICTLY QUALIFY
+as realtime, most UNIX implementations now support SOME or ALL of these extensions.
+
+##########################################################################################################
+- Like several other UNIX implementations, Linux provides a "/proc" file system, which consists of a SET of
+DIRECTORIES and FILES MOUNTED under the "/proc" directory.
+
+- The "/proc" file system is a VIRTUAL FILE SYSTEM that provides an INTERFACE to KERNEL DATA STRUCTURES in a
+form that looks like files and directories on a file system. This provides an EASY MECHANISM for VIEWING and
+CHANGING various system attributes. In addition, a set of directories with names of the form "/proc/PID", where
+PID is a process ID, allows us to view information about EACH PROCESS running on the system.
+
+- The contents of the "/proc" files are GENERALLY in HUMAN-READABLE TEXT FORM and can be parsed by shell
+scripts. A program can simply OPEN and READ from, or WRITE to, the desired file. In most cases, a process must
+be PRIVILEGED to MODIFY THE CONTENTS of files in the "/proc" directory.
+
+##########################################################################################################

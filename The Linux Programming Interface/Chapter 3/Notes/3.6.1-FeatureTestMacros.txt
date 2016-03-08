@@ -1,0 +1,88 @@
+##########################################################################################################
+- We consider the topic of writing PORTABLE SYSTEM PROGRAMS. We introduce FEATURE TEST MACROS and the STANDARD
+SYSTEM DATA TYPES defined by SUSv3 (Single UNIX Specification Version 3), and then look at some OTHER
+portability issues.
+
+- Various standards govern the behaviour of the system call and library function APIs. Some of these standards
+are DEFINED by STANDARD BODIES such as "The Open Group (SUS)", while OTHERS are DEFINED by the TWO
+HISTORICALLY IMPORTANT UNIX implementations: BSD and System V Release 4 (and the associated System V Interface
+Definition).
+- Sometimes, when writing PORTABLE applications, we may want the various header files to ONLY EXPOSE the
+definitions (constants, function prototypes, etc) that follow a PARTICULAR STANDARD. To do this, we define ONE
+or MORE of the FEATURE TEST MACROS listed below when COMPILING a program. One way that we can do this is by
+DEFINING the MACRO in the program SOURCE CODE BEFORE including any header files: 
+    #define _BSD_SOURCE 1
+
+- Alternatively, we can use the "-D" option to the C compiler:
+    $ cc -D_BSD_SOURCE prog.c
+
+  Note: The term FEATURE TEST MACRO may seem confusing, but it MAKES SENSE if we LOOK at things from the
+       PERSPECTIVE of the IMPLEMENTATION. The implementation decides WHICH of the FEATURES available in each
+       header it SHOULD make VISIBLE, by TESTING (with #if) WHICH VALUES the application has defined for these
+       MACROS.
+
+- The following feature test macros are SPECIFIED by the RELEVANT STANDARDS, and CONSEQUENTLY their USAGE is
+PORTABLE to ALL SYSTEMS that SUPPORT these STANDARDS:
+   a) _POSIX_SOURCE - If defined (with ANY value), expose definitions conforming to POSIX.1-1990 and
+                      ISO C(1990). This macro is SUPERSEDED by "_POSIX_C_SOURCE".
+
+   b) _POSIX_C_SOURCE - If defined with the value 1, this has the SAME EFFECT as "_POSIX_SOURCE".
+                      - If defined with a value >= 199309, ALSO EXPOSE definitions for POSIX.1b(realtime).
+                      - If defined with a value >= 199506, ALSO EXPOSE definitions for POSIX.1c(threads).
+                      - If defined with the value 200112, ALSO EXPOSE definitions for the POSIX.1-2001 base
+                       specification (i.e. the XSI extension is EXCLUDED). (Prior to version 2.3.3, the
+                       "glibc" headers DON'T INTERPRET the value 20012 for "_POSIX_C_SOURCE").
+                      - If defined with the value 200809, ALSO EXPOSE definitions for the POSIX.1-2008 base
+                       specification. (Prior to version 2.10, the "glibc" headers DON'T INTERPRET the value
+                       200809 for "POSIX_C_SOURCE").
+
+   c) _XOPEN_SOURCE - If defined (with ANY value), expose POSIX.1, POSIX.2, and X/OPEN (XPG4) definitions.
+                    - If defined with a value >= 500, ALSO EXPOSE SUSv2 (UNIX 98 and XPG5) extensions.
+                    - If defined with a value >= 600, ADDITIONALLY EXPOSES SUSv3 XSI (UNIX 03) extensions and
+                     C99 extensions. (Prior to version 2.2, the "glibc" header DON'T INTERPRET the value 600
+                     for "_XOPEN_SOURCE").
+                    - If defined with a value >=700, ALSO EXPOSES SUSv4 XSI extensions. (Prior to version
+                     2.10, the "glibc" headers DON'T INTERPRET the value 700 for "_XOPEN_SOURCE").
+
+          Note: The values 500, 600, and 700 for "_XOPEN_SOURCE" were chosen because SUSv2, SUSv3, and SUSv4
+                are Issues 5, 6 and 7, respectively, of the X/Open specifications.
+
+- The following feature test macros lited are GLIBC-SPECIFIC:
+   a) _BSD_SOURCE  - If defined (with ANY value), expose BSD definitions. Explicitly setting JUST this macro
+                    CAUSES BSD definitions to be FAVORED in a few CASES where standards CONFLICT.
+
+   b) _SVID_SOURCE - If defined (with ANY value), expose System V Interface Defition (SVID) definitions.
+
+   c) _GNU_SOURCE  - If defined (with ANY value), expose ALL of the definitions provided by setting ALL of the
+                    PRECEDING MACROS, as well as various GNU extensions.
+
+- When the GNU C compiler is invoked WITHOUT special options, "_POSIX_SOURCE", "_POSIX_C_SOURCE=200809"
+(200112 with "glibc" versions 2.4 to 2.9, or 199506 with "glibc" version earlier than 2.4), "_BSD_SOURCE",
+and "_SVID"SOURCE" are DEFINED by DEFAULT.
+- If INDIVIDUAL MACROS are defined, or the compiler is INVOKED in one of its STANDARD MODES (e.g., "cc -ansi"
+or "cc -std=c99"), then ONLY the REQUESTED DEFINITIONS are SUPPLIED. There is ONE EXCEPTION:
+if "POSIX_C_SOURCE" is NOT otherwise DEFINED, and the compiler is NOT INVOKED in some of its STANDARD MODES,
+then "POSIX_C_SOURCE" is defined with the value 200809 (200112 with "glibc" versions 2.4 to 2.9, or
+199506 with "glibc" version earlier than 2.4).
+- Defining MULTIPLE MACROS is ADDITIVE, so that we could, for example, use the following CC command to
+EXPLICITLY SELECT the same macro settings as are provided by default:
+     $ cc -D_POSIX_SOURCE -D_POSIX_C_SOURCE=199506 -D_BSD_SOURCE -D_SVID_SOURCE prog.c
+
+- Only the "_POSIX_C_SOURCE" and "_XOPEN_SOURCE" feature test macros are specified in POSIX.1-2001/SUSv3, 
+which REQUIRES that these MACROS be DEFINED with the values 200112 and 600, respectively, in CONFORMING
+APPLICATIONS. Defining "_POSIX_C_SOURCE" as 200112 provides CONFORMANCE to the POSIX.1-2001 base specification
+(i.e., POSIX conformance, EXCLUDING the XSI extension). Defining "_XOPEN_SOURCE" as 600 provides CONFORMANCE
+to SUSv3 (i.e., XSI conformance, the base specification PLUS the XSI extension). Analogous statements apply
+for POSIX.1-2008/SUSv4, which REQUIRE that the TWO MACROS be DEFINED with the values 200809 and 700.
+- SUSv3 specifies that SETTING "_XOPEN_SOURCE" to 600 should SUPPLY ALL of the features that are enabled if
+"_POSIX_C_SOURCE" is set to 200112. Thus, an application NEEDS TO DEFINE ONLY "_XOPEN_SOURCE" for SUSv3
+(i.e., XSI) conformance. SUSv4 makes an ANALOGOUS SPECIFICATION that SETTING "_XOPEN_SOURCE" to 700 should
+SUPPLY ALL of the features that are enabled if "_POSIX_C_SOURCE" is set to 200809.
+
+- The manual pages DESCRIBE WHICH feature test macro(s) MUST be DEFINED in order to make a PARTICULAR constant
+definition or function declaration VISIBLE from a header file. 
+- All of the source code examples in this book are written so that they will compile using EITHER the DEFAULT
+GNU C compiler options OR the following options:
+     $ cc -std=c99 -D_XOPEN_SOURCE=600
+
+##########################################################################################################

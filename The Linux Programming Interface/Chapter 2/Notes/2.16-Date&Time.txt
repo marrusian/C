@@ -1,0 +1,17 @@
+##########################################################################################################
+- There are TWO TYPES of TIME that are of interest to a process:
+  a) REAL TIME, which is measured either from some STANDARD POINT (CALENDAR time) or from some FIXED POINT,
+    typically the start, in the life of a process (ELAPSED or WALL CLOCK time). On UNIX systems, calendar time
+    is measured in seconds since midnight on the morning of Januaray 1, 1970, UTC, and coordinated on the base
+    point for timezones defined by the longitudinal line passing through Greenwich, England. This date, which
+    is close to the BIRTH of the UNIX system, is referred to as the Epoch.
+  b) PROCESS TIME (also called CPU TIME), which is the total amount of CPU time that a process has used since
+    starting. CPU time is further divided into:
+       b1) SYSTEM CPU TIME - the time spent EXECUTING CODE in KERNEL MODE (i.e., executing SYSTEM CALLS and
+                             performing other KERNEL SERVICES on BEHALF of the process).
+       b2) USER CPU TIME - the time spent EXECUTING CODE in USER MODE (i.e., executing NORMAL PROGRAM CODE).
+
+- The "time" command displays the real time, the system CPU time, and user CPU time taken to execute the
+processes in a pipeline.
+
+##########################################################################################################

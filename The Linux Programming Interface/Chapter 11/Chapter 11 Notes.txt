@@ -1,0 +1,360 @@
+- Each UNIX implementation SETS LIMITS on VARIOUS SYSTEM FEATURES and RESOURCES, and PROVIDES - or chooses
+NOT to provide - OPTIONS defined in various standards. Examples include the following:
+     - How many files can a process hold open simultaneously?
+     - Does the system support realtime signals?
+     - What is the largest value that can be stored in a variable of type 'int'?
+     - How big an argument list can a program have?
+     - What is the maximum length of a pathname? 
+
+- While we could HARD-CODE ASSUMED LIMITS and OPTIONS into an application, this REDUCES PORTABILITY, since
+limits and options MAY VARY:
+     a) Across UNIX implementations - although limits and options MAY BE FIXED on an INDIVIDUAL IMPLEMENTATION
+                                      they can VARY from ONE UNIX implementation TO ANOTHER. The MAXIMUM VALUE
+                                      that can be STORED in an 'int' is an EXAMPLE of such a LIMIT.
+
+     b) At RUN TIME on a PARTICULAR IMPLEMENTATION - the kernel may have been RECONFIGURED to CHANGE A LIMIT,
+                                                     for example. Alternatively, the application may have been
+                                                     COMPILED on ONE SYSTEM, but RUN on ANOTHER SYSTEM with 
+                                                     DIFFERENT LIMITS and OPTIONS.
+
+     c) From one FILE SYSTEM to another - for example, traditional System V file systems ALLOWS a FILENAME to
+                                          be UP TO 14 bytes, while traditional BSD file systems and MOST 
+                                          NATIVE Linux file systems ALLOW FILENAMES of UP TO 255 bytes.
+
+- Since SYSTEM LIMITS and OPTIONS AFFECT what an application may do, a PORTABLE application NEEDS WAYS of
+DETERMINING limit values and whether options are supported. The C programming language standards and SUSv3
+provide TWO PRINCIPAL AVENUES for an application to OBTAIN such information:
+     a) Some limits and options can be DETERMINED at COMPILE TIME. For example, the MAXIMUM VALUE of an 'int'
+        is DETERMINED by the HARDWARE ARCHITECTURE and COMPILER DESIGN CHOICES. Such LIMITS can be RECORDED
+        in HEADER FILES.
+
+     b) Other limits and options MAY VARY at RUN TIME. For such cases, SUSv3 defines three functions -
+        "sysconf()", "pathconf()", and "fpathconf()" - that an application can call to CHECK these
+        IMPLEMENTATION LIMITS and OPTIONS.
+
+- SUSv3 SPECIFIES a RANGE OF LIMITS that a CONFORMING IMPLEMENTATION may ENFORCE, as well as a SET OF OPTIONS,
+each of which MAY or MAY NOT BE PROVIDED by a PARTICULAR SYSTEM.
+
+#############################################################################################################
+- For EACH LIMIT that it specifies, SUSv3 REQUIRES that ALL IMPLEMENTATIONS SUPPORT a "MINIMUM VALUE" for the
+limit. In MOST CASES, this MINIMUM VALUE is DEFINED as a CONSTANT in <limits.h> with a name PREFIXED by the
+string "_POSIX_", and (USUALLY) containing the string "_MAX"; thus, the FORM of the name is "_POSIX_XXX_MAX".
+
+- If an application RESTRICTS ITSELF to the MINIMUM VALUES that SUSv3 REQUIRES for each limit, then it will be
+PORTABLE to ALL IMPLEMENTATIONS of the STANDARD. However, doing so PREVENTS an APPLICATION from TAKING
+ADVANTAGE of IMPLEMENTATIONS that PROVIDE HIGHER LIMITS. For this reason, it is USUALLY PREFERABLE to
+DETERMINE the LIMIT on a particular system USING <limits.h>, "sysconf"(), or "pathconf()".
+
+                 Note:  The use of the string "_MAX" in the limit names defined by SUSv3 can appear CONFUSING,
+                      given their description as MINIMUM values. The RATIONALE for the names BECOMES CLEAR
+                      when we CONSIDER that each of these constants DEFINES an UPPER LIMIT on some resource or
+                      feature, and the STANDARDS are SAYING that this upper limit MUST HAVE a CERTAIN MINIMUM
+                      VALUE.
+                        In some cases, "MAXIMUM VALUES" are provided for a limit, and these values have names
+                      containing the string "_MIN". For these constants, the CONVERSE holds true: they
+                      represent a LOWER LIMIT on some resource, and the STANDARDS are saying that, on a
+                      CONFORMING IMPLEMENTATION, this LOWER LIMIT can be NO GREATER than a CERTAIN VALUE.
+                      For example, the "FLT_MIN" limit (1E-37) defines the LARGEST VALUE that an 
+                      implementation MAY SET for the SMALLEST FLOATING-POINT NUMBER that may be represented,
+                      and all conforming implementations will be able to represent floating-point numbers
+                      AT LEAST this small.
+
+- Each limit has a "NAME", which CORRESPONDS to the "MINIMUM VALUE NAME" described above, but LACKS the
+"_POSIX_" PREFIX. An implementation MAY define a constant with this name in <limits.h> to INDICATE the
+CORRESPONDING LIMIT for this implementation. If defined, this limit WILL ALWAYS be AT LEAST the SIZE of the
+MINIMUM VALUE described above (i.e., XXX_MAX >= _POSIX_XXX_MAX).
+
+- SUSv3 DIVIDES the LIMITS that it specifies into THREE CATEGORIES:
+      I) Runtime invariant values;
+     II) Pathname variable values;
+    III) Runtime increasable values.
+
+I) A RUNTIME INVARIANT is a LIMIT whose VALUE, if defined in <limits.h>, is FIXED for the implementation.
+However, the value MAY be INDETERMINATE (perhaps because it depends on available memory space), and hence
+OMITTED from <limits.h>. In this case (and EVEN IF the limit is ALSO DEFINED in <limits.h>), an application
+CAN USE "sysconf()" to DETERMINE the VALUE at RUNTIME.
+
+- The "MQ_PRIO_MAX" limit is an EXAMPLE of a runtime invariant value. As will be noted in Section 52.5.1,
+there is a limit on the priority for messages in POSIX message queues. SUSv3 defines the constant
+"_POSIX_MQ_PRIO_MAX" with the value 32, as the minimum value that all conforming implementations must provide
+for this limit. This means that we can be SURE that ALL CONFORMING IMPLEMENTATIONS will ALLOW priorities from
+0 UP TO AT LEAST 31 for message priorities. A UNIX implementation can SET a HIGHER LIMIT than this, DEFINING
+the CONSTANT "MQ_PRIO_MAX" in <limits.h> with the value of its limit. For example, on Linux, "MQ_PRIO_MAX" is
+defined with the value 32,768. This value can ALSO BE DETERMINED at RUN TIME using the following call:
+          # lim = syscnof(_SC_MQ_PRIO_MAX);
+
+II) PATHNAME VARIABLE VALUES are LIMITS that RELATE to PATHNAMES (FILES, DIRECTORIES, TERMINALS, etc). Each
+limit MAY BE CONSTANT for the implementation OR MAY VARY from ONE FILE SYSTEM to ANOTHER. In cases where a
+LIMIT can VARY DEPENDING on the PATHNAME, an application can DETERMINE its value using "pathconf()" or
+"fpathconf()".
+
+- The "NAME_MAX" limit is an EXAMPLE of a pathname variable value. This limit defines the MAXIMUM SIZE for a
+FILENAME on a PARTICULAR FILE SYSTEM. SUSv3 defines the constant "_POSIX_NAME_MAX", with the value 14 (the old
+System V file-system limit), as the MINIMUM VALUE that an implementation MUST ALLOW. An implementation MAY
+DEFINE "NAME_MAX" with a limit HIGHER than this and/or make information about a specific file system available
+via a call of the following form:
+          # lim = pathconf(directory_path, _PC_NAME_MAX)
+ (The 'directory_path' is a PATHNAME for a DIRECTORY on the file system of interest).
+
+III) A RUNTIME INCREASABLE VALUE is a LIMIT that has a FIXED MINIMUM VALUE for a PARTICULAR IMPLEMENTATION,
+and ALL SYSTEMS running the implementation will provide AT LEAST this MINIMUM VALUE. However, a SPECIFIC
+SYSTEM MAY INCREASE this LIMIT at RUN TIME, and an application can FIND the ACTUAL VALUE SUPPORTED on the
+system using "sysconf()".
+
+- An example of a runtime increasable value is "NGROUPS_MAX", which defines the MAXIMUM NUMBER of SIMULTANEOUS
+SUPPLEMENTARY GIDs for a process. SUSv3 defines the CORRESPONDING MINIMUM VALUE, "_POSIX_NGROUPS_MAX", with
+the value 8. At RUN TIME, an application can RETRIEVE the LIMIT using the call "sysconf(_SC_NGROUPS_MAX)".
+
+-------------------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------------------
+ | Name of limit  | Min.  | sysconf()/pathconf()  | Description                          |
+ | (<limits.h>)   | value | name (<unistd.h>)     |                                      |
+ -----------------------------------------------------------------------------------------
+ | ARG_MAX        | 4096  | _SC_ARG_MAX           | Maximum bytes for arguments (argv)   |
+ |                |       |                       | PLUS environment (environ) that can  |
+ |                |       |                       | be supplied to an "exec()"           |
+ | none           | none  | _SC_CLK_TCK           | Unit of measurement for "times()"    |
+ | LOGIN_NAME_MAX | 9     | _SC_LOGIN_NAME_MAX    | Maximum size of a login name         |
+ |                |       |                       | (including terminating null byte)    |
+ | OPEN_MAX       | 20    | _SC_OPEN_MAX          | Maximum number of file descriptors   |
+ |                |       |                       | that a process can have open at once,|
+ |                |       |                       | and one greater than maximum usable  |
+ | NGROUPS_MAX    | 8     | _SC_NGROUPS_MAX       | Maximum number of supplementary      |
+ |                |       |                       | groups of which a process can be a   |
+ |                |       |                       | member                               |
+ | none           | 1     | _SC_PAGESIZE          | Size of a virtual memory page        |
+ |                |       |                       | (_SC_PAGE_SIZE is a synonym)         |
+ | RTSIG_MAX      | 8     | _SC_RTSIG_MAX         | Maximum number of distinct realtime  |
+ |                |       |                       | signals                              |
+ | SIGQUEUE_MAX   | 32    | _SC_SIGQUEUE_MAX      | Maximum number of queued realtime    |
+ |                |       |                       | signals                              |
+ | STREAM_MAX     | 8     | _SC_STREAM_MAX        | Maximum number of stdio streams that |
+ |                |       |                       | can be open at one time              |
+ | NAME_MAX       | 14    | _PC_NAME_MAX          | Maximum number of bytes in a filename|
+ |                |       |                       | EXCLUDING terminating null byte      | 
+ | PATH_MAX       | 256   | _PC_PATH_MAX          | Maximum number of bytes in a pathname|
+ |                |       |                       | INCLUDING terminating null byte      |
+ | PIPE_BUF       | 512   | _PC_PIPE_BUF          | Maximum number of bytes that can be  |
+ |                |       |                       | written ATOMICALLY to a pipe or FIFO |
+ -----------------------------------------------------------------------------------------
+
+- The FIRST COLUMN gives the NAME of the LIMIT, which MAY be defined as a CONSTANT in <limits.h> to INDICATE
+the LIMIT for a PARTICULAR IMPLEMENTATION. The SECOND COLUMN is the SUSv3-defined MINIMUM for the limit (also
+defined in <limits.h>). In MOST CASES, each of the MINIMUM VALUES is DEFINED as a CONSTANT PREFIXED with the
+string "_POSIX_". For example, the constant "_POSIX_RTSIG_MAX" (defined with the value 8) specifies the
+SUSv3-REQUIRED MINIMUM corresponding to the "RTSIG_MAX" implementation constant. The THIRD COLUMN specifies
+the CONSTANT NAME that can be given at RUN TIME to "sysconf()" or "pathconf()" in order to RETRIEVE the
+implementation limit. The constants BEGINNING WITH "_SC_" are for use with "sysconf()" those BEGINNING WITH
+"_PC_" are for use with "patconf()" and "fpathconf()".
+
+- Note the following information supplementary to that shown in the above table:
+      - The "getdtablesize()" function is an OBSOLETE ALTERNATIVE for determining the process file descriptor
+        limit (OPEN_MAX). This function was SPECIFIED in SUSv2 (marked LEGACY), but was REMOVED in SUSv3.
+      
+      - The "getpagesize()" function is an OBSOLETE ALTERNATIVE for determining the system page size 
+        (_SC_PAGESIZE). This function was SPECIFIED in SUSv2 (marked LEGACY), but was REMOVED in SUSv3.
+
+      - The constant "FOPEN_MAX", defined in <stdio.h>, is SYNONYMOUS with "STREAM_MAX".
+
+      - "NAME_MAX" EXCLUDES the TERMINATING NULL BYTE, while "PATH_MAX" INCLUDES it. This inconsistency
+        REPAIRS an EARLIER INCONSISTENCY in the POSIX.1 standard that LEFT IT UNCLEAR WHETHER "PATH_MAX"
+        included the terminating null byte. Defining "PATH_MAX" to include the terminator means that
+        applications that allocated JUST "PATH_MAX" bytes for a pathname will STILL CONFORM to the STANDARD.
+
+- From the shell, we can use the "getconf" command to OBTAIN the LIMITS and OPTIONS implemented by a
+PARTICULAR UNIX IMPLEMENTATION. The GENERAL FORM of this command is as follows:
+       $ getconf variable-name [ pathname ]
+
+- The "variable-name" IDENTIFIES the LIMIT OF INTEREST and is one of the SUSv3 standard limit names, such as
+'ARG_MAX' or 'NAME_MAX'. Where the limit RELATES to the pathname, we MUST SPECIFY a PATHNAME as the SECOND
+ARGUMENT to the command.
+
+#############################################################################################################
+- The "sysconf()" function ALLOWS an application to OBTAIN the VALUES of SYSTEM LIMITS at RUN TIME:
+            DEP: #include <unistd.h>               PROTO: long sysconf(int name);
+                                                   RET: Returns value of limit specified by "name", or -1
+                                                            if limit is INDETERMINATE or an ERROR occurred
+
+- The "name" argument is one of the _SC_* constant defined in <unistd.h>, some of which are listed in the
+aforementioned table. The VALUE of the LIMIT is RETURNED as the FUNCTION RESULT.
+
+- If a LIMIT CAN'T BE DETERMINED, "sysconf()" returns -1. It MAY ALSO return -1 if an ERROR occurred
+(the ONLY SPECIFIED ERROR is 'EINVAL', indicating that "name" is NOT VALID). To DISTINGUISH the case of an
+INDETERMINATE LIMIT from an ERROR, we MUST SET "errno" to 0 BEFORE the call; if the call returns -1 and
+"errno" is set AFTER the call, then an error occured.
+
+                 Note:  The LIMIT VALUES RETURNED by "sysconf()" (as well as "pathconf()" and "fpathconf()" 
+                      are ALWAYS (long) integers. In the RATIONALE TEXT for "sysconf()", SUSv3 notes that
+                      strings were considered as possible return values, but were REJECTED because of the
+                      COMPLEXITY of implementation and use.
+
+- SUSv3 REQUIRES that the VALUE RETURNED by "sysconf()" for a PARTICULAR LIMIT be CONSTANT for the LIFETIME
+of the CALLING PROCESS. For example, we can ASSUME that the VALUE RETURNED for "_SC_PAGESIZE" WON'T CHANGE
+while a PROCESS is RUNNING.
+
+                 Note:  On Linux, there ARE some (SENSIBLE) EXCEPTIONS to the statement that limit values are
+                      constant for the life of a process. A process can use "setrlimit()" to CHANGE various
+                      process resource limits that AFFECT LIMIT VALUES reported by "sysconf()":
+                    - RLIMIT_NOFILE, which DETERMINES the NUMBER OF FILES the process MAY OPEN (_SC_OPEN_MAX);
+                    - RLIMIT_NPROC (a resource limit NOT ACTUALLY SPECIFIED in SUSv3), which is the PER-USER
+                      LIMIT on the NUMBER of PROCESSES that MAY BE CREATED by this process (_SC_CHILD_MAX);
+                    - RLIMT_STACK, which, since Linux 2.6.23, ALSO DETERMINES the LIMIT on the SPACE ALLOWED
+                      for the PROCESS'S COMMAND-LINE ARGUMENTS AND ENVIRONMENT (_SC_ARG_MAX).
+
+#############################################################################################################
+- The "pathconf()" and "fpathconf()" functions ALLOW an application to OBTAIN the VALUES of FILE-RELATED
+LIMITS at RUNTIME:
+            DEP: #include <unistd.h>               PROTO: long pathconf(const char *pathname, int name);
+                                                   PROTO: long fpathconf(int fd, int name);
+                                                   RET: Both return value of limit specified by "name", or -1
+                                                               if limit is INDETERMINATE or an ERROR occurred
+
+- The ONLY DIFFERENCE between "pathconf()" and "fpathconf()" is the MANNER in which a FILE or DIRECTORY is
+SPECIFIED. For "pathconf()", specification is BY PATHNAME; for "fpathconf(), specification is VIA a
+(PREVIOUSLY OPENED) FILE DESCRIPTOR.
+
+- The "name" argument is one of the _PC_* constants defined in <unistd.h>, some of which are listed in the
+above table. The following table PROVIDES some FURTHER DETAILS about the _PC_* constants that were previously
+shown: 
+     -----------------------------------------------------------------------------------------------
+     | Constant     | Notes                                                                        |
+     -----------------------------------------------------------------------------------------------
+     | _PC_NAME_MAX | For a DIRECTORY, this yields a value for files in the directory.             |
+     |              | Behaviour for other file types is UNSPECIFIED.                               |
+     | _PC_PATH_MAX | For a DIRECTORY, this yields the MAXIMUM LENGTH for a RELATIVE PATHNAME      |
+     |              | FROM this directory. Behaviour for other file types is UNSPECIFIED.          |
+     | _PC_PIPE_BUF | For a FIFO or PIPE, this yields a value that APPLIES to the REFERENCED FILE. |
+     |              | For a DIRECTORY, the value APPLIES to a FIFO created in THAT DIRECTORY.      |
+     |              | Behaviour for other file types is UNSPECIFIED.                               |
+     -----------------------------------------------------------------------------------------------
+
+- The VALUE of the LIMIT is RETURNED as the FUNCTION RESULT. We can DISTINGUISH between an INDETERMINATE
+RETURN and an ERROR RETURN in the SAME MANNER as for "sysconf()".
+
+- UNLIKE "sysconf()", SUSv3 DOESN'T REQUIRE that the values returned by "pathconf()" and "fpathconf()" remain
+constant over the lifetime of a process, since, for example, a FILE SYSTEM may be DISMOUNTED and REMOUNTED 
+with DIFFERENT CHARACTERISTICS while a process is running.
+
+#############################################################################################################
+- On occasion, we MAY FIND that SOME SYSTEM LIMIT is NOT DEFINED by an implementation limit constant
+(e.g., PATH_MAX), and that "sysconf()" or "pathconf()" INFORMS US that the LIMIT (e.g., _PC_PATH_MAX) is
+INDETERMINATE. In this case, we can EMPLOY ONE of the following STRATEGIES: 
+        a) When writing an application to be PORTABLE ACROSS MULTIPLE UNIX IMPLEMENTATIONS, we could ELECT to
+           USE the MINIMUM LIMIT VALUE SPECIFIED by SUSv3. These are the constants with names of the form
+           "_POSIX_*_MAX", described earlier. Sometimes, this approach MAY NOT BE VIABLE, because the LIMIT
+           is UNREALISTICALLY LOW, as in the cases of "_POSIX_PATH_MAX" and "_POSIX_OPEN_MAX";
+ 
+        b) In SOME CASES, a PRATICAL SOLUTION may be to IGNORE the CHECKING OF LIMITS, and INSTEAD perform the
+           RELEVANT SYSTEM or LIBRARY FUNCTION CALL (similar arguments can ALSO APPLY with respect to some of
+           the SUSv3 OPTIONS). If the call FAILS and "errno" indicates that the error occured BECAUSE some
+           SYSTEM LIMIT was EXCEEDED, then we can TRY AGAIN, MODIFYING the APPLICATION BEHAVIOUR AS NECESSARY.
+           For example, MOST UNIX IMPLEMENTATIONS impose a LIMIT on the number of REALTIME SIGNALS that can
+           be QUEUED to a process. Once this limit is REACHED, ATTEMPTS to SEND FURTHER SIGNALS
+           (using "sigqueue()") FAIL with the error 'EAGAIN'. In this case, the SENDING PROCESS could SIMPLY
+           RETRY, perhaps after SOME DELAY INTERVAL. Similarly, attempting to OPEN A FILE whose name is TOO
+           LONG yields the error 'ENAMETOOLONG', and an application COULD DEAL with this by TRYING AGAIN with
+           a SHORTER NAME. 
+
+        c) We can write OUR OWN program or function to EITHER DEDUCE or ESTIMATE the LIMIT. In each case, the
+           relevant "sysconf()" or "pathconf()" call is made, and if this limit is INDETERMINATE, the function
+           returns a "GOOD GUESS" value. While NOT PERFECT, such a solution is OFTEN VIABLE IN PRACTICE.
+
+        d) We can EMPLOY A TOOL such as "GNU Autoconf", an EXTENSIBLE TOOL that can determine the EXISTENCE
+           and SETTINGS of various system features and limits. The "Autoconf" program produces HEADER FILES
+           based on the information it determines, and these files can then be included in C programs.
+
+#############################################################################################################
+- As well as SPECIFYING LIMITS for various system resources, SUSv3 ALSO SPECIFIES various OPTIONS that a UNIX
+implementation MAY SUPPORT. These INCLUDE SUPPORT for FEATURES such as:
+      - Realtime signals;
+      - POSIX shared memory;
+      - Job control;
+      - POSIX threads
+
+- With a FEW EXCEPTIONS, implementations are NOT REQUIRED to SUPPORT these OPTIONS. Instead, SUSv3 allows an
+implementation to ADVISE - at BOTH COMPILE TIME and RUN TIME - WHETHER it supports a PARTICULAR FEATURE.
+
+- An implementation can ADVERTISE SUPPORT for a PARTICULAR SUSv3 OPTION at COMPILE TIME by DEFINING a
+CORRESPONDING CONSTANT in <unistd.h>. Each such constant starts with a PREFIX that INDICATES the STANDARD from
+which it ORIGINATES (e.g., _POSIX_, or _XOPEN_).
+
+- Each option constant, if defined, has one of the following values:
+         a) A value of -1 means that THE OPTION IS NOT SUPPORTED. In this case, header files, data types, and
+            function interfaces associated with the option NEED NOT be defined by the implementation. We MAY
+            NEED to HANDLE this POSSIBILITY by CONDITIONAL COMPILATION using #if preprocessor directives.
+
+         b) A value of 0 means that THE OPTION MAY BE SUPPORTED. An application MUST CHECK at RUN TIME to see
+            WHETHER the option is supported.
+
+         c) A value GREATER than 0 means that THE OPTION IS SUPPORTED. All header files, data types, and
+            function interfaces associated with this option ARE DEFINED and BEHAVE AS SPECIFIED. In MANY
+            CASES, SUSv3 REQUIRES that this positive value be 200112L, a constant CORRESPONDING to the YEAR
+            and MONTH NUMBER in which SUSv3 was APPROVED as a STANDARD (the ANALOGOUS VALUE for SUSv4 is
+            200809L).
+
+- Where a constant is defined with the value 0, an application can use the "sysconf()", and "pathconf()"
+(or "fpathconf()") functions to CHECK AT RUN TIME WHETHER the options is supported. The "name" arguments
+passed to these functions GENERALLY have the SAME FORM as the CORRESPONDING COMPILE-TIME CONSTANTS, but with
+the PREFIX REPLACED by "_SC_" or "_PC_". The implementation MUST AT LEAST PROVIDE the header files, constants,
+and function interfaces NECESSARY to PERFORM THE RUN-TIME CHECK.
+
+                 Note:  SUSv3 is UNCLEAR on WHETHER an UNDEFINED OPTION CONSTANT has the SAME MEANING as
+                      defining the constant with the value 0 ("the option may be supported") or with the
+                      value -1 ("the option is NOT supported"). The standards committee SUBSEQUENTLY RESOLVED
+                      that this case SHOULD MEAN THE SAME as DEFINING the constant with the value -1, and
+                      SUSv4 STATES THIS EXPLICITLY.
+
+-----------------------------------------------------------------------------------------------------
+| Option (constant) name       | Description                                                | Notes |
+| (sysconf()/pathconf() name)  |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_ASYNCHRONOUS_IO       | Asynchronous I/O                                           |       |
+| (_SC_ASYNCHRONOUS_IO)        |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_CHOWN_RESTRICTED      | Only privileged processes can use "chown()" and "fchown()" |   *   |
+| (_PC_CHOWN_RESTRICTED)       | to change the UID and GID of a file to arbitrary values    |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_JOB_CONTROL           | Job Control                                                |   +   |
+| (_SC_JOB_CONTROL)            |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_MESSAGE_PASSING       | POSIX Message Queues                                       |       |
+| (_SC_MESSAGE_PASSING)        |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_PRIORITY_SHEDULING    | Process Scheduling                                         |       |
+| (_SC_PRIORITY_SCHEDULING     |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_REALTIME_SIGNALS      | Realtime Signals Extension                                 |       |
+| (_SC_REALTIME_SIGNALS)       |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_SAVED_IDS             | Processes have saved set-UIDs and saved set-GIDs           |   +   |
+| (none)                       |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_SEMAPHORES            | POSIX Semaphores                                           |       |
+| (_SC_SEMAPHORES)             |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_SHARED_MEMORY_OBJECTS | POSIX Shared Memory Objects                                |       |
+| (_SC_SHARED_MEMORY_OBJECTS)  |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _POSIX_THREADS               | POSIX Threads                                              |       |
+| (_SC_THREADS)                |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+| _XOPEN_UNIX                  | The XSI extension is SUPPORTED                             |       |
+| (_SC_XOPEN_UNIX)             |                                                            |       |
+-----------------------------------------------------------------------------------------------------
+
+- Note the following points regarding specific options:
+       a) Certain options are REQUIRED by SUSv3; that is, the COMPILE-TIME CONSTANT ALWAYS EVALUATES to a
+          a value GREATER than 0. Historically, these options were TRULY OPTIONAL, but NOWADAYS they are NOT.
+          These options are MARKED with the character '+' in the "Notes" column (In SUSv4, a range of options
+          that were OPTIONAL in SUSv3 BECOME MANDATORY).
+
+                 Note:  Although such options are REQUIRED by SUSv3, some UNIX systems MAY nevertheless BE
+                      INSTALLED in a NONCONFORMING CONFIGURATION. Thus, for PORTABLE APPLICATIONS, it MAY
+                      BE WORTH CHECKING whether an OPTION that AFFECTS the application is SUPPORTED,
+                      REGARDLESS of WHETHER the STANDARD REQUIRES that OPTION.
+
+       b) For certain options, the COMPILE-TIME CONSTANT MUST have a value OTHER than -1. In other words,
+          EITHER the option MUST BE SUPPORTED or SUPPORT AT RUN TIME MUST BE CHECKABLE. These options are
+          MARKED with the character '*' in the "Notes" column.
+
+#############################################################################################################

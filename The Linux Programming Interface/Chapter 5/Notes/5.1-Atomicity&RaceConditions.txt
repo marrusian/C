@@ -1,0 +1,63 @@
+##########################################################################################################
+- ATOMICITY is a concept that we'll ENCOUNTER REPEATEDLY when discussing the operation of system calls.
+Various system call operations are executed ATOMICALLY. By this, we mean that the kernel GUARANTEES that ALL
+of the STEPS in the operation are COMPLETED as a SINGLE OPERATION, WITHOUT being INTERRUPTED by ANOTHER
+process or thread.
+
+- Atomicity is ESSENTIAL to the SUCCESSFUL COMPLETION of some operations. In particular, it allows us to
+AVOID "RACE CONDITIONS" (sometimes known as "RACE HAZARDS"). A RACE CONDITION is a situation where the RESULT
+PRODUCED by TWO processes (or threads) operating on SHARED resources DEPENDS in an UNEXPECTED WAY on the
+RELATIVE ORDER in which the processes GAIN ACCESS to the CPU(s).
+
+- We'll next look at TWO SITUATIONS involving file I/O where RACE CONDITIONS occur, and show HOW these
+conditions are ELIMINATED through the use of "open()" FLAGS that GUARANTEE the ATOMICITY of the RELEVANT FILE
+OPERATIONS.
+
+a) Situation 1 - Creating a file EXCLUSIVELY
+
+- We noted that SPECIFYING 'O_EXCL' in CONJUNCTION with 'O_CREAT" causes "open()" to RETURN an ERROR if the
+file ALREADY EXISTS. This provides a way for a process to ENSURE that it is the CREATOR of a file. The CHECK
+on the PRIOR EXISTENCE of the file and the CREATION of the file are performed ATOMICALLY. To see WHY this is
+IMPORTANT, consider the following code to which we MIGHT RESORT TO in the ABSENCE of the 'O_EXCL' flag.
+       <See Listings/bad_exclusive_open.c>
+
+- Aside from the LONG-WINDED use of two calls to "open()", the code ALSO CONTAINS a BUG. Suppose that when
+our process FIRST CALLED "open()", the file DID NOT exist, but by the time of the SECOND "open()", some OTHER
+PROCESS had CREATED the file. This COULD HAPPEN if the KERNEL SCHEDULER decided that the process's TIME SLICE
+had EXPIRED and GAVE CONTROL to ANOTHER PROCESS, or if the TWO PROCESSES were RUNNING at THE SAME TIME on a
+MULTIPROCESSOR system.
+
+- While the CHANCE of the process WRONGLY BELIEVING it was the creator of the file is RELATIVELY SMALL, the
+POSSIBILITY that it MAY OCCUR nevertheless RENDERS the code UNRELIABLE. The fact that the OUTCOME of these
+operations DEPENDS on the ORDER of SCHEDULING of the two processes means that this is a RACE CONDITION.
+
+- If we create an artificially long delay between the check for file existence and the creation of the file,
+BOTH procesess will CLAIM to have CREATED the file, because the code of the FIRST PROCESS was INTERRUPTED
+between the EXISTENCE CHECK and the CREATION of the file. Using a SINGLE "open()" call that specifies the
+'O_CREAT' and 'O_EXCL' flags PREVENTS this possibility by GUARANTEEING that the CHECK and CREATION steps are
+CARRIED OUT as a SINGLE ATOMIC (i.e. uninterruptible) OPERATION.
+
+b) Situation 2 - APPENDING data to a file
+
+- A second example of the NEED for ATOMICITY is when we have MULTIPLE processes APPENDING DATA to the SAME
+FILE (e.g., a global log file). For this purpose, we might consider using a piece of code such as the
+following in each of our writers:
+       # if(lseek(fd, 0, SEEK_END) == -1)
+       #    errExit("lseek");
+       # if(write(fd, buf, len) != len)
+       #    fatal("Partial/failed write");
+
+- However, this code suffers the SAME DEFECT as the previous example. If the FIRST PROCESS executing the code
+is INTERRUPTED between the "lseek()" and "write()" calls by a SECOND PROCESS doing the SAME THING, then BOTH
+PROCESSES will SET their FILE OFFSET to the SAME LOCATION before writing, and when the FIRST PROCESS is
+RESCHEDULED, it will OVERWRITE the data ALREADY WRITTEN by the SECOND PROCESS. Again, this is a RACE CONDITION
+because the results DEPEND on the ORDER of SCHEDULING of the two processes.
+
+- Avoiding this problem REQUIRES that the SEEK to the next byte past EOF and the WRITE OPERATION happen
+ATOMICALLY. This is what opening a file with the 'O_APPEND' flag GUARANTEES.
+
+      Note: Some file systems (e.g., NFS) DON'T SUPPORT 'O_APPEND'. In this case, the kernel REVERTS to the
+           NONATOMIC SEQUENCE of calls shown above, with the CONSEQUENT POSSIBILITY of FILE CORRUPTION as
+           just described.
+
+##########################################################################################################

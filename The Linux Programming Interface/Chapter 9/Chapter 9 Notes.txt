@@ -1,0 +1,450 @@
+- Every process has a SET of ASSOCIATED numeric user identifiers (UIDs) and group identifiers (GIDs).
+Sometimes, these are referred to as PROCESS CREDENTIALS. These identifiers are as follows:
+    a) Real UID and GID;
+    b) Effective UID and GID;
+    c) Saved set-user-ID and saved set-group-ID;
+    d) File-system UID and GID (Linux-specific !);
+    e) Supplementary GIDs.
+
+############################################################################################################
+- The RUID and RGID IDENTIFY the USER AND GROUP to which the PROCESS BELONGS. As part of the LOGIN PROCESS,
+a LOGIN SHELL gets its real UIDs and GIDs from the THIRD and FOURTH FIELDS of the USER'S PASSWORD RECORD in
+the "/etc/passwd" file. When a NEW PROCESS is CREATED (e.g., when the shell executes a program), it INHERITS
+these IDENTIFIERS from its PARENT.
+
+############################################################################################################
+- On MOST UNIX implementations (Linux is a LITTLE DIFFERENT, as explained in Section 9.5), the EFFECTIVE user
+ID and group ID, in CONJUNCTION with the SUPPLEMENTARY group IDs, are used to DETERMINE the PERMISSIONS
+GRANTED to a PROCESS when it tries to PERFORM VARIOUS OPERATIONS (i.e., SYSTEM CALLS). For example, these
+identifiers DETERMINE the PERMISSIONS GRANTED to a PROCESS when it ACCESSES RESOURCES such as FILES and
+System V IPC objects, which THEMSELVES have ASSOCIATED UIDs and GIDs determining TO WHOM they BELONG.
+The EFFECTIVE UID is ALSO USED by the KERNEL to DETERMINE WHETHER one process can SEND a SIGNAL to another.
+
+- A PROCESS whose EFFECTIVE UID is 0 (the UID of "root") has ALL of the PRIVILEGES of the SUPERUSER. Such a
+process is referred to as a "PRIVILEGED PROCESS". Certain system calls can be executed ONLY by PRIVILEGED
+PROCESSES.
+
+                  Note: In Chapter 39, we describe Linux's implementation of CAPABILITIES, a SCHEME that
+                       DIVIDES the PRIVILEGES GRANTED to a SUPERUSER into a number of DISTINCT UNITS that can
+                       be INDEPENDENTLY enabled and disabled.
+
+- Normally, the EFFECTIVE UIDs and GIDs have the SAME VALUES as the CORRESPONDING REAL IDs, but there are
+TWO WAYS in which the EFFECTIVE IDs can ASSUME DIFFERENT values:
+      1) Through the use of SYSTEM CALLS that we discuss in Section 9.7;
+      2) Through the EXECUTION of set-user-ID and set-group-ID programs.
+
+############################################################################################################
+- A set-user-ID program ALLOWS a PROCESS to GAIN PRIVILEGES it would NOT NORMALLY have, by SETTING the
+process's EFFECTIVE UID to the SAME VALUE as the UID (OWNER) of the EXECUTABLE FILE. A set-group-ID program
+performs the ANALOGOUS TASK for the process's EFFECTIVE GID (the TERMS "set-user-ID program" and
+"set-group-ID program" are SOMETIMES ABBREVIATED as "set-UID program" and "set-GID program").
+
+- Like any other file, an EXECUTABLE PROGRAM FILE has an ASSOCIATED UID and GID that DEFINE the OWNERSHIP of
+the file. In addition, an EXECUTABLE FILE has TWO SPECIAL PERMISSION BITS:
+       1) The set-UID bit;
+       2) The set-GID bit;
+(In fact, EVERY FILE has these TWO PERMISSION BITS, but it is their use with EXECUTABLE FILES that interests
+us here).
+
+- These PERMISSION BITS are SET using the "chmod" command. An UNPRIVILEGED USER can SET these BITS for FILES
+that they OWN. A PRIVILEGED USER (CAP_FOWNER) can SET these BITS for ANY FILE. 
+
+- It is POSSIBLE for a PROGRAM to have BOTH of these bits SET, although this is UNCOMMON. When "ls -l" is used
+to LIST the PERMISSIONS for a program that has the set-UID and set-GID permission bit SET, then the 'x' that
+is NORMALLY USED to INDICATE that EXECUTE PERMISSION is SET is REPLACED by an 's':
+        # ls -l prog
+        # -rwsr-sr-x     1   root       root       302585    Jun 26 15:05 prog
+
+- When a set-UID program is RUN (i.e., LOADED into a PROCESS'S MEMORY by an "exec()"), the KERNEL SETS the
+EFFECTIVE UID of the process to be the SAME as the UID of the EXECUTABLE FILE. Running a set-GID program has
+an ANALOGOUS EFFECT for the EFFECTIVE GID of the process. Changing the EFFECTIVE UID or GID in this way gives
+a process (in other words, the USER EXECUTING the PROGRAM) PRIVILEGES it would NOT NORMALLY have. For example,
+IF an EXECUTABLE FILE is OWNED by "root" (superuser) and has the set-UID permission bit ENABLED, then the
+process gains SUPERUSER PRIVILEGES when that program is run.
+
+- Set-UID and set-GID programs can ALSO be DESIGNED to CHANGE the EFFECTIVE IDs of a process to SOMETHING
+OTHER than "root". For example, to PROVIDE ACCES to a PROTECTED FILE (or OTHER SYSTEM RESOURCE), it MAY
+SUFFICE to CREATE a SPECIAL PURPOSE UID/GID that has the privileges REQUIRED to ACCESS the FILE, and CREATE a
+set-UID/set-GID program that CHANGES the EFFECTIVE UID/GID of a process to THAT ID. This PERMITS the program
+to ACCESS the file WITHOUT ALLOWING it ALL of the PRIVILEGES of the SUPERUSER.
+
+- Sometimes, we'll use the term set-UID-root to DISTINGUISH a set-UID program that is OWNED by "root" FROM one
+OWNED by ANOTHER USER, which MERELY GIVES a process the PRIVILEGES accorded to THAT USER.
+
+                 Note:  We have now started using the term "privileged" in TWO DIFFERENT SENSES. One is the
+                      sense DEFINED EARLIER: a process with an EFFECTIVE UID of 0, which has ALL of the
+                      PRIVILEGES accorded to "root". However, when we are talking about a set-UID program
+                      owned by a user OTHER THAN "root", we'll sometimes refer to a process as GAINING the
+                      PRIVILEGES accorded to the UID of the set-UID program. Which sense of the term
+                      "privileged" we mean in EACH CASE should be CLEAR from the CONTEXT.
+                        For reasons that we explain in Section 38.3, the set-UID and set-GID permission bits
+                      DON'T have ANY EFFECT for SHELL SCRIPTS on Linux.
+
+- Examples of COMMONLY USED set-UID programs on Linux include:
+     a) "passwd(1)"               - changes a user's password;
+     b) "mount(8) and "umount(8)" - mount and unmount file systems;
+     c) "su(1)"                   - allows a user to run a shell under a different user ID.
+
+- An EXAMPLE of a set-GID program is "wall(1)", which writes a message to ALL TERMINALS OWNED by the "tty"
+group (normally, EVERY TERMINAL is OWNED by THIS GROUP).
+
+- The set-UID/set-GID technique is a USEFUL and POWERFUL TOOL, but one that can result in SECURITY BREACHES
+in APPLICATIONS that are POORLY DESIGNED. In Chapter 38, we LIST a SET of GOOD PRACTICES that should be
+observed when writing set-UID and set-GID programs.
+
+############################################################################################################
+- The SAVED set-UID and SAVED set-GID are DESIGNED for use with set-UID and set-GID programs. When a program
+is EXECUTED, the following steps (among MANY OTHERS) occur:
+     1) If the set-UID/set-GID permission bit is ENABLED on the EXECUTABLE, then the EFFECTIVE UID/GID of the
+        process is MADE THE SAME as the OWNER of the EXECUTABLE. If the set-UID/set-GID bit is NOT SET, then
+        NO CHANGE is made to the EFFECTIVE UID/GID of the process.
+
+     2) The VALUES for the SAVED set-UID and SAVED set-GID are COPIED from the CORRESPONDING EFFECTIVE IDs.
+        This copying occurs REGARDLESS of WHETHER the set-UID and set-GID bit is set on the file being
+        executed.
+
+- As an EXAMPLE of the EFFECT of the ABOVE STEPS, suppose that a process whose REAL UID, EFFECTIVE UID, and
+SAVED set-UID are ALL SET to 1000, execs a set-UID program OWNED by "root" (UID 0). After the exec, the UIDs
+of the process will be changed as follows:
+        real=1000   effective=0   saved=0
+
+- Various system calls ALLOW a set-UID program to SWITCH its EFFECTIVE UID between the values of the REAL UID
+and the SAVED set-UID. Analogous system calls ALLOW a set-GID program to MODIFY its EFFECTIVE GID. In this
+manner, the program can TEMPORARILY DROP and REGAIN whatever privileges are associated with the UID/GID of the
+execed file (in other words, the program can move between the states of potentially being privileged and
+actually operating with privilege). As we'll elaborate in Section 38.2, it is SECURE PROGRAMMING PRACTICE for
+set-UID and set-GID programs to OPERATE UNDER the UNPRIVILEGED (i.e. REAL) ID WHENEVER the program DOESN'T
+ACTUALLY NEED to perform any operations associated with the PRIVILEGED (i.e., SAVED SET) ID.
+
+                 Note:  The SAVED set-UID and SAVED set-GID are SOMETIMES SYNONYMOUSLY REFERRED to as the
+                      "SAVED UID" and "SAVED GID".   
+                        The SAVED set-IDs are a System V invention ADOPTED by POSIX. They were NOT PROVIDED on
+                      releases of BSD prior to 4.4. The INITIAL POSIX.1 standard made SUPPORT for these IDs
+                      OPTIONAL, but LATER STANDARDS (starting with FIPS 151-1 in 1988) made support MANDATORY.
+
+############################################################################################################
+- On Linux, it is the FILE-SYSTEM user and group IDs, RATHER than the EFFECTIVE user and group IDs, that are
+USED (in CONJUNCTION with the SUPPLEMENTARY GIDs) to DETERMINE PERMISSIONS when performing FILE-SYSTEM
+OPERATIONS such as: opening files, changing file ownership, and modifying file permissions (the EFFECTIVE IDs
+are STILL USED, as on OTHER UNIX implementations, for the OTHER PURPOSES described earlier).
+
+- Normally, the FILE-SYSTEM IDs have the SAME VALUES as the CORRESPONDING EFFECTIVE IDs (and thus TYPICALLY
+are THE SAME as the CORRESPONDING REAL IDs). Furthermore, WHENEVER the EFFECTIVE UID/GID is CHANGED, either
+by a system call or by execution of a set-UID or set-GID program, the CORRESPONDING FILE-SYSTEM ID is ALSO
+CHANGED to the SAME VALUE. Since the FILE-SYSTEM IDs follow the EFFECTIVE IDs in this way, this means that
+Linux EFFECTIVELY BEHAVES just like ANY OTHER UNIX implementation when PRIVILEGES and PERMISSIONS are being
+CHECKED. The FILE-SYSTEM IDs DIFFER from the CORRESPONDING EFFECTIVE IDs, and hence Linux DIFFERS from OTHER
+UNIX implementations, ONLY WHEN we use TWO Linux-specific system calls, "setfsuid()" and "setfsgid()", to
+EXPLICITLY make them DIFFERENT.
+
+- Why does Linux provide the FILE-SYSTEM IDs and in what circumstances would we want the EFFECTIVE and
+FILE-SYSTEM IDs to differ? The reasons are PRIMARILY HISTORICAL. The file-system IDs FIRST APPEARED in
+Linux 1.2. In that kernel version, one process COULD SEND a SIGNAL to another ONLY if the EFFECTIVE UID of the
+sender MATCHED the REAL or EFFECTIVE UID of the TARGET PROCESS. This AFFECTED certain programs such as the
+Linux NFS (Network File System) server program, which NEEDED to be ABLE to ACCESS files AS THOUGH it had the
+EFFECTIVE IDs of the corresponding CLIENT PROCESS. However, if the NFS server CHANGED its EUID, it would be
+VULNERABLE to SINGALS from UNPRIVILEGED user processes. To PREVENT this possibility, the SEPARATE file-system
+user and group IDs were DEVISED. By LEAVING its EUIDs UNCHANGED, but CHANGING its FILE-SYSTEM IDs, the NFS
+server could MASQUERADE as ANOTHER USER for the PURPOSE of ACCESSING files WITHOUT being VULNERABLE to SIGNALS
+from user processes.
+
+- From kernel 2.0 ONWARD, Linux ADOPTED the SUSv3-mandated RULES regarding PERMISSION for SENDING SIGNALS, and
+these rules DON'T INVOLVE the EUID of the TARGET PROCESS. Thus, the FILE-SYSTEM ID feature is NO LONGER
+strictly NECESSARY (a process can nowadays achieve the desired results by making JUDICIOUS use of the system
+calls described later to CHANGE the VALUE of the EUID TO and FROM an UNPRIVILEGED VALUE, as REQUIRED), but it
+REMAINS for COMPATIBILITY with EXISTING SOFTWARE.
+
+############################################################################################################
+- The SUPPLEMENTARY GIDs are a SET of ADDITIONAL GROUPS to which a process BELONGS. A new process INHERITS
+these IDs from its PARENT. A LOGIN SHELL obtains its SUPPLEMENTARY GIDs from the SYSTEM GROUP FILE. As noted
+above, these IDs are used in CONJUNCTION with the EFFECTIVE and FILE-SYSTEM IDs to DETERMINE PERMISSIONS for
+ACCESSING FILES, System V IPC objects, and OTHER SYSTEM RESOURCES.
+
+############################################################################################################
+- Linux provides a RANGE of SYSTEM CALLS and LIBRARY FUNCTIONS for RETRIEVING and CHANGING the various
+UIDs/GIDs that we have described. Only SOME of these APIs are SPECIFIED in SUSv3. Of the remainder, SEVERAL
+are WIDELY AVAILABLE on OTHER UNIX implementations and a FEW are Linux-specific. 
+
+- As an ALTERNATIVE to using the system calls described next, the CREDENTIALS of ANY PROCESS can be FOUND by
+EXAMINING the "Uid", "Gid", and "Groups" LINES provided in the Linux-specific "/proc/PID/status" file. The
+"Uid" and "Gid" lines LIST the IDENTIFIERS in the order REAL, EFFECTIVE, SAVED SET, and FILE SYSTEM.
+
+- In the following sections, we use the TRADITIONAL DEFINITION of a PRIVILEGED PROCESS as one whose EUID is 0.
+However, Linux DIVIDES the notion of SUPERUSER PRIVILEGES into DISTINCT CAPABILITIES. Two capabilities are
+RELEVANT for our discussion of ALL of the SYSTEM CALLS used to CHANGE process UIDs and GIDs:
+    a) The 'CAP_SETUID' capability ALLOWS a PROCESS to make ARBITRARY CHANGES to its UIDs;
+    b) The 'CAP_SETGID' capability ALLOWS a PROCESS to make ARBITRARY CHANGES to its GIDs;
+
+--------------------------------------------------------------------------------------------------------
+- The "getuid()" and "getgid()" system calls RETURN, respectively, the REAL UID and REAL GID of the CALLING
+PROCESS. The "geteuid()" and "getegid()" system calls PERFORM the CORRESPONDING TASKS for the EFFECTIVE IDs.
+These system calls are ALWAYS SUCCESSFUL:
+           DEP: #include <unistd.h>          PROTO: uid_t getuid(void);
+                                             RET: Returns REAL UID of calling process;
+  
+                                             PROTO: uid_t geteuid(void);
+                                             RET: Returns EFFECTIVE UID of calling process;
+
+                                             PROTO: gid_t getgid(void);
+                                             RET: Returns REAL GID of calling process;
+
+                                             PROTO: gid_t getegid(void);
+                                             RET: Returns EFFECTIVE GID of calling process;
+
+- The "setuid()" system call CHANGES the EUID - and POSSIBLY the REAL UID and the SAVED SET-UID - of the 
+CALLING PROCESS to the VALUE given by the "uid" argument. The "setgid()" system call PERFORMS the ANALOGOUS
+TASK for the CORRESPONDING GIDs:
+           DEP: #include <unistd.h>          PROTO: int setuid(uid_t uid);
+                                             PROTO: int setgid(gid_t gid);
+                                             RET: Both return 0 on success, or -1 on error
+
+- The RULES about WHAT CHANGES a process can MAKE to its CREDENTIALS using "setuid()" and "setgid()" DEPEND
+on WHETHER the process is PRIVILEGED (i.e., has an EUID equal to 0). The following rules apply to "setuid()":
+      1) When an UNPRIVILEGED PROCESS calls "setuid()", ONLY the EUID of the process is CHANGED. Furthermore,
+         it can be ONLY CHANGED to the SAME VALUE as EITHER the RUID or SSUID (attempts to VIOLATE this
+         CONSTRAINT yield the error "EPERM"). This means that, for UNPRIVILEGED USERS, this call is ONLY
+         USEFUL when EXECUTING a SUID program, since, for the EXECUTION of NORMAL programs, the process's
+         RUID, EUID, and SSUID all have the SAME VALUE. On some BSD-derived implementations, calls to
+         "setuid()" or "setgid()" by an UNPRIVILEGED PROCESS have DIFFERENT SEMANTICS from OTHER UNIX
+         implementations: the calls CHANGE the REAL, EFFECTIVE, and SAVED SET IDs (to the value of the current
+         REAL or EFFECTIVE ID).
+
+      2) When a PRIVILEGED PROCESS executes "setuid()" with a NONZERO argument, then the RUID, EUID, and SSUID
+         are ALL SET to the VALUE specified in the "uid" argument. This is a ONE-WAY TRIP, in that ONCE a
+         PRIVILEGED PROCESS has CHANGED its IDENTIFIERS in this way, it LOSES ALL PRIVILEGES and therefore
+         CAN'T subsequently use "setuid()" to RESET the IDENTIFIERS BACK to 0. If this is NOT DESIRED, then
+         EITHER "seteuid()" or "setreuid()" should be USED INSTEAD of "setuid()".
+
+- The RULES GOVERNING the CHANGES that may be made to GIDs using "setgid()" are SIMILAR, but with "setgid()"
+SUBSTITUTED for "setuid()" and "GROUP" for "USER". With these changes, RULE 1 applies EXACTLY as STATED.
+In RULE 2, since CHANGING the GIDs DOESN'T CAUSE a process to LOSE PRIVILEGES (which are DETERMINED by the
+EUID), PRIVILEGED PROGRAMS can use "setgid()" to FREELY CHANGE the GIDs to ANY DESIRED VALUES.
+
+- The following call is the PREFERRED METHOD for a SUID-root program whose EUID is CURRENTLY 0 to IRREVOCABLY
+DROP ALL PRIVILEGES (by setting BOTH the EUID and SSUID to the SAME VALUE as the RUID):
+           # if(setuid(getuid()) == -1)
+           #    errExit("setuid()");
+
+- A SUID program OWNED by a user OTHER THAN "root" can use "setuid()" to SWITCH the EUID BETWEEN the values of
+the RUID and SSUID for the SECURITY REASONS described in Section 9.4. However, "seteuid()" is PREFERABLE for
+this purpose, since it has the SAME EFFECT, REGARDLESS of WHETHER the SUID program is OWNED by "root".
+
+- A process can use "seteuid()" to CHANGE its EUID (to the VALUE specified by "euid"), and "setegid()" to
+CHANGE its EGID (to the VALUE specified by "egid"):
+           DEP: #include <unistd.h>          PROTO: int seteuid(uid_t euid);
+                                             PROTO: int setegid(gid_t egid);
+                                             RET: Both return 0 on success, or -1 on error
+
+- The following RULES GOVERN the CHANGES that a process MAY MAKE to its EFFECTIVE IDs using "seteuid()" and
+"setegid()":
+      1) An UNPRIVILEGED PROCESS can CHANGE an EID ONLY to the SAME VALUE as the CORRESPONDING RID or SSID
+         (in other words, for an UNPRIVILEGED PROCESS, "seteuid()" and "setegid()" have the SAME EFFECT as
+         "setuid()" and "setgid()", respectively, EXCEPT for the BSD PORTABILITY ISSUES noted earlier).
+
+      2) A PRIVILEGED PROCESS can CHANGE an EID to ANY VALUE. If a PRIVILEGED PROCESS uses "seteuid()" to
+         CHANGE its EUID to a NONZERO value, then it CEASES to be PRIVILEGED (but MAY BE ABLE to REGAIN
+         PRIVILEGE via the PREVIOUS RULE).
+
+- Using "seteuid()" is the PREFERRED METHOD for SUID and SGID programs to TEMPORARILY DROP and LATER REGAIN
+PRIVILEGES. Here's an example:
+           # euid = geteuid();            /* Save initial EUID (which is the SAME as SSUID) */
+           #
+           # if(seteuid(getuid()) == -1)  /* Drop privileges */
+           #    errExit("seteuid()");
+           # if(seteuid(euid) == -1)      /* Regain privileges */
+           #    errExit("seteuid()");
+
+- Originally DERIVED from BSD, "seteuid()" and "setegid()" are now SPECIFIED in SUSv3 and APPEAR on MOST UNIX
+implementations.
+
+               Note:   In OLDER VERSIONS of the GNU C Library ("glibc 2.0" and EARLIER), "seteuid(euid)" is
+                     IMPLEMENTED as "setreuid(-1, euid)". In MODERN VERSIONS of "glibc", "seteuid(euid)" is
+                     IMPLEMENTED as "setresuid(-1, euid, -1)". Both implementations PERMIT US to SPECIFY
+                     "euid" as the SAME VALUE as the CURRENT EUID (i.e., NO CHANGE). However, SUSv3 DOESN'T
+                     SPECIFY this BEHAVIOUR for "seteuid()", and it is NOT POSSIBLE on SOME OTHER UNIX
+                     implementations. Generally, this POTENTIAL VARIATION across implementations is NOT
+                     APPARENT, since, in NORMAL CIRCUMSTANCES, the EUID has the SAME VALUE as EITHER the RUID
+                     or the SSUID (the ONLY WAY in which we can MAKE the EUID DIFFER from BOTH the RUID and
+                     SSUID on Linux is VIA the use of the NONSTANDARD "setresuid()" system call).
+                       ANALOGOUS REMARKS apply for the "glibc" implementation of "setegid(egid)", EXCEPT that
+                     the SWITCH in implementation FROM "setregid(-1, egid)" TO "setresgid(-1, egid, -1)"
+                     OCCURED in "glibc" 2.2 OR 2.3 (the PRECISE version DEPENDS on the HARDWARE ARCHITECTURE).
+
+- The "setreuid()" system call ALLOWS the CALLING PROCESS to INDEPENDENTLY CHANGE the VALUES of its RUID and
+EUID. The "setregid()" system call PERFORMS the ANALOGOUS TASK for the RGID and EGID:
+           DEP: #include <unistd.h>          PROTO: int setreuid(uid_t ruid, uid_t euid);
+                                             PROTO: int setregid(gid_t rgid, gid_t egid);
+                                             RET: Both return 0 on success, or -1 on error
+
+- The FIRST ARGUMENT to EACH of these SYSTEM CALLS is the NEW RID. The SECOND ARGUMENT is the NEW EID. If we
+want to CHANGE ONLY ONE of the IDENTIFIERS, then we CAN SPECIFY -1 for the OTHER ARGUMENT.
+
+- Originally DERIVED from BSD, "setreuid()" and "setregid()" are now SPECIFIED in SUSv3 and are AVAILABLE on
+MOST UNIX implementations. 
+
+- As with the other system calls described until now, RULES GOVERN the CHANGES that we can MAKE using
+"setreuid()" and "setregid()". We can DESCRIBE these RULES from the POV of "setreuid()", with the
+UNDERSTANDING that "setregid()" is SIMILAR, EXCEPT as noted:
+      1) An UNPRIVILEGED PROCESS can SET the RUID ONLY to the CURRENT VALUE of the RUID (i.e., NO CHANGE) or
+         EUID. The EUID can be ONLY SET to the CURRENT VALUE of the RUID, EUID (i.e., NO CHANGE), or SSUID.
+
+               Note:  SUSv3 says that it is UNSPECIFIED WHETHER an UNPRIVILEGED PROCESS can use "setreuid()"
+                    to CHANGE the VALUE of the RUID to the CURRENT VALUE of the RUID, EUID, or SSUID, and the
+                    DETAILS of PRECISELY WHAT CHANGES can be MADE to the RUID VARY across implementations.
+                      SUSv3 describes SLIGHTLY DIFFERENT BEHAVIOUR for "setregid()": an UNPRIVILEGED PROCESS
+                    can SET the RGID to the CURRENT VALUE of the SSGID or SET the EGID to the CURRENT VALUE of
+                    EITHER the RGID or the SSGID. Again, the DETAILS of PRECISELY WHAT CHANGES can be made
+                    VARY across implementations.
+
+      2) A PRIVILEGED PROCESS can make ANY CHANGES to the IDs.
+        
+      3) For BOTH PRIVILEGED and UNPRIVILEGED PROCESSES, the SSUID is ALSO SET to the SAME VALUE as the (NEW)
+         EUID if EITHER of the following IS TRUE:
+            a) RUID is NOT -1 (i.e., the RUID is being set, EVEN to the SAME VALUE it ALREADY HAD), or
+            b) the EUID is being set to a value OTHER than the VALUE of the RUID PRIOR to the call.
+
+- Put conversely, if a process uses "setreuid()" ONLY to CHANGE the EUID to the SAME VALUE as the CURRENT RUID
+, then the SSUID is LEFT UNCHANGED, and a LATER CALL to "setreuid()" (or "seteuid()") can RESTORE the EUID to
+the SSUID value (SUSv3 DOESN'T SPECIFY the EFFECT of "setreuid()" and "setregid()" on the SSIDs, BUT SUSv4
+SPECIFIES the BEHAVIOUR described here).
+
+- The THIRD RULE provides a way for a SUID program to PERMANENTLY DROP its PRIVILEGE, using a call such as the
+following:
+       # setreuid(getuid(), getuid());
+
+- A SUID-root PROCESS that wants to CHANGE BOTH its USER and GROUP CREDENTIALS to ARBITRARY VALUES should
+FIRST CALL "setregid()" and THEN CALL "setreuid()". If the calls are made in OPPOSITE ORDER, then the
+"setregid"() call will FAIL, because the program will NO LONGER be PRIVILEGED AFTER the CALL to "setreuid()".
+SIMILAR REMARKS apply if we are using 'setresuid()" and "setresgid()" for this purpose.
+
+               Note:  BSD releases UP TO and INCLUDING 4.3BSD DID NOT have the SSUID and SSGID (which are
+                    nowadays MANDATED by SUSv3). Instead, on BSD, "setreuid()" and "setregid()" PERMITTED a
+                    PROCESS to DROP and REGAIN PRIVILEGE by SWAPPING the VALUES of the RID and EID back and
+                    forth. This had the UNDESIRABLE SIDE EFFECT of CHANGING the RUID in ORDER to CHANGE the
+                    EUID.
+
+- On MOST UNIX implementations, a process CAN'T DIRECTLY RETRIEVE (or UPDATE) its SSUID and SSGID. However,
+Linux provides two (NONSTANDARD) system calls ALLOWING us to do JUST THAT: "getresuid()" and "getresgid()":
+           DEP: #define _GNU_SOURCE
+                #include <unistd.h>          PROTO: int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
+                                             PROTO: int getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid);
+                                             RET: Both return 0 on success, or -1 on error
+
+- The "getresuid()" system call RETURNS the CURRENT VALUES of the calling process's RUID, EUID, and SSUID in
+the LOCATIONS POINTED by its three arguments. The "getresgid()" system call DOES THE SAME for the
+CORRESPONDING GIDs.
+
+- The "setresuid()" system call ALLOWS the calling process to INDEPENDENTLY CHANGE the VALUES of ALL THREE
+of its UIDs. The NEW VALUES for each of the UIDs are SPECIFIED by the THREE ARGUMENTS to the system call.
+The "setresgid()" system call PERFORMS the ANALOGOUS TASK for the GIDs:
+           DEP: #define _GNU_SOURCE
+                #include <unistd.h>          PROTO: int setresuid(uid_t ruid, uid_t euid, uid_t suid);
+                                             PROTO: int setresgid(gid_t rgid, gid_t egid, gid_t sgid);
+                                             RET: Both return 0 on success, or -1 on error
+
+- If we DON'T WANT to CHANGE ALL of the IDENTIFIERS, then SPECIFYING -1 for an argument LEAVES the
+CORRESPONDING IDENTIFIER UNCHANGED. For example, the following call is EQUIVALENT to "seteuid(x)":
+       # setresuit(-1, x, -1);
+
+- The RULES about WHAT CHANGES may be MADE by "setresuid()" ("setresgid()" is SIMILAR) are as follows:
+      1) An UNPRIVILEGED PROCESS can SET ANY of its RUID, EUID, and SSUID to ANY of the VALUES CURRENTLY in
+         its CURRENT RUID, EUID, or SSUID.
+
+      2) A PRIVILEGED PROCESS can make ARBITRARY CHANGES to its RUID, EUID, and SSUID.
+
+      3) Regardless of WHETHER the call makes ANY CHANGES to OTHER IDs, the FILE-SYSTEM UID is ALWAYS SET to
+         the SAME VALUE as the (POSSIBLY NEW) EUID.
+
+- Calls to "setresuid()" and "setresgid()" have an ALL-OR-NOTHING EFFECT. Either ALL of the REQUESTED 
+IDENTIFIERS are SUCCESSFULLY CHANGED or NONE ARE CHANGED (the SAME COMMENT applies with respect to the OTHER
+system calls described in this chapter that change MULTIPLE identifiers).
+
+- Although "setresuid()" and "setresgid()" provide the MOST STRAIGHTFORWARD API for changing PROCESS
+CREDENTIALS, we CAN'T PORTABLY employ them in applications; they are NOT SPECIFIED in SUSv3 and are AVAILABLE
+on ONLY a FEW OTHER UNIX implementations.
+
+--------------------------------------------------------------------------------------------------------
+- All of the PREVIOUSLY DESCRIBED system calls that CHANGE the process's EUID or EGID also ALWAYS CHANGE the
+CORRESPONDING FSID (File-system ID). To CHANGE the FSIDs INDEPENDENTLY of the EIDs, we MUST EMPLOY two
+Linux-specific system calls: "setfsuid()" and "setfsgid()":
+           DEP: #include <sys/fsuid.h>       PROTO: int setfsuid(uid_t fsuid);
+                                             PROTO: int setfsgid(gid_t fsgid);
+                                             RET: Always returns the previous FSUID/FSGID.
+
+- The "setfsuid()" system call CHANGES the FSUID of a process to the VALUE SPECIFIED by "fsuid".
+The "setfsgid()" system call CHANGES the FSGID to the VALUE SPECIFIED by "fsgid".
+
+- Again, there are RULES about the KIND OF CHANGES that CAN BE MADE. The RULES for "setfsgid()" are SIMILAR to
+the RULES for "setfsuid()", which are as follows:
+      1) An UNPRIVILEGED PROCESS can SET the FSUID to the CURRENT VALUE of the RUID, EUID, FSUID (i.e., NO
+         CHANGE), or SSUID.
+
+      2) A PRIVILEGED PROCESS can SET the FSUID to ANY VALUE.
+
+- The IMPLEMENTATION of these calls is SOMEWHAT UNPOLISHED. To begin with, there are NO CORRESPONDING system
+calls that RETRIEVE the CURRENT VALUE of the FSIDs. In addition, the system calls do NO ERROR CHECKING; if an
+UNPRIVILEGED PROCESS attempts to SET its FSID to an UNACCEPTABLE VALUE, the ATTEMPT is SILENTLY IGNORED.
+The RETURN VALUE from EACH of these system calls is the PREVIOUS VALUE of the CORRESPONDING FSID, WHETHER the
+call SUCCEEDS or FAILS. Thus, we do have a way of FINDING OUT the CURRENT VALUES of the FSIDs, BUT ONLY at
+the SAME TIME AS WE TRY (EITHER successfuly or unsuccessfully) to CHANGE them.
+
+- Use of the "setfsuid()" and "setfsgid()" system calls is NO LONGER NECESSARY on Linux and SHOULD BE AVOIDED
+in applications DESIGNED to be PORTED to OTHER UNIX implementations.
+
+--------------------------------------------------------------------------------------------------------
+- The "getgroups()" system call RETURNS the SET OF GROUPS of which the CALLING PROCESS is CURRENTLY a MEMBER,
+in the ARRAY pointed to by "grouplist":
+    DEP: #include <unistd.h>     PROTO: int getgroups(int gidsetsize, gid_t grouplist[]);
+                                 RET: Returns number of GIDs placed in "grouplist" on success, or -1 on error
+
+- On Linux, as on MOST UNIX implementations, "getgroups()" simply RETURNS the CALLING PROCESS'S SUPPLEMENTARY
+GIDs. However, SUSv3 ALSO ALLOWS an implementation to INCLUDE the CALLING PROCESS'S EGID in the returned
+"grouplist".
+
+- The calling program MUST ALLOCATE the "grouplist" array and SPECIFY its LENGTH in the argument "gidsetsize".
+On SUCCESSFUL COMPLETION, "getgroups()" returns the NUMBER OF GIDs placed in "grouplist".
+
+- If the NUMBER OF GROUPS of which a process is a member EXCEEDS "gidsetsize", "getgroups()" returns an ERROR
+('EINVAL'). To AVOID this POSSIBILITY, we CAN SIZE the "grouplist" array to be ONE GREATER (to PORTABLY ALLOW
+for the POSSIBLE INCLUSION of the EGID) than the constant 'NGROUPS_MAX' (defined in <limits.h>), which DEFINES
+the MAXIMUM NUMBER of SUPPLEMENTARY GROUPS of which a process MAY be a MEMBER. Thus, we COULD DECLARE
+"grouplist" as follows:
+            # gid_t grouplist[NGROUPS_MAX + 1];
+
+- In Linux kernels PRIOR to 2.6.4, 'NGROUPS_MAX' has the value 32. From kernel 2.6.4 ONWARD, 'NGROUPS_MAX' has
+the value 65,536 (2^16).
+
+- An application can ALSO DETERMINE the 'NGROUPS_MAX' LIMIT at RUNTIME in the following ways:
+       a) Call "sysconf(_SC_NGROUPS_MAX)";
+       b) Read the LIMIT from the READ-ONLY, Linux-specific "/proc/sys/kernel/ngroups_max" file. This file
+          is provided SINCE kernel 2.6.4.
+
+- Alternatively, an application can make a call to "getgroups()" specifying "gidsetsize" as 0. In this case,
+"grouplist" is NOT MODIFIED, but the RETURN VALUE of the call GIVES the NUMBER OF GROUPS of which the process
+is a member.
+
+- The value obtained by ANY of these RUN-TIME TECHNIQUES can then be USED to DYNAMICALLY ALLOCATE a
+"grouplist" array for a FUTURE "getgroups()" call.
+
+- A PRIVILEGED PROCESS can use "setgroups()" and "initgroups()" to CHANGE its SET OF SUPPLEMENTARY GIDs:
+           DEP: #define _BSD_SOURCE
+                #include <grp.h>            PROTO: int setgroups(size_t gidsetsize, const gid_t *grouplist);
+                                            PROTO: int initgroups(const char *user, gid_t group);
+                                            RET: Both return 0 on success, or -1 on error
+
+- The "setgroups()" system call REPLACES the CALLING PROCESS'S SUPPLEMENTARY GIDs with the SET GIVEN in the
+array "grouplist". The "gidsetsize" argument SPECIFIES the NUMBER OF GIDs in the array argument "grouplist".
+
+- The "initgroups()" function INITIALIZES the CALLING PROCESS'S SUPPLEMENTARY GIDs by SCANNING "/etc/group"
+and BUILDING a LIST of ALL GROUPS of which the named "user" is a MEMBER. In addition, the GID specified in
+"group" is ALSO ADDED to the process's set of supplementary GIDs.
+
+- The PRIMARY USERS of "initgroups()" are programs that CREATE LOGIN SESSIONS - for example, "login(1)", which
+sets various process attributes prior to executing the user's login shell. Such programs TYPICALLY OBTAIN the
+value to be used for the "group" argument by READING the GID field from the user's record in the PASSWORD
+FILE. This is SLIGHTLY CONFUSING, since the GID from the PASSWORD FILE is NOT REALLY a SUPPLEMENTARY GROUP.
+Instead, it DEFINES the INITIAL RGID, EGID, and SSGID of the LOGIN SHELL. Nevertheles, this is how
+"initgroups()" is USUALLY EMPLOYED.
+
+- Although NOT PART of SUSv3, "setgroups()" and "initgroups()" are AVAILABLE on ALL UNIX implementations.
+############################################################################################################

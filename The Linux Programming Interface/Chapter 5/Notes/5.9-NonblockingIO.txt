@@ -1,0 +1,26 @@
+##########################################################################################################
+- Specifying the 'O_NONBLOCK' flag when OPENING a file serves TWO purposes:
+      a) If the file CAN'T be OPENED IMMEDIATELY, then "open()" returns an ERROR instead of BLOCKING. One case
+        where "open()" CAN BLOCK is with FIFOs.
+      b) After a SUCCESSFUL "open()", SUBSEQUENT I/O operations are ALSO NONBLOCKING. If an I/O system call
+        CAN'T complete immediately, then EITHER a PARTIAL DATA TRANSFER is performed OR the system call FAILS
+        with one of the errors 'EGAIN' or 'EWOULDBLOCK'. Which error is returned DEPENDS on the system call.
+        On Linux, as on many UNIX implementations, these two error constants are SYNONYMOUS.
+
+- Nonblocking mode can be used with DEVICES (e.g., TERMINALS and PSEUDOTERMINALS), PIPES, FIFOs, and SOCKETS
+(because file descriptors for PIPES and SOCKETS are NOT OBTAINED using "open()", we MUST ENABLE this flag
+using the "fcntl() FSETFL" operation).
+
+- 'O_NONBLOCK' is GENERALLY IGNORED for REGULAR FILES, because the kernel buffer cache ENSURES that I/O on
+regular files DOES NOT block. However, 'O_NONBLOCK' DOES HAVE an EFFECT for regular file when MANDATORY FILE
+LOCKING is EMPLOYED.
+
+          Note:  Historically, System V-derived implementations provided the 'O_NDELAY' flag, with SIMILAR
+               SEMANTICS to 'O_NONBLOCK'. The MAIN DIFFERENCE was that a NONBLOCKING "write()" on System V
+               returned 0 if a "write()" COULD NOT be COMPLETED and a NONBLOCK "read()" returned 0 if NO INPUT
+               WAS AVAILABLE. This behaviour was PROBLEMATIC for "read()" because it was INDISTINGUISHABLE
+               from an EOF condition, and os the first POSIX.1 standard introduced 'O_NONBLOCK'. Some UNIX
+               implementations CONTINUE to PROVIDE the 'O_NDELAY' flag with the OLD SEMANTICS. On Linux, the
+               'O_NDELAY' constant IS defined, BUT it is SYNONYMOUS with 'O_NONBLOCK'.
+
+##########################################################################################################

@@ -1,0 +1,21 @@
+##########################################################################################################
+- REALTIME APPLICATIONS are those that need to respond in a TIMELY FASHION to input. Frequently, such INPUT
+comes from an EXTERNAL SENSOR or a SPECIALIZED INPUT DEVICE, and OUTPUT taks the form of CONTROLLING some
+EXTERNAL HARDWARE. Examples of applications with REALTIME RESPONSE REQUIREMENTS include automated assembly
+lines, bank ATMs, and aircraft navigation systems.
+
+- Although many realtime applications require RAPID RESPONSES to input, the DEFINING FACTOR is that the
+response is GUARANTEED to be DELIVERED within a CERTAIN DEADLINE TIME after the triggering event.
+
+- The provision of REALTIME RESPONSIVENESS, especially where short response times are DEMANDED, requires
+SUPPORT from the underlying OS. Most OSs DON'T natively provide such support, because the REQUIREMENTS of
+realtime responsiveness can CONFLICT with the requirements of MULTIUSER TIME-SHARING OSs. Traditional UNIX
+implementations are NOT realtime OSs, although realtime variants have been devised. Realtime variants of Linux
+have also been created, and recent Linux kernels are moving toward FULL NATIVE SUPPORT for realtime apps.
+
+- POSIX.1b defined a number of extensions to POSIX.1 for the SUPPORT of realtime applications. These include
+asynchronous I/O, shared memory, memory-mapped files, memory locking, realtime clocks and timers, alternative
+scheduling policies, realtime signals, message queues, and semaphores. Even though they DON'T STRICTLY QUALIFY
+as realtime, most UNIX implementations now support SOME or ALL of these extensions.
+
+##########################################################################################################

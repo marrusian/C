@@ -1,0 +1,85 @@
+##########################################################################################################
+- Almost EVERY system call AND library function RETURNS some type of STATUS VALUE indicating whether the call
+SUCCEEDED or FAILED. This status value should ALWAYS be CHECKED to see whether the call SUCCEEDED. If it
+DID NOT, then APPROPRIATE ACTION should be taken - at the VERY LEAST, the program should DISPLAY an ERROR
+MESSAGE warning that something UNEXPECTED occured.
+- Although it is TEMPTING to save typing time by EXCLUDING these CHECKS, it is FALSE ECONOMY. Many hours of
+debugging time can be WASTED because a CHECK was NOT MADE on the STATUS RETURN of a system call or library
+function that "couldn't possibly fail".
+    Note: A few system calls NEVER FAIL. For example, "getpid()" ALWAYS successfully returns the ID of a
+         process, and "_exit()" ALWAYS terminates a process. It is NOT NECESSARY to CHECK the RETURN VALUES
+         from SUCH system calls.
+
+- The manual page for EACH system call DOCUMENTS the POSSIBLE RETURN VALUES of the call, showing WHICH
+value(s) INDICATE an ERROR. Usually, an ERROR is INDICATED by a RETURN of -1. Thus, a SYSTEM CALL can be
+CHECKED with code such as the following:
+
+     fd = open(pathname, flags, mode);     /* syscall to open a file */
+     if(fd == -1){
+        /* Code to handle the error */
+     }
+     ...
+     if(close(fd) == -1){
+        /* Code to handle the error */
+      }
+
+- When a system call FAILS, it SETS the GLOBAL INTEGER VARIABLE "errno" to a POSITIVE value that IDENTIFIES
+the SPECIFIC ERROR. Including the "<errno.h>" header file PROVIDES a DECLARATION of "errno", as well as a 
+SET OF CONSTANTS for the VARIOUS ERROR NUMBERS. All of these symbolic names commence with 'E'. The section
+headed "ERRORS" in each manual page PROVIDES a LIST of POSSIBLE "errno" VALUES that can be RETURNED by each
+system call. Here is a simple example of the use of "errno" to DIAGNOSE a system call error:
+     
+     cnt = read(fd, buf, numbytes);
+     if(cnt == -1){
+        if(errno == EINTR)
+           fprintf(stderr, "Read was interrupted by a signal\n");
+        else{
+           /* Some other error occurred */
+        }
+     }
+     
+- Successful system calls and library functions NEVER RESET "errno" to 0, so this variable may have a NONZERO
+VALUE as a CONSEQUENCE of an ERROR from a PREVIOUS CALL. Furthermore, SUSv3 PERMITS a SUCCESSFUL function call
+to SET "errno" to a NONZERO VALUE (although FEW functions do this). Therefore, when CHECKING for an ERROR,
+we should ALWAYS FIRST CHECK if the function RETURN value INDICATES an ERROR, and ONLY THEN examine "errno"
+to DETERMINE the CAUSE of the ERROR.
+- A few system calls (e.g., "getpriority()") can LEGITIMATELY return -1 on SUCCESS. To DETERMINE whether an
+ERROR OCCURS on such calls, we SET "errno" to 0 BEFORE the call, and THEN CHECK it AFTERWARD. If the call
+RETURNS -1 and "errno" is NONZERO, an ERROR OCCURRED (A similar statement also applies to a few library
+functions).
+- A COMMON course of action after a FAILED system call is to PRINT an ERROR MESSAGE based on the "errno"
+value. The "perror()" and "strerror()" library functions are provided for this purpose.
+- The "perror()" function PRINTS the STRING pointed to by its "msg" argument, FOLLOWED by a message
+CORRESPONDING to the CURRENT VALUE of "errno". A SIMPLE WAY of HANDLING ERRORS from system calls would be as
+follows:
+
+     fd = open(pathname, flags, mode);
+     if(fd == -1){
+        perror("open");
+        exit(EXIT_FAILURE);
+     }
+
+- The "strerror()" function returns the ERROR STRING corresponding to the ERROR NUMBER given in its "errnum"
+argument. The string returned by "strerror()" may be STATICALLY ALLOCATED, which means that it could be
+OVERWRITTEN by SUBSEQUENT CALLS to "strerror()".
+- If "errnum" specifies an UNRECOGNIZED ERROR NUMBER, "strerror()" returns a string of the form "Unknown error
+nnn". On some other implementations, "strerror()" instead returns NULL in this case.
+- Because "perror()" and "strerror()" functions are LOCALE-SENSITIVE, error descriptions are DISPLAYED in the
+LOCAL LANGUAGE.
+
+- The various library functions return DIFFERENT data types and DIFFERENT values to indicate failure (check
+the man page for each function). For our purposes, library functions can be DIVIDED into the FOLLOWING
+CATEGORIES:
+   a) Some library functions return ERROR INFORMATION in EXACTLY the SAME WAY as SYSTEM CALLS: a -1 return
+      value, with "errno" INDICATING the SPECIFIC ERROR. An EXAMPLE of such a function is "remove()", which
+      REMOVES a FILE (using the "unlink()" system call) or a DIRECTORY (using the "rmdir()" system call).
+      Errors from these functions can be DIAGNOSED in the SAME WAY as ERRORS from SYSTEM CALLS.
+   b) Some library functions return a value OTHER THAN -1 on error, but nevertheless SET "errno" to INDICATE
+      the SPECIFIC ERROR CONDITION. For example, "fopen()" returns a NULL pointer on error, and the SETTING
+      of "errno" DEPENDS on WHICH underlying system call failed. The "perror()" and "strerror()" functions
+      can be used to DIAGNOSE these errors.
+   c) Other library functions DON'T USE "errno" AT ALL. The METHOD for DETERMINING the EXISTENCE and CAUSE of 
+      errors DEPENDS on the PARTICULAR FUNCTION and is DOCUMENTED in the function's manual page. For these
+      functions, it is a MISTAKE to use "errno", "perror()", or "strerror()" to diagnose errors.
+
+##########################################################################################################

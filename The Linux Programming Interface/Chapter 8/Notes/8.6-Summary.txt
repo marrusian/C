@@ -1,0 +1,13 @@
+- Each user has a UNIQUE LOGIN NAME and an ASSOCIATED numeric user ID (UID). Users can BELONG to ONE OR MORE
+GROUPS, each of which also has a UNIQUE NAME and an ASSOCIATED numeric group ID (GID). The PRIMARY PURPOSE of
+these IDENTIFIERS is to ESTABLISH OWNERSHIP of VARIOUS SYSTEM RESOURCES (e.g., files) and PERMISSIONS for
+ACCESSING them.
+
+- A user's name and ID are DEFINED in the "/etc/passwd" file, which also contains OTHER INFORMATION about the
+user. A user's GROUP MEMBERSHIPS are DEFINED by fields in the "/etc/passwd" and "/etc/group" files. A further
+file, "/etc/shadow", which can be ONLY READ by PRIVILEGED PROCESSES, is USED to SEPARATE the SENSITIVE
+PASSWORD INFORMATION from the PUBLICLY AVAILABLE USER INFORMATION in "/etc/passwd". Various LIBRARY FUNCTIONS
+are PROVIDED for RETRIEVING INFORMATION from each of these files.
+
+- The "crypt()" function ENCRYPTS a PASSWORD in the SAME MANNER as the STANDARD "LOGIN" PROGRAM, which is
+USEFUL for programs that NEED to AUTHENTICATE USERS.

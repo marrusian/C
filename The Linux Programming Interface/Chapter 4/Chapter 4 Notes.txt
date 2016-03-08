@@ -1,0 +1,458 @@
+- All system calls for performing I/O refer to OPEN FILES using a "FILE DESCRIPTOR", a (usually small)
+nonnegative integer. File descriptors are used to refer to ALL TYPES of OPEN FILES, including pipes, FIFOs,
+sockets, terminals, devices, and regular files. Each process has ITS OWN SET of FILE DESCRIPTORS.
+
+- Standard file descriptors (Table 4-1):
+    File descriptor   Purpose          POSIX name     STDIO stream
+           0          standard input   STDIN_FILENO   stdin
+           1          standard output  STDOUT_FILENO  stdout
+           2          standard error   STDERR_FILENO  stderr
+
+- By CONVENTION, most programs EXPECT to be ABLE to USE the above THREE STANDARD FILE DESCRIPTORS. These
+three descriptors are OPENED on the PROGRAM'S BEHALF by the shell, BEFORE the program is started. Or, more
+precisely, the program INHERITS COPIES of the SHELL'S FILE DESCRIPTORS, and the shell NORMALLY OPERATES with
+these three file descriptors ALWAYS OPEN (In an interactive shell, these three file descriptors normally
+refer to the terminal under which the shell is running). If I/O redirections are specified on a command line,
+then the shell ENSURES that the file descriptors are SUITABLY MODIFIED before starting the program. 
+
+- When referring to these file descriptors in a program, we can use EITHER the numbers (0, 1, or 2) or,
+PREFERABLY, the POSIX standard names defined in <unistd.h>.
+
+    Note: Although the variables "stdin", "stdout", and "stderr" INITIALLY REFER to the process's standard
+         input, output, and error, they can be CHANGED to REFER to ANY FILE by using the "freopen()" library
+         function. As part of its operation, "freopen()" may CHANGE the FILE DESCRIPTOR underlying the
+         REOPENED stream. In other words, after a "freopen()" on "stdout", for example, it is NO LONGER SAFE
+         to ASSUME that the underlying FILE DESCRIPTOR is STILL 1.
+
+- The following are the four KEY system calls for performing file I/O (programming languages and software
+packages typically EMPLOY these calls ONLY INDIRECTLY, via I/O libraries):
+   a) fd = open(pathname, flags, mode) opens the file identified by "pathname", RETURNING a FILE DESCRIPTOR
+     used to REFER to the OPEN FILE in SUBSEQUENT calls. If the file DOESN'T EXIST, "open()" may CREATE it,
+     DEPENDING on the SETTINGS of the "flags" bit-mask argument. The "flags" argument ALSO SPECIFIES whether
+     the file is to be opened for READING, WRITING, or BOTH. The "mode" argument specifies the PERMISSIONS 
+     to be PLACED on the FILE if it is created by this call. If the "open()" call is NOT BEING USED to CREATE
+     a file, this argument is IGNORED and can be OMITTED.
+
+   b) numread = read(fd, buffer, count) reads AT MOST "count" bytes from the OPEN FILE referred to by "fd"
+     and STORES them in "buffer". The "read()" call RETURNS the number of bytes ACTUALLY read. If NO FURTHER
+     BYTES could be read (i.e., EOF was encountered), "read()" returns 0.
+
+   c) numwritten = write(fd, buffer, count) writes UP TO "count" bytes FROM "buffer" TO the OPEN FILE referred
+     to by "fd". The "write()" call RETURNS the number of bytes ACTUALLY written, which MAY BE LESS than
+     "count".
+ 
+   d) status = close(fd) is called AFTER ALL I/O has been COMPLETED, in order to RELEASE the FILE DESCRIPTOR
+     "fd" and its ASSOCIATED KERNEL RESOURCES.
+
+##########################################################################################################
+- One of the DISTINGUISHING FEATURES of the UNIX I/O model is the concept of UNIVERSALITY of I/O. This means
+that the SAME FOUR SYSTEM CALLS - "open()", "read()", "write()", and "close()" - are used to PERFORM I/O on
+ALL TYPES of files, including DEVICES such as TERMINALS. Consequently, if we write a program USING ONLY these
+system calls, that program WILL WORK on ANY TYPE of FILE.
+
+- Universality of I/O is achieved by ENSURING that EACH FILE SYSTEM and DEVICE DRIVER implements the SAME SET
+of I/O system calls. Because details SPECIFIC to the file system or device are HANDLED within the KERNEL, we
+can GENERALLY IGNORE device-specific factors when writing application programs. When ACCESS to SPECIFIC
+FEATURES of a file system or device is REQUIRED, a program can use the catchall "ioctl()" system call, which
+PROVIDES an INTERFACE to FEATURES that FALL OUTSIDE of the UNIVERSAL I/O model.
+
+##########################################################################################################
+- The "open()" system call either:
+     - Opens an existing file;
+   or
+     - Creates and opens a new file;
+
+- Prototype and dependencies:
+     #include <sys/stat.h>
+     #include <fcntl.h>
+
+     int open(const char *pathname, int flags, ... /* mode_t mode */);
+                                   Returns file descriptor on success, or -1 on error
+
+- The file to be opened is identified by the "pathname" argument. If "pathname" is a symbolic link, it is
+DEREFERENCED. On success, "open()" returns a FILE DESCRIPTOR that is used to REFER to the FILE in SUBSEQUENT
+system calls. If an error occurs, "open()" returns -1 and "errno" is SET ACCORDINGLY.
+- The "flags" argument is a BIT MASK that specifies the "ACCESS MODE" for the file, using ONE of the following
+CONSTANTS:
+      Access mode    Description
+      O_RDONLY       Opens the file for READING ONLY
+      O_WRONLY       Opens the file for WRITING ONLY
+      O_RDWR         Opens the file for BOTH reading and writing
+
+   Note: Early UNIX implementations used the numbers 0, 1 and 2 INSTEAD of the names shown above. Most modern
+        UNIX implementations define these constants to have those values. Thus, we can see that O_RDWR is
+        NOT EQUIVALENT to O_RDONLY | O_WRONLY; the LATTER COMBINATION is a LOGICAL ERROR.
+
+- When "open()" is used to CREATE a new file, the "mode" bit-mask argument specifies the PERMISSIONS to be
+PLACED on the FILE (the 'mode_t' data type used to type "mode" is an INTEGER TYPE specified in SUSv3). If
+the "open()" call DOESN'T SPECIFY 'O_CREAT', "mode" can be OMITTED.
+
+- We note that the "mode" argument can be specified as a NUMBER (typically in OCTAL) or, PREFERABLY, by ORing
+(|) together ZERO or MORE of the PERMISSION BIT-MASK CONSTANTS.  
+
+- SUSv3 specifies that if "open()" succeeds, it is GUARANTEED to use the LOWEST-NUMBERED UNUSED FILE
+DESCRIPTOR for the process. We can use this feature to ENSURE that a FILE is OPENED using a PARTICULAR file
+descriptor.
+
+- We now consider the "flags" argument in MORE DETAIL. Table 4-3 summarizes the FULL SET of CONSTANTS that
+can be bit-wise ORed (|) in "flags". The final column indicates WHICH o these constants are STANDARDIZED in
+SUSv3 or SUSv4.
+
+- Table 4-3: Values for the "flags" arguments of "open()":
+    ----------------------------------------------------------------------
+    | Flag      |  Purpose                                         | SUS?|
+    |-----------|--------------------------------------------------|-----|
+    |O_RDONLY   | Open for READING ONLY                            |  v3 |
+    |O_WRONLY   | Open for WRITING ONLY                            |  v3 |
+    |O_RDWR     | Open for READING and WRITING                     |  v3 |
+    |-----------|--------------------------------------------------|-----|
+    |O_CLOEXEC  | Set the close-on-exec flag (since Linux 2.6.23)  |  v4 |
+    |O_CREAT    | Create file if it DOESN'T ALREADY EXIST          |  v3 |
+    |O_DIRECTORY| Fail if "pathname" is NOT A DIRECTORY            |  v4 |
+    |O_EXCL     | With O_CREAT: create file EXCLUSIVELY            |  v3 |
+    |O_LARGEFILE| Used on 32-bit systems to open LARGE FILES       |     |
+    |O_NOCTTY   | Don't let "pathname" become the controlling TTY  |  v3 |
+    |O_NOFOLLOW | Don't dereference symbolic links                 |  v4 |
+    |O_TRUNC    | Truncate existing file to zero length            |  v3 |
+    |-----------|--------------------------------------------------|-----|
+    |O_APPEND   | Writes are ALWAYS APPENDED to EOF                |  v3 |
+    |O_ASYNC    | Generate a SIGNAL when I/O is POSSIBLE           |     |
+    |O_DIRECT   | File I/O bypasses buffer cache                   |     |
+    |O_DSYNC    | Provide SYNCHRONIZED I/O data integrity (2.6.33) |  v3 |
+    |O_NOATIME  | Don't update file last access time on read()     |     |
+    |O_NONBLOCK | Open in NONBLOCKING mode                         |  v3 |
+    |O_SYNC     | Make file writes SYNCHRONOUS                     |  v3 |
+    ----------------------------------------------------------------------
+
+- The CONSTANTS in Table 4-3 are DIVIDED into the following GROUPS:
+    a) File ACCESS MODE FLAGS: These are the O_RDONLY, O_WRONLY, and O_RDWR flags described earlier. They
+                               can be retrieved using the "fcntl() F_GETFL" operation.
+
+    b) File CREATION FLAGS: These are the flags shown in the SECOND PART of Table 4-3. They CONTROL various
+                            aspects of the BEHAVIOR of the "open()" call, as well as OPTIONS for SUBSEQUENT
+                            I/O operations. These flags CAN'T be RETRIEVED or CHANGED.
+
+    c) Open file STATUS FLAGS: These are the remaining flags in Table 4-3. They CAN be RETRIEVED and MODIFIED
+                               using the "fcntl() F_GETFL and F_SETFL" operations. These flags are sometimes
+                               simply called the "FILE STATUS FLAGS".
+
+      Note: Since kernel 2.6.22, the Linux-specific files in the directory "/proc/PID/fdinfo" can be READ to
+           OBTAIN INFORMATION about the FILE DESCRIPTORS of ANY PROCESS on the system. There is one file in
+           this directory for EACH of the PROCESS'S OPEN FILE DESCRIPTORS, with a NAME that MATCHES the
+           NUMBER of the DESCRIPTOR. The "pos" field in this file show the CURRENT FILE OFFSET. The "flags"
+           field is an OCTAL NUMBER that SHOWS the FILE ACCESS MODE FLAGS and OPEN FILE STATUS FLAGS
+           (to DECODE this number, we need to look at the numeric values of these flags in the C library
+            header files).
+
+- Details for the "flags" constants are as follows:
+     a) O_APPEND - Writes are ALWAYS APPENDED to the EOF.
+
+     b) O_CREAT  - If the file DOESN'T ALREADY EXIST, it is CREATED as a NEW, EMPTY FILE. This flag is
+                   effective even if the file is being opened ONLY for READING. If we specify O_CREAT,
+                   then we MUST SUPPLY a "mode" argument in the "open()" call; otherwise, the PERMISSIONS
+                   of the NEW FILE will be SET so some RANDOM VALUE from the STACK.
+
+     c) O_DIRECT - Allows file I/O to BYPASS the buffer cache. The "_GNU_SOURCE" FTM must be defined in
+                   order to make this constant definition available from <fcntl.h>.
+
+     d) O_DIRECTORY - Return an error ("errno" equals 'ENOTDIR') if "pathname" is NOT A DIRECTORY. This flag
+                      is an EXTENSION designed SPECIFICALLY for IMPLEMENTING "opendir()". The "_GNU_SOURCE"
+                      FTM must be defined in order to make this constant definition available from <fcntl.h>.
+
+     e) O_DSYNC (since Linux 2.6.33) - Perform file writes according to the requirements of synchronized
+                                       I/O data integrity completion.
+
+     g) O_EXCL - This flag is used in CONJUNCTION with 'O_CREAT' to INDICATE that if the file ALREADY EXISTS,
+                 it SHOULD NOT be OPENED; instead, "open()" SHOULD FAIL, with "errno" set to 'EEXIST'.
+                 In other words, this flag ALLOWS the CALLER to ENSURE that it is the process CREATING the
+                 file. The check for existence and the creation of the file are performed ATOMICALLY. When
+                 BOTH 'O_CREAT' and 'O_EXCL' are SPECIFIED in "flags", "open()" FAILS (with the error EEXIST)
+                 if "pathname" is a SYMBOLIC LINK. SUSv3 requires this behaviour so that a PRIVILEGED
+                 APPLICATION can create a file in a KNOWN LOCATION without there being a possibility that a
+                 symbolic link would cause the file to be created in a DIFFERENT LOCATION (e.g., a system
+                 directory), which would have SECURITY IMPLICATIONS.
+
+     h) O_LARGEFILE - Open the file with LARGE FILE SUPPORT. This flag is used on 32-bit system in order
+                      to work with large files. Although it is NOT SPECIFIED in SUSv3, the 'O_LARGEFILE'
+                      flag is found on SEVERAL other UNIX implementations. On 64-bit Linux implementations,
+                      this flag has NO EFFECT.
+
+     i) O_NOATIME - Don't update the file last access time (the "st_atime field) when reading from this file.
+                    To use this flag, the EUID of the calling process MUST MATCH the OWNER of the file, or
+                    the process must be PRIVILEGED (CAP_FOWNER); otherwise, "open()" FAILS with the error
+                    'EPERM'. This flag is a NONSTANDARD Linux extension. To EXPOSE its definition from
+                    <fcntl.h>, we must define the "_GNU_SOURCE" FTM. The 'O_NOATIME' flag is INTENDED for
+                    use by INDEXING and BACKUP PROGRAMS. Its use can SIGNIFICANTLY REDUCE the amount of
+                    DISK ACTIVITY, because repeated disk seeks back and forth across the disk are
+                    NOT REQUIRED to read the contents of a file and to update the last access time in the
+                    file's i-node. 
+
+     j) O_NOFOLLOW - Normally, "open()" DEREFERENCES "pathname" if it is a SYMBOLIC LINK. However, if the
+                     'O_NOFOLLOW' flag is specified, the "open()" FAILS (with "errno" set to 'ELOOP') if
+                     "pathname" is a symbolic link. This flag is useful, ESPECIALLY in PRIVILEGED PROGRAMS,
+                     for ENSURING that "open()" doesn't DEREFERENCE a symbolic link. To expose the definition
+                     of this flag from <fcntl.h>, we must define the "_GNU_SOURCE" FTM.
+
+     l) O_NONBLOCK - Open the file in NONBLOCKING MODE.
+
+     m) O_SYNC     - Open the file for SYNCHRONOUS I/O.
+
+     n) O_TRUNC    - If the file ALREADY EXISTS and is a REGULAR FILE, then TRUNCATE it to ZERO LENGTH,
+                     DESTROYING any EXISTING DATA. On Linux, truncation occurs whether the file is being
+                     opened for reading or writing (in BOTH cases, we MUST have WRITE PERMISSION on the
+                     file). SUSv3 leaves the combination of 'O_RDONLY' and 'O_TRUNC' UNSPECIFIED, but most
+                     other UNIX implementations behave in the same way as Linux.
+
+- If an error occurs while trying to open the file, "open()" returns -1, and "errno" identifies the CAUSE of
+the error. The following are SOME POSSIBLE ERRORS that can occur (in ADDITION to those ALREADY NOTED when
+describing the "flags" argument above):
+   a) EACCES - The file permissions DON'T ALLOW the CALLING PROCESS to OPEN the file in the mode specified
+               by "flags". Alternatively, because of DIRECTORY PERMISSIONS, the file COULD NOT BE ACCESSED,
+               or the file DID NOT EXIST and COULD NOT BE CREATED.
+
+   b) EISDIR - The specified file is a DIRECTORY, and the caller ATTEMPTED to OPEN it for WRITING. This ISN'T
+               ALLOWED (on the other hand, there are occasions when it can be USEFUL to OPEN a DIRECTORY for
+               READING).
+
+   c) EMFILE - The process RESOURCE LIMIT on the NUMBER of OPEN FILE DESCRIPTORS has been REACHED.
+
+   d) ENFILE - The SYSTEM-WIDE LIMIT on the NUMBER of OPEN FILES has been REACHED.
+
+   e) ENOENT - The specified file DOESN'T EXIST, and 'O_CREAT' was NOT SPECIFIED, or 'O_CREAT' WAS SPECIFIED,
+               and one of the DIRECTORIES in "pathname" DOESN'T EXIST or is a SYMBOLIC LINK pointing to a
+               NONEXISTENT pathname (a DANGLING LINK).
+
+   g) EROFS  - The specified file is a READ-ONLY FILE SYSTEM and the caller tried to OPEN it for WRITING.
+
+   h) ETXTBSY - The specified file is an EXECUTABLE FILE (a program) that is CURRENTLY EXECUTING. It is
+                NOT PERMITTED to MODIFY (i.e., open for writing) the EXECUTABLE file ASSOCIATED with a RUNNING
+                PROGRAM (we must FIRST TERMINATE the program in order to be ABLE TO MODIFY the EXECUTABLE
+                FILE).
+
+- The above list is INCOMPLETE: see the "open(2)" manual page for more reasons why "open()" may fail.
+
+- In early UNIX implementations, "open()" had ONLY TWO ARGUMENTS and COULD NOT be used to create a new file.
+Instead, the "creat()" system call was used to CREATE and OPEN a NEW FILE. Calling "creat()" is EQUIVALENT to
+the following "open()" call:
+        fd = open(pathname, O_WRONLY | O_CREAT | O_TRUNC, mode);
+
+- Because the "open()" flags argument provides GREATER CONTROL over HOW the file is opened (e.g., we can
+specify O_RDWR instead of O_WRONLY), "creat()" is now OBSOLETE, although it MAY STILL BE SEEN in OLDER
+PROGRAMS.
+
+##########################################################################################################
+- The "read()" system call reads data from the open file referred to by the descriptor "fd".
+
+- Prototype and dependencies:
+     #include <unistd.h>
+
+     ssize_t read(int fd, void *buffer, size_t count);
+                             Returns number of bytes read, 0 on EOF, or -1 on error
+
+- The "count" argument specifies the MAXIMUM number of bytes to read. The "buffer" argument SUPPLIES the
+ADDRESS of the MEMORY BUFFER into which the INPUT DATA is to be PLACED. This buffer must be AT LEAST "count"
+bytes long.
+
+- A call to "read()" may read LESS than the REQUESTED number of bytes. For a REGULAR FILE, the PROBABLE
+REASON for this is that we were close to the EOF.
+
+- When "read()" is applied to OTHER TYPES of files - such as pipes, FIFOs, sockets, or terminals - there are
+also VARIOUS CIRCUMSTANCES where it may read FEWER BYTES THAN REQUESTED. For example, by default, a "read()"
+from a TERMINAL reads characters ONLY UP to the next NEWLINE ('\n') character.
+
+- Using "read()" to input a series of characters from, say, a TERMINAL, we MIGHT EXPECT the following code
+to work:
+       #define MAX_READ 20
+       char buffer[MAX_READ];
+
+       if(read(STDIN_FILENO, buffer, MAX_READ) == -1)
+          errExit("Read");
+       printf("The input data was : %s\n", buffer);
+
+- The OUTPUT from this piece of code is LIKELY to be STRANGE, since it wil PROBABLY INCLUDE characters in
+ADDITION to the string ACTUALLY ENTERED. This is because "read()" DOESN'T PLACE a terminating null byte at the
+end of the string that "printf()" is being asked to print. This must be so, since "read()" can be used to read
+ANY SEQUENCE OF BYTES from a file. In some cases, this input MIGHT be text, but in OTHER CASES, the input
+might be BINARY INTEGERS or C structures in BINARY FORM. There is NO WAY for "read()" to tell the difference,
+and so it CAN'T attent to the C convention of null terminating character strings. If a TERMINATING NULL BYTE
+is REQUIRED at the END of the INPUT BUFFER, we must PUT it there EXPLICITLY:
+        char buffer[MAX_READ + 1];
+        ssize_t numRead; 
+
+        numRead = read(STDIN_FILENO, buffer, MAX_READ);
+        if(numRead == -1)
+           errExit("Read");
+
+        buffer[numRead] = '\0';
+        printf("The input data was: %s\n", buffer);
+
+- Because the terminating null byte REQUIRES a BYTE OF MEMORY, the SIZE of "buffer" must be AT LEAST ONE
+GREATER than the LARGEST STRING we EXPECT to READ.
+
+##########################################################################################################
+- The "write()" system call writes data to an open file.
+
+- Prototype and dependencies:
+     #include <unistd.h>
+
+     ssize_t write(int fd, const void *buffer, size_t count);
+                             Returns number of bytes writen, or -1 on error
+
+- The arguments to "write()" are SIMILAR to those for "read()": "buffer" is the ADDRESS of the data to be
+WRITTEN; "count" is the NUMBER OF BYTES to WRITE from "bufer"; and "fd" is a FILE DESCRIPTOR referring to
+the file to which DATA is to be WRITTEN.
+
+- On success, "write()" returns the number of bytes ACTUALLY WRITTEN; this MAY BE LESS than "count". For a
+disk file, POSSIBLE REASONS for such a PARTIAL WRITE are that the disk was FILLED or that the process
+RESOURCE LIMIT on FILE SIZES was REACHED (the relevant limit is "RLIMIT_FSIZE").
+
+- When performing I/O on a disk file, a SUCCESSFUL RETURN from "write()" DOESN'T GUARANTEE that the data has
+been transferred to disk, because the kernel performs BUFFERING of DISK I/O in order to REDUCE DISK ACTIVITY
+and EXPEDITE "write()" calls.
+
+##########################################################################################################
+- The "close()" system call CLOSES an OPEN FILE DESCRIPTOR, FREEING it for SUBSEQUENT REUSE by the process.
+When a process TERMINATES, ALL of its open FILE DESCRIPTORS are AUTOMATICALLY CLOSED.
+
+- Prototype and dependencies:
+     #include <unistd.h>
+
+     int close(int fd);
+                        Returns 0 on success, or -1 on error
+
+- It is usually GOOD PRACTICE to close UNNEEDED file descriptors EXPLICITLY, since this makes our code MORE
+READABLE and RELIABLE in the face of subsequent modifications. Furthermore, file descriptors are a CONSUMABLE
+RESOURCE, so FAILURE to CLOSE a FILE DESCRIPTOR could RESULT in a process RUNNING OUT of DESCRIPTORS. This is
+a PARTICULARY IMPORTANT issue when writing LONG-LIVED PROGRAMS that deal with MULTIPLE FILES, such as SHELLS
+or NETWORK SERVERS.
+
+- Just like every other system call, a call to "close()" should be bracketed with ERROR-CHECKING CODE, such
+as the following:
+     if(close(fd) == -1)
+        errExit("Close");
+
+- This CATCHES ERRORS such as ATTEMPTING to CLOSE an UNOPENED file descriptor or CLOSE the SAME file
+descriptor TWICE, and catches error conditions that a specific file system may diagnose during a close
+operation.
+
+     Note: NFS (Network File System) provides an example of an error that is SPECIFIC to a file system. If an
+          NFS commit failure occurs, meaning that the data DID NOT REACH the REMOTE DISK, then this error is
+          PROPAGATED to the application as a FAILURE in the "close()" call.
+
+##########################################################################################################
+- For EACH open file, the kernel records a FILE OFFSET, sometimes also called the READ-WRITE OFFSET or
+POINTER. This is the LOCATION in the FILE at which the NEXT "read()" or "write()" will COMMENCE. The file
+offset is EXPRESSED as an ORDINAL BYTE POSITION relative to the START of the file. The FIRST BYTE of the FILE
+is at OFFSET 0.
+
+- The FILE OFFSET is SET to POINT to the START of the file when the file is OPENED and is AUTOMATICALLY
+ADJUSTED by EACH subsequent CALL to "read()" or "write()" so that it POINTS to the NEXT BYTE of the file
+AFTER THE BYTE(S) just READ or WRITTEN. Thus, successive "read()" and "write()" calls PROGRESS SEQUENTIALLY
+through a file.
+
+- The "lseek()" system call ADJUSTS the FILE OFFSET of the open file REFERRED to by the FILE DESCRIPTOR "fd",
+ACCORDING to the VALUES specified in "offset" and "whence".
+
+- Prototype and dependencies:
+     #include <unistd.h>
+
+     off_t lseek(int fd, off_t offset, int whence);
+                        Returns new file offset if successful, or -1 on error
+
+- The "offset" argument SPECIFIES a VALUE in BYTES (the 'off_t data type is a SIGNED INTEGER TYPE specified
+by SUSv3). The "whence" argument INDICATES the BASE POINT from which "offset" is to be INTERPRETED, and is one
+of the following values:
+   a) SEEK_SET - The file offset is set "offset" bytes from the BEGINNING of the file.
+   b) SEEK_CUR - The file offset is adjusted by "offset" bytes RELATIVE to the CURRENT FILE OFFSET.
+   c) SEEK_END - The file offset is set to the SIZE of the file PLUS "offset". In other words, "offset" is
+                 interpreted with RESPECT to the NEXT BYTE after the LAST BYTE of the file.
+
+      Note: In earlier UNIX implementations, the integers 0, 1 and 2 were used, rather than the SEEK_*
+           constants shown above. Older versions of BSD used different names for these values: L_SET, L_INCR,
+           and L_XTND.
+
+- If "whence" is 'SEEK_CUR' or 'SEEK_END', "offset" may be NEGATIVE or POSITIVE; for 'SEEK_SET', "offset"
+MUST be NONNEGATIVE.
+
+- Calling "lseek()" SIMPLY ADJUSTS the kernel's RECORD of the FILE OFFSET associated with a FILE DESCRIPTOR.
+It DOES NOT cause any physical device access.
+
+- We CAN'T APPLY "lseek()" to ALL TYPES of FILES. Applying "lseek()" to a pipe, FIFO, socket, or terminal is
+NOT PERMITTED; "lseek()" fails, with "errno" set to 'ESPIPE'. On the other hand, it is POSSIBLE to APPLY
+"lseek()" to DEVICES where it is SENSIBLE to do so. For example, it is POSSIBLE to SEEK to a SPECIFIED
+LOCATION on a DISK or TAPE DEVICE.
+
+      Note: The 'l' in the name "lseek()" derives from the fact that the "offset" argument and the return
+           value were BOTH ORIGINALLY typed as 'long'. Early UNIX implementations provided a "seek()" system
+           call, which types these values as 'int'.
+
+- If a program SEEKS PAST the EOF, a CALL to "read()" will RETURN 0, indicating EOF. Somewhat surprisingly,
+is is POSSIBLE to WRITE BYTES at an ARBITRARY point PAST the EOF.
+
+- The SPACE in BETWEEN the PREVIOUS EOF and the NEWLY WRITTEN BYTES is REFERRED to as a "FILE HOLE". From a
+programming POV, the BYTES in a HOLE do EXIST, and READING from the HOLE returns a buffer of bytes CONTAINING
+0 (NULL BYTES).
+
+- File holes DON'T, however, TAKE UP any DISK SPACE. The file system DOESN'T ALLOCATE any DISK BLOCKS for a
+HOLE until, at some LATER point, DATA is WRITTEN into it. The MAIN ADVANTAGE of file holes is that a SPARSELY
+POPULATED file CONSUMESS LESS disk space than would otherwise be required if the null bytes ACTUALLY NEEDED
+to be ALLOCATED in DISK BLOCKS. Core dump files are COMMON examples of files that contain large holes.
+
+      Note: The statement that files DON'T CONSUME disk space NEEDS to be QUALIFIED slightly. On MOST file
+           systems, FILE SPACE is ALLOCATED in UNITS OF BLOCKS. The SIZE of a block DEPENDS on the file
+           system, but is TYPICALLY something like 1024, 2048, or 4096 bytes. If the EDGE of a HOLE falls
+           WITHIN a block, RATHER than on a BLOCK BOUNDARY, then a COMPLETE BLOCK is ALLOCATED to STORE the
+           DATA in the OTHER PART of the block, and the part CORRESPONDING to the HOLE is FILLED with NULL
+           BYTES.
+
+- Most native UNIX file system SUPPORT the concept of file holes. On a file system that DOESN'T SUPPORT holes,
+EXPLICIT null bytes are WRITTEN to the file.
+
+- The EXISTENCE of HOLES means that a file's NOMINAL SIZE may be LARGER than the amount of DISK STORAGE it
+UTILIZES (in some cases, CONSIDERABLY LARGER). Writing bytes into the MIDDLE of the FILE HOLE will DECREASE
+the amount of FREE DISK SPACE as the kernel ALLOCATES BLOCKS to FILL the HOLE, even though the file's size
+DOESN'T CHANGE. Such a scenario in UNCOMMON, but nevertheless one to be AWARE OF.
+
+##########################################################################################################
+- The "ioctl()" system call is a GENERAL-PURPOSE MECHANISM for performing FILE and DEVICE OPERATIONS that 
+FALL OUTSIDE the UNIVERSAL I/O MODEL described earlier.
+
+- Prototype and dependencies:
+     #include <sys/ioctl.h>
+
+     int ioctl(int fd, int request, ... /* argp */);
+                        Value returned on success depends on "request", or -1 on error
+
+- The "fd" argument is an open file descriptor for the DEVICE or FILE upon which the CONTROL OPERATION
+specified by "request" is to be PERFORMED. Device-specific header files define constants that can be passed
+in the "request" argument.
+
+- As indicated by the standard C ellipsis (...) notation, the THIRD argument to "ioctl()", which we label
+"argp", can be of ANY TYPE. The VALUE of the "request" argument ENABLES "ioctl()" to DETERMINE what TYPE of
+VALUE to EXPECT in "argp". Typically, "argp" is a POINTER to EITHER an INTEGER or a STRUCTURE; in some cases,
+it is UNUSED.
+
+        Note: The ONLY specification that SUSv3 makes for "ioctl()" is for operations to control "STREAMS"
+             devices (the "STREAMS" facility is a System V feature that is NOT SUPPORTED by the mainline
+             Linux kernel, although a few add-on implementations have been developed). NONE of the other
+             "ioctl()" operations described later is specified in SUSv3. However, the "ioctl()" call has
+             been part of the UNIX system since early versions, and consequently several of the "ioctl()"
+             operations that we describe later are provided on MANY other UNIX implementations.
+
+##########################################################################################################
+- In order to perform I/O on a REGULAR FILE, we MUST FIRST OBTAIN a FILE DESCRIPTOR using "open()". I/O is
+then performed using "read()" and "write()". After performing ALL I/O, we should FREE the FILE DESCRIPTOR and
+its ASSOCIATED RESOURCES using "close()". These system calls can be used to perform I/O on ALL TYPES of FILES.
+
+- The fact that ALL FILE TYPES and DEVICE DRIVERS implement the SAME I/O INTERFACE allows for UNIVERSALITY
+of I/O, meaning that a program can typically be used with ANY TYPE of file WITHOUT REQUIRING code that is
+SPECIFIC to the FILE TYPE.
+
+- For EACH open file, the kernel MAINTAINS a FILE OFFSET, which DETERMINES the LOCATION at which the NEXT READ
+or WRITE will OCCUR. The file offset is IMPLICITLY UPDATED by reads and writes. Using "lseek()", we can
+EXPLICITLY REPOSITION the file offset to ANY LOCATION within the file or past the end of the file. Writing
+data at a position BEYOND EOF creates a HOLE in the file. Reads from a FILE HOLE return BYTES containing
+ZEROES.
+
+- The "ioctl" system call is a CATCHALL for DEVICE and FILE OPERATIONS that DON'T FIT into the standard
+file I/O model.

@@ -1,0 +1,257 @@
+- The "%d" notation is called a FORMAT SPECIFIER, because it indicates the form that "printf()" uses
+to display a value.
+
+- A format specifier follows this prototype: 
+  - %[flags][width][.precision][length]specifier
+
+- List of specifier characters: 
+  - d/i => Signed decimal integer
+  - u   => Unsigned decimal integer
+  - o   => Unsigned octal
+  - x/X => Unsigned hexadecimal integer/(uppercase)
+  - f/F => Decimal floating point/(uppercase)
+  - e/E => Scientific notation (mantissa/exponent)/(uppercase)
+  - g/G => Use the shorted representation: %e/%E or %f/%F
+  - a/A => Hexadecimal floating point/(uppercase)
+  - c   => Character
+  - s   => String of characters
+  - p   => Pointer address
+  
+- List of flags:
+  - '-' => The item is left-justified; that is, it is printed beginning at the left of the field.
+  - '+' => Forces to preceed the result with a plus or minus sign even for positive numbers.
+  - (space) => If no sign/prefix is going to be written, a blank space is inserted before the value.
+  - '#' => Used with 'o', 'x', or 'X' specifiers, the value is preceeded with 0, 0x or 0X.
+  - '0' => For NUMERIC FORMS, pad the field width with leading zeros instead of with spaces.
+           This flag is IGNORED if a '-' flag is present or if, for an integer form, a precision
+           is specified.
+
+- List of width:
+  - (number) => Minimum numbers of characters to be printed. If the printed value is shorter, the 
+               result is padded with blank spaces.
+
+- List of precision:
+  - .number => For integer specifiers (d,i,o,u,x,X) precision specifies the minimum number of digits
+              to be written. If the value is shorter, the result is padded with spaces.
+               For a,A,e,E,f and F specifiers, this is the number of digits to be printed AFTER the
+              the decimal point (by default, this is 6).
+               For s, this is the maximum number of character to be printed. By default, all
+              characters are printed until the ending null character.
+
+- List of lengths:
+  - "hh" - signed/unsigned char conversion.
+  - "h"  - signed/unsigned short conversion.
+  - "l"  - signed/unsigned long conversion, wint_t and wchar_t* conversion.
+  - "ll" - signed/unsigned long long conversion.
+  - "j"  - intmax_t/uintmax_t conversion.
+  - "z"  - size_t/size_t conversion.
+  - "t"  - ptrdiff_t/ptrdiff_t conversion.
+  - "L"  - long double conversion.
+
+###################################################################################################
+- Points to keep in mind about integer types:
+   - The type "short int" or, more briefly, "short" MAY use less storage than int, thus saving space
+   when only small numbers are needed.
+   - The type "long int", or "long", MAY use more storage than int, thus enabling us to express larger
+   integer values.
+   - The type "long "long int", or "long long" (introduced in C99), MAY use more storage than long.
+   At the minimum, it must use AT LEAST 64 bits.
+   - The types "unsigned long int", or "unsigned long", and "unsigned short int", or "unsigned short",
+   are recognized as valid by the C90 standard. To this list, C99 adds "unsigned long long int", or
+   "unsigned long long".
+   - The keyword "signed" can be used with any of the signed types to make our intent EXPLICIT.
+
+- We say that "long" and "short" types "may" use more or less storage than "int", because C guarantees
+only that "short" is NO LONGER than "int" and that "long" is NO SHORTER than "int". More specifically,
+short and int are AT LEAST 16-bit wide, and long is AT LEAST 32-bit wide.
+
+- We use the "long" type if we need to use numbers that "long" can handle and that "int" cannot.
+However, on systems for which "long" is bigger than "int", using "long" can slow down calculations, so
+don't use "long" if it's not essential.
+
+- On systems where "int" and "long" are the same size, if we NEED 32-bit integers, we should use "long"
+instead of "int" so that the program will function correctly if transferred to a 16-bit machine.
+
+- C automatically EXPANDS an integer type to type "int" and a floating-point type to type "double"
+when they are passed as arguments to any function that doesn't explicitly prototype the argument type. 
+The conversion takes place because the "int" type is intended to be the integer size that the computer
+handles MOST EFFICIENTLY. 
+
+- It's our responsibility to MAKE SURE the number of specifiers MATCHES the number of values to be
+displayed and to use the CORRECT specifier for the type of value to be displayed.
+
+###################################################################################################
+- C GUARANTEES that the "char" type is large enough to store the basic character set for the system on
+which C is implemented.
+
+- The C language DEFINES a byte to be the number of bits used by type "char", so one can have a
+system with a 16-bit or 32-bit byte and "char" type. This means that the size of "char" is necessarily
+1 byte because C defines the size of 1 byte in terms of "char". So, on a system with a 16-bit char
+and a 64-bit double, sizeof will report "double" as having a size of 4 bytes.
+
+- It's much better to use character constants than numeric code values, because it's not guaranteed
+that a system is using the ASCII character set.
+
+- Escape sequences are special C symbol sequences used to represent reserved characters or control
+characters :
+  - '\a' - Alert (ANSI C).
+  - '\b' - Backspace.
+  - '\f' - Form feed.
+  - '\n' - Newline.
+  - '\r' - Carriage return.
+  - '\t' - Horizontal tab.
+  - '\v' - Vertical tab.
+  - '\\' - Backslash(\).
+  - '\'' - Single quote(').
+  - '\"' - Double quote(").
+  - '\?' - Question mark(?).
+  - '\0oo' - Octal value. (o represents an octal digit.)
+  - '\xhh' - Hex value. (h represents a hexadecimal digit.)
+
+- When using numeric code, using an octal/hexa escape sequence instead of a decimal value makes it 
+clear to someone reading the code that we intend to represent a character code. More so, an escape
+sequence can be embedded in part of a C string.
+
+- The signed/unsigned versions of "char" are useful if we're using the type to handle small integers.
+For characters use, just use the standard "char" type WITHOUT modifiers.
+
+- The "_Bool" type is a C99 addition that's used to represent Boolean values and is really just an
+integer type.
+
+- Portable integer types are defined in the "stdint.h" and "inttypes.h" header files. They're portable
+in that C has created more names for the existing types so they could have the same meaning regardless
+of the system.
+
+- There are three kind of integer data types defined in those header files:
+   a) Exact-width integer types. (The type is no less or no more than the specified width)
+   b) Minimum-width integer types. (The type is AT LEAST big enough to meet the specification and
+                                    no other type that can do the job is smaller)
+   c) Fastest minimum-width integer types. (The type will allow the fastest computation)
+   d) Maximum-width integer types. (The type will match the biggest possible integer on the system)
+
+- If a system can't support a particular exact-width type, it will use the most appropriate minimum
+width type.
+
+a) For example, int32_t is EXACTLY 32 bits, no less or no more. On a system that uses a 32-bit int,
+the header file could define int32_t as an alias for int. On a different system, one with a 16-bit int
+and a 32-bit "long", it could define int32_t as an alias for "long".
+
+b) For example, int_least8_t will be an alias for the smallest available type that can hold an 8-bit
+signed integer value. If the smallest type on a particular system were 16-bits, the int8_t type would
+not be defined (exact-width type). However, the int_least8_t type would be available and perharps
+implemented as a 16-bit integer).
+
+c) For example, int_fast8_t will be defined as an alternative name for the integer type on our system
+that allows the fastest calculations for 8-bit signed values.
+
+d) For example, intmax_t is a type that can hold ANY valid signed integer galue. Similarly, uintmax_t
+stands for the largest available unsigned type.
+
+- Besides portable type names, the C99 and C11 standards also provide assistance with input and output
+by providing some string macros to replace the usual format specifiers. For example, the "inttypes.h"
+header file defines "PRId32" as a string representing the appropriate specifier ('d' or 'ld', for
+instance) for a 32-bit signed value.
+
+###################################################################################################
+- The C standard provides that a "float" has to be able to represent AT LEAST six significant figures
+and allow a range of at least 10^(-37) to 10^37.
+
+- C also has a "double" (for "double precision") floating-point type. The double type has the same
+MINIMUM range requirements as "float", but it EXTENDS the minimum number of significant figures that
+can be represented to 10. Typical "double" representations use 64-bits instead of 32.
+
+- C allows for a THIRD floating-point type: "long double". The intent is to provide for EVEN MORE 
+precision than "double". However, the C standard ONLY guarantees that "long double" is AT LEAST as
+precise as "double".
+
+- By default, the compiler assumes floating-point literals are "double" precision. This ensures
+greater precision for our calculations, but it can slow down a program. C enables us to override this
+default by using an f/F suffix to make the compiler treat a F-P literal as type "float".
+
+- C automatically expands type "float" values to type "double" when they are passed as arguments to
+any function that doesn't explicitly prototype the argument type.
+
+- In case of F-P OVERFLOW, the C standard specifies that the variable gets assigned a special value
+that stands for INFINITY and that printf() displays either "inf" or "infinity"  (or some variation on
+that theme) for the value.
+
+- In case of F-P UNDERFLOW, C refers to F-P values that have lost the full precision of the type as
+SUBNORMAL. The C library provides function that let us check wheter our computations are producing
+subnormal values.
+
+- Another special F-P value that can show up is "NaN" (not-a-number) and it shows up as the return
+value of an undefined result from certain functions (e.g. sqrt(-1) or asin(2)), which printf()
+displays as "nan", "NaN", or something similar.
+
+###################################################################################################
+- "printf()" statements send output to an intermediate storage area called a BUFFER. The standard C
+rules for when output is SENT from the buffer to the screen are clear. It is sent whenever:
+   a) The buffer gets full.
+   b) A newline character is encountered.
+   c) There is impending input.
+
+- Sending the output from the buffer to the screen or file is called FLUSHING the buffer.
+
+- Another solution to force the flush is to explicitly use the "fflush()" function.
+
+####################################################################################################
+
+ Review Answers:
+
+1. a. unsigned int;
+   b. float;
+   c. char;
+   d. unsigned int;
+
+2. We'd use a type "long" variable instead of type "int" if we want to handle values that "int" cannot.
+More so, using "long" can ensure that our program works correctly even on 16-bit machines. However,
+if speed is a concern, we should be careful on systems where long is bigger than int, because it can
+slow down computations.
+
+3. We might use int32_t to get an exact-width 32-bit signed integer. The rationale for this choice
+would be that if a certain system doesn't support this particular exact-width integer type, it will
+use the most appropriate minimum-width integer type, i.e. int_least32_t, which is an alias for the
+smallest available type that can hold a 32-bit signed integer.
+   As a second choice, we might prefer int_fast32_t if we want to get the integer type for which a 
+particular system performs the fastest computations for 32-bit signed values.
+
+4. a. char, moves the cursor one position back.
+   b. int, represents the decimal integer 1066.
+   c. double, represents the F-P value 99.44 in fixed notation.
+   d. int, represents the hexadecimal integer 0XAA (or 170 in decimal).
+   e. double, represents the F-P value 2.0e30 in exponential notation (e-notation).
+
+6.  Constant             Type            Specifier
+ a.   12                 int               %d
+ b.   0X3                unsigned int      %#X
+ c.   'C'                char              %c
+ d.  2.34E07             double            %E
+ e.  '\040'              char              %c
+ f.   7.0                double            %f
+ g.    6L                long              %ld
+ h.   6.0f               float             %f
+ l. 0x5.b6p12            float             %a
+
+7.  Constant             Type            Specifier
+ a.   012                unsigned int      %#o
+ b.  2.9e05L             long double       %Le
+ c.   's'                char              %c
+ d.  100000              long              %ld
+ e.  '\n'                char              %c
+ f.  20.0f               float             %f
+ g.   0X44               unsigned int      %X
+ h.   -40                int               %d
+
+8. printf("The odds agains the %d were %ld to 1.\n", imate, shot);
+   printf("A score of %f is not an %c grade.\n", log, grade);
+
+9. ch = '\r';    // escape sequence
+   ch = 13;      // decimal value
+   ch = '\015';  // octal character literal
+   ch = '\xD';   // hex character literal
+
+11.
+ a. \n means "new line"
+ b. \\ means "backslash(\)"
+ c. \" means "double quote(")"
+ d. \t means "horizontal tab"

@@ -1,0 +1,33 @@
+############################################################################################################
+- On Linux, it is the FILE-SYSTEM user and group IDs, RATHER than the EFFECTIVE user and group IDs, that are
+USED (in CONJUNCTION with the SUPPLEMENTARY GIDs) to DETERMINE PERMISSIONS when performing FILE-SYSTEM
+OPERATIONS such as: opening files, changing file ownership, and modifying file permissions (the EFFECTIVE IDs
+are STILL USED, as on OTHER UNIX implementations, for the OTHER PURPOSES described earlier).
+
+- Normally, the FILE-SYSTEM IDs have the SAME VALUES as the CORRESPONDING EFFECTIVE IDs (and thus TYPICALLY
+are THE SAME as the CORRESPONDING REAL IDs). Furthermore, WHENEVER the EFFECTIVE UID/GID is CHANGED, either
+by a system call or by execution of a set-UID or set-GID program, the CORRESPONDING FILE-SYSTEM ID is ALSO
+CHANGED to the SAME VALUE. Since the FILE-SYSTEM IDs follow the EFFECTIVE IDs in this way, this means that
+Linux EFFECTIVELY BEHAVES just like ANY OTHER UNIX implementation when PRIVILEGES and PERMISSIONS are being
+CHECKED. The FILE-SYSTEM IDs DIFFER from the CORRESPONDING EFFECTIVE IDs, and hence Linux DIFFERS from OTHER
+UNIX implementations, ONLY WHEN we use TWO Linux-specific system calls, "setfsuid()" and "setfsgid()", to
+EXPLICITLY make them DIFFERENT.
+
+- Why does Linux provide the FILE-SYSTEM IDs and in what circumstances would we want the EFFECTIVE and
+FILE-SYSTEM IDs to differ? The reasons are PRIMARILY HISTORICAL. The file-system IDs FIRST APPEARED in
+Linux 1.2. In that kernel version, one process COULD SEND a SIGNAL to another ONLY if the EFFECTIVE UID of the
+sender MATCHED the REAL or EFFECTIVE UID of the TARGET PROCESS. This AFFECTED certain programs such as the
+Linux NFS (Network File System) server program, which NEEDED to be ABLE to ACCESS files AS THOUGH it had the
+EFFECTIVE IDs of the corresponding CLIENT PROCESS. However, if the NFS server CHANGED its EUID, it would be
+VULNERABLE to SINGALS from UNPRIVILEGED user processes. To PREVENT this possibility, the SEPARATE file-system
+user and group IDs were DEVISED. By LEAVING its EUIDs UNCHANGED, but CHANGING its FILE-SYSTEM IDs, the NFS
+server could MASQUERADE as ANOTHER USER for the PURPOSE of ACCESSING files WITHOUT being VULNERABLE to SIGNALS
+from user processes.
+
+- From kernel 2.0 ONWARD, Linux ADOPTED the SUSv3-mandated RULES regarding PERMISSION for SENDING SIGNALS, and
+these rules DON'T INVOLVE the EUID of the TARGET PROCESS. Thus, the FILE-SYSTEM ID feature is NO LONGER
+strictly NECESSARY (a process can nowadays achieve the desired results by making JUDICIOUS use of the system
+calls described later to CHANGE the VALUE of the EUID TO and FROM an UNPRIVILEGED VALUE, as REQUIRED), but it
+REMAINS for COMPATIBILITY with EXISTING SOFTWARE.
+
+############################################################################################################

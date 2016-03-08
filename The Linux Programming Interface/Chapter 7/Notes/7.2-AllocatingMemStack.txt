@@ -1,0 +1,50 @@
+#############################################################################################################
+- Like the functions in the "malloc" package, "alloca()" ALLOCATES MEMORY DYNAMICALLY. However, INSTEAD of
+OBTAINING memory from the HEAP, "alloca()" OBTAINS memory from the STACK by INCREASING the SIZE of the STACK
+FRAME. This is possible because the calling function is the one whose stack frame is, by definition, on the
+TOP of the stack. Therefore, there is SPACE ABOVE the FRAME for EXPANSION, which can be ACCOMPLISHED by
+SIMPLY MODIFYING the VALUE of the STACK POINTER:
+             DEP: #include <alloca>          PROTO: void *alloca(size_t size);
+                  RET: Returns pointer to allocated block of memory
+
+- We need NOT - indeed, MUST NOT - CALL "free()" to DEALLOCATE MEMORY allocated with "alloca()". Likewise,
+it is NOT POSSIBLE to USE "realloc()" to RESIZE a BLOCK of memory ALLOCATED by "alloca()".
+
+- Although "alloca()" is NOT PART of SUSv3, it is PROVIDED on MOST UNIX implementations and is thus REASONABLY
+PORTABLE.
+
+               Note:  Older versions of "glibc", and some other UNIX implementations (mainly BSD derivatives),
+                    require the inclusion of <stdlib.h> instead of <alloca.h> to obtain the declaration of
+                    "alloca()".
+
+- If the STACK OVERFLOWS as a CONSEQUENCE of calling "alloca()", then PROGRAM BEHAVIOUR is UNPREDICTABLE.
+In particular, we DON'T GET a NULL return to INFORM US of the ERROR (In fact, in this circumstance, we MAY
+RECEIVE a 'SIGSEGV' signal). 
+
+- Note that we CAN'T USE "alloca()" WITHIN a FUNCTION ARGUMENT LIST, as in this example:
+         # func(x, alloca(size), z);     /* WRONG! */
+
+- This is BECAUSE the STACK SPACE ALLOCATED by "alloca()" would APPEAR in the MIDDLE of the SPACE for the
+FUNCTION ARGUMENTS (which are PLACED at FIXED locations WITHIN the STACK FRAME). Instead, we MUST USE code
+such as this:
+         # void *y = alloca(size);
+         # func(x, y, z);
+
+- Using "alloca()" to ALLOCATE MEMORY has a FEW ADVANTAGES over "malloc()":
+         a) Allocating blocks of memory is FASTER with "alloca()" THAN with "malloc()", because "alloca()"
+            is IMPLEMENTED by the COMPILER as INLINE CODE that DIRECTLY ADJUSTS the STACK POINTER.
+            Furthermore, "alloca()" DOESN'T NEED to MAINTAIN a LIST of FREE BLOCKS.
+
+         b) The MEMORY that it ALLOCATES is AUTOMATICALLY FREED when the STACK FRAME is REMOVED; that is,
+            when the function that called "alloca()" returns. This is so because the CODE EXECUTED during
+            function return RESETS the VALUE of the STACK POINTER REGISTER to the END of the PREVIOUS FRAME
+            (i.e., ASSUMING a DOWNWARDLY growing stack, to the address JUST ABOVE the START of the CURRENT
+            FRAME). Since we DON'T NEED to do the work of ENSURING that ALLOCATED MEMORY is FREED on ALL
+            RETURN PATHS from a function, CODING of SOME FUNCTIONS becomes MUCH SIMPLER.
+
+- Using "alloca()" can be ESPECIALLY USEFUL if we EMPLOY "longjmp()" or "siglongjmp()" to perform a NONLOCAL
+GOTO from a SIGNAL HANDLER. In this case, it is DIFFICULT or EVEN IMPOSSIBLE to AVOID MEMORY LEAKS if we
+ALLOCATED MEMORY in the JUMPED-OVER functions using "malloc()". By contrast, "alloca()" AVOID this problem
+COMPLETELY, since, as the STACK is UNWOUND by these calls, the ALLOCATED MEMORY is AUTOMATICALLY FREED.
+
+#############################################################################################################

@@ -1,0 +1,25 @@
+##########################################################################################################
+- One of the DISTINGUISHING FEATURES of the I/O model on UNIX systems is the concept of UNIVERSALITY of
+I/O. This means that the same system calls (open(), read(), write(), close(), etc) are used to perform I/O
+on ALL TYPES OF FILES, including DEVICES (the kernel TRANSLATES the application's I/O requests into
+APPROPRIATE filesystem or device-driver operations that peform I/O on the target file or device). Thus,
+a program employing these system calls will work on ANY TYPE of file.
+- The kernel essentially provides ONE FILE TYPE: a sequential stream of bytes, which, in the case of disk
+files, disks, and tape devices, can be RANDOMLY ACCESSED using the lseek() system call.
+- UNIX systems have no EOF character; the end of a file is DETECTED by a READ that RETURNS NO DATA.
+
+- The I/O system calls refer to OPEN FILES using a FILE DESCRIPTOR (a usually small non-negative integer).
+A FILE DESCRIPTOR is typically OBTAINED by a CALL to open(). 
+- Normally, a process INHERITS three open file descriptors when it is started by the shell:
+   a) Descriptor 0 is STANDARD INPUT, the file from which the process TAKES its INPUT;
+   b) Descriptor 1 is STANDARD OUTPUT, the file to which the process WRITES its OUTPUT;
+   c) Descriptor 2 is STANDARD ERROR, the file to which the process WRITES ERROR MESSAGES and notification
+      of exceptional or abnormal conditions.
+- In an interactive shell or program, these three descriptors are normally connected to the terminal. In
+the STDIO library, these descriptors correspond to the file streams STDIN, STDOUT, and STDERR.
+
+- To perform file I/O, C programs typically employ I/O functions contained in the standard C library. This
+set of functions, referred to as the STDIO library, is LAYERED ON TOP of the I/O system calls (open(),
+close(), read(), write(), etc).
+
+##########################################################################################################

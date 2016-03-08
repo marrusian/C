@@ -1,0 +1,73 @@
+##########################################################################################################
+- The term "OPERATING SYSTEM" is commonly used, more narowly, to refer to the CENTRAL SOFTWARE that manages
+and allocates computer resources(i.e., the CPU, RAM, and devices). The term "KERNEL" is often used as a
+synonym for this meaning. The KERNEL greatly simplifies the writing and use of other programs, and
+increases the power and flexibility available to programmers, by providing a SOFTWARE LAYER to MANAGE
+the LIMITED RESOURCES of a computer.
+
+- Typically, the kernel peforms the following tasks:
+  a) Process scheduling: Linux is a PREEMPTIVE MULTITASKING OS. "Multitasking" means that multiple
+                        processes(i.e., running programs) can SIMULTANEOUSLY reside in memory and
+                        each may receive use of the CPU(s). "Preemptive" means that the rules
+                        governing WHICH processes receive use of the CPU and for HOW LONG are
+                        determined by the kernel process scheduler (rather than the process themselves).
+  b) Memory management: The physical memory (RAM) remains a limited resource that the kernel MUST share
+                       among the processes in an equitable and efficient fashion. Like most modern OSs,
+                       Linux employs VIRTUAL MEMORY MANAGEMENT, a technique that confers two main
+                       advantages:
+                         - Process are ISOLATED from one another and from the kernel, so that one process
+                          can't read or modify the memory of another process or the kernel.
+                         - Only PART of a process needs to be kept in memory, thereby lowering the memory
+                          requirements of each process and allowing more processes to be held in RAM
+                          simultaneously. This leads to better CPU utilization.
+  c) File system provision: The kernel provides a FILE SYSTEM on disk, allowing files to be created,
+                           retrieved, updated, deleted, etc.
+  d) Creation/termination of processes: The kernel can load a new program into memory, providing it with
+                                       the resources (e.g, CPU, memory, and access to files) that it needs
+                                       in order to run. Such an instance of a RUNNING PROGRAM is termed a
+                                       PROCESS. Once a process has COMPLETED execution, the kernel ENSURES
+                                       that the resources it uses are FREED for subsequent reuse.
+  e) Access to devices: The devices (mice, monitors, keyboards, disk drives etc) attached to a computer
+                       permit input, output, or both. The kernel provides programs with an interface that
+                       STANDARDIZES and SIMPLIFIES access to devices, while at the same time arbitraring
+                       access by multiple processes to each device.
+  f) Networking: The kernel TRANSMITS and RECEIVES network messages(packets) on behalf of user processes.
+                This task includes routing of network packets to the target system.
+  g) System call API provision: Processes can REQUEST the kernel to perform various tasks using kernel
+                               entry points known as SYSTEM CALLS.
+
+- Modern processors architectures typically allow the CPU to operate in at least TWO DIFFERENT MODES:
+user mode and kernel mode (a.k.a. supervisor mode). Hardware instructions allow switching from one mode
+to another. Correspondingly, areas of virtual memory can be MARKED as being part of USER SPACE or KERNEL
+SPACE. When running in user mode, the CPU can access ONLY memory that is marked as being in user space;
+attempts to access memory in kernel space result in a HARDWARE EXCEPTION. When running in kernel mode, the
+CPU can access BOTH user and kernel memory space. 
+
+- By taking advantage of this hardware design to place the OS in kernel space, OS implementers can ENSURE
+that user processes are NOT ABLE to access the instructions and data structures of the kernel, or to
+perform operations that would adversely effect the operation of the system.
+
+- A running system typically has NUMEROUS PROCESSES. For a process, many things happen ASYNCHRONOUSLY.
+An executing process DOESN'T KNOW when it will next time out, which other process will then be scheduled
+for the CPU (and in what order), or when it will next be scheduled. The delivery of SIGNALS and the
+occurence of interprocess communication events are MEDIATED by the KERNEL, and can occur at ANY TIME for
+a process. Many things happen TRANSPARENTLY for a process. A process DOESN'T KNOW where it is located in
+RAM or, in general, whether a particular part of its memory space is currently resident in memory or held
+in the swap area. Similarly, a process DOESN'T KNOW where on the disk drive the files it acceses are being
+held; it SIMPLY REFERS to the files by name. A process operates in ISOLATION; it CAN'T directly
+communicate with another process. A process CAN'T itself create a new process or even end its own
+existence. Finally, a process CAN'T communicate directly with the I/O devices attached to the computer.
+
+- By contrast, a running system has ONE kernel that KNOWS and CONTROLS EVERYTHING. The kernel facilitates
+the running of ALL processes of the system. The kernel DECIDES WHICH process will next obtain access to
+the CPU, WHEN it will do so, and for HOW LONG. The kernel MAINTAINS data structures containing information
+about all running processes and UPDATES these structures as processes are CREATED, CHANGE state, and
+TERMINATE. The kernel MAINTAINS all of the low-level data structures that enable the FILENAMES used by
+programs to be TRANSLATED into PHYSICAL LOCATIONS on the disk. The kernal also MAINTAINS data structures
+that MAP the virtual memory of each process into the physical mmeory of the computer and the swap area(s)
+on disk. All communication between processes is done VIA MECHANISMS provided by the kernel. In response
+to REQUESTS from processes, the kernel CREATES NEW PROCESSES and TERMINATES EXISTING PROCESSES. Lastly,
+the kernel (in particular, DEVICE DRIVERS) performs ALL DIRECT COMMUNICATION with I/O devices, transferring
+information TO and FROM user processes as required.
+
+##########################################################################################################

@@ -1,0 +1,48 @@
+- A 'LOCALE' refers to C's facility for specifying a locale that MODIFIES or EXTENDS basic C usage. For
+example, many nations use a comma instead of a decimal point when writing decimal fractions).
+
+- Because in the wider world NOT all keyboards have the same symbols as the U.S. keyboards do, the C99
+standard added alternative spellings for the logical operators, which are defined in the "iso646.h" header
+file. These alternative spellings are:
+   '&&' <=> "and"
+   '||' <=> "or"
+   '!'  <=> "not"
+
+- C PROBABLY didn't simply use the new terms because, historically, C has tried to keep the number of
+keywords small.
+
+- Aside from the cases in which two operators SHARE an operand, C ordinarily does NOT guarantee which
+parts of a complex expression are evaluated first. This ambiguity was left in the language so that 
+compiler designers could make the MOST EFFICIENT CHOICE for a particular system.
+
+- C GUARANTEES that logical expressions are evaluated from left to right. This means '&&' and '||' 
+operators are SEQUENCE POINTS, so all side effects take place BEFORE a program moves from one operand
+to the next. Furthermore, it GUARANTEES that as soon as an element is found that INVALIDATES the
+expression as a whole, the evaluation STOPS. 
+
+- C offers a SHORTHAND way to express one form of the "if else" statement. It is called a CONDITIONAL
+EXPRESSION and uses the '?:' conditional operator, which is a TERNARY operator and C's ONLY example
+in that category.
+
+#######################################################################################################
+
+Review Answers:
+
+1.
+  a. false;
+  b. true;
+  c. false;
+
+2. 
+  a. number>=90 && number<100;
+  b. ch!=q && ch!=k;
+  c. number>=1 && number <=9 && number != 5;
+  d. number<1 || number>9
+
+4.
+  a. 1
+  b. 0
+  c. 1
+  d. 6
+  e. 10
+  f. 0

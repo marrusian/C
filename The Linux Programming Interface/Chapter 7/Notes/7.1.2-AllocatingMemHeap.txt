@@ -1,0 +1,58 @@
+#############################################################################################################
+- In general, C programs use the MALLOC family of functions to ALLOCATE and DEALLOCATE memory on the heap.
+These functions OFFER SEVERAL ADVANTAGES over "brk()" and "sbrk()". In particular, they:
+       - Are STANDARDIZED as part of the C language;
+       - Are EASIER TO USE in THREADED PROGRAMS.
+       - Provide a SIMPLE INTERFACE that ALLOWS MEMORY to be ALLOCATED in SMALL UNITS;
+       - Allow us to ARBITRARILY DEALLOCATE blocks of memory, which are MAINTAINED on a FREE LIST and RECYCLED
+         in FUTURE CALLS to ALLOCATE memory.
+
+- The BLOCK of MEMORY RETURNED by "malloc()" is ALWAYS ALIGNED on a BYTE BOUNDARY suitable for EFFICIENT
+ACCESS to ANY TYPE of C data structure. In practice, this MEANS that it is ALLOCATED on an 8-BYTE or 16-BYTE
+BOUNDARY on MOST ARCHITECTURES.
+
+                Note:  SUSv3 specifies that the call "malloc(0)" may return EITHER "NULL" or a POINTER to a
+                     SMALL PIECE of MEMORY that CAN (and SHOULD) be FREED with "free()". On Linux, malloc(0)
+                     FOLLOWS the LATTER BEHAVIOUR.
+
+- The "free()" function DEALLOCATES a BLOCK OF MEMORY pointed to by its "ptr" argument, which SHOULD be an
+ADDRESS PREVIOUSLY RETURNED by "malloc()" or one of the OTHER heap memory allocation functions.
+
+- In general, "free()" DOESN'T LOWER the PROGRAM BREAK, but INSTEAD ADDS the BLOCK OF MEMORY to a LIST of
+FREE BLOCKS that are RECYCLED by FUTURE CALLS to "malloc()". This is done for SEVERAL REASONS:
+       a) The BLOCK OF MEMORY being FREED is typically somewhere in the MIDDLE of the HEAP, RATHER than at the
+          END, so that LOWERING the PROGRAM BREAK is NOT POSSIBLE.
+
+       b) It MINIMIZES the NUMBER of "sbrk()" CALLS that the program must perform (as we recall, system calls
+          have a SMALL but SIGNIFICANT OVERHEAD).
+
+       c) In many cases, LOWERING the BREAK would NOT HELP programs that ALLOCATE LARGE AMOUNTS of MEMORY,
+          since they typically tend to HOLD ON to ALLOCATED MEMORY or REPEATEDLY RELEASE and REALLOCATE
+          MEMORY, RATHER than RELEASE IT ALL and then CONTINUE TO RUN for an EXTENDED PERIOD OF TIME.
+
+- If the argument given to "free()" is a NULL pointer, then the call does NOTHING (in other words, it is NOT
+AN ERROR to give a NULL pointer to "free()"). However, making ANY USE of "ptr" AFTER the CALL to "free()" -
+for example, passing it to "free()" a SECOND TIME - is an ERROR that can LEAD to UNPREDICTABLE RESULTS.
+
+                Note:  The "glibc free()" function CALLS "sbrk()" to lower the program break ONLY WHEN the
+                     FREE BLOCK at the TOP END is "SUFFICIENTLY" LARGE, where "SUFFICIENT" is DETERMINED by
+                     PARAMETERS controlling the operation of the "malloc" package (128 kB is a typical value).
+                     This REDUCES the NUMBER of "sbrk()" CALLS (i.e., the number of "brk()" system calls) that
+                     must be made.
+
+- When a process TERMINATES, ALL of its MEMORY is RETURNED to the SYSTEM, including HEAP MEMORY allocated by
+functions in the "malloc" package. In programs that ALLOCATE MEMORY and continue using it until program
+termination, it is COMMON to OMIT calls to "free()", RELYING on this behaviour to AUTOMATICALLY FREE the
+MEMORY. This can be ESPECIALLY USEFUL in programs that allocate MANY BLOCKS of memory, since adding MULTIPLE
+CALLS to "free()" could be EXPENSIVE in terms of CPU time, as well as perhaps being COMPLICATED to CODE.
+
+- Although relying on process termination to automatically free memory is ACCEPTABLE for MANY programs, there
+are a COUPLE OF REASONS enforcing WHY it can be DESIRABLE to EXPLICITLY FREE all allocated memory:
+         a) Explicitly calling "free()" may make the program MORE READABLE and MAINTAINABLE in the face of
+            FUTURE MODIFICATIONS.
+ 
+         b) If we are using a "malloc" DEBUGGING LIBRARY to find MEMORY LEAKS in a program, then ANY MEMORY
+            that is NOT EXPLICITLY FREED will be REPORTED as a MEMORY LEAK. This can COMPLICATE the TASK of
+            finding REAL MEMORY LEAKS.
+
+#############################################################################################################

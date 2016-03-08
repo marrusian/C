@@ -1,0 +1,297 @@
+- The "puts()" function belongs to the "stdio.h" family of I/O functions. It ONLY displays strings and it
+AUTOMATICALLY appends a NEWLINE to the string it displays.
+
+- A "STRING LITERAL", also termed a "STRING CONSTANT", is anything enclosed in double quotation marks.
+The enclosed characters, plus a terminating '\0' character AUTOMATICALLY provided by the COMPILER, are
+STORED in MEMORY as a character string.
+
+- Character string constants are placed in the STATIC STORAGE class (i.e. the string is stored just ONCE
+and lasts for the duration of the program). The entire quoted phrase acts as a POINTER to where the
+string is STORED.
+
+- When we specify the array size, we must be sure that the NUMBER of ELEMENTS is AT LEAST one more
+(because of the null character) than the string LENGTH.
+
+- We can use pointer notation to set up a string. That is, the following are ALMOST the same:
+     # const char *pt1  = "Something is pointing at me.";
+     # const char ar1[] = "Something is pointing at me.";
+- In both cases, the quoted string ITSELF determines the AMOUNT of STORAGE set aside for the string.
+However, the forms are NOT identical. Here are the differences:
+    a) Array Form
+    - Causes an array of 29 elements to be ALLOCATED in the COMPUTER MEMORY. Each element is initialized
+    to the CORRESPONDING character of the string literal. Typically, what happens is that the quoted
+    string is STORED in a DATA SEGMENT that is PART of the EXECUTABLE FILE; when the PROGRAM is LOADED
+    into MEMORY, so is that string. The quoted string is said to be in STATIC MEMORY. But the MEMORY
+    for the ARRAY is ALLOCATED only AFTER the program BEGINS RUNNING. At that time, the quoted string is
+    COPIED into the array. Note that, at this time, there are TWO copies of the string (one is the
+    STRING LITERAL in STATIC MEMORY, and one is the STRING stored in the ar1 ARRAY).
+
+    b) Pointer form
+    - Also causes 29 elements in STATIC STORAGE to be SET ASIDE for the string. In addition, once the
+    program BEGINS EXECUTION, it sets aside ONE MORE storage location for the pointer VARIABLE and stores
+    the ADDRESS of the STRING in the POINTER variable. This variable initially points to the FIRST
+    character of the string. Because a string literal is considered to be CONST data, the pointer variable
+    should be declared as pointing to CONST data.
+
+In short: initializing the array COPIES a STRING from STATIC STORAGE to the ARRAY, whereas initializing
+        the POINTER merely COPIES the ADDRESS of the STRING.
+
+- Compilers MIGHT choose to represent multiple occurrences of the SAME string with DIFFERENT/SEPARATE
+storage locations (although, in general, they DON'T).
+
+- Modifying a STRING through a POINTER-TO-(NON-CONST)-STRING, under the current C standard, leads to
+UNDEFINED behaviour. The reason is that, as mentioned above, a compiler can (almost always) choose to
+represent all identical string literals with a SINGLE copy in memory. Therefore, the RECOMMENDED practice
+for INITIALIZING a POINTER to a STRING LITERAL is to use the CONST modifier (i.e. we DON'T use a POINTER
+to a STRING LITERAL if we PLAN to ALTER the STRING).
+
+#####################################################################################################
+- If we want to READ a string INTO a program, we must FIRST set aside SPACE to STORE the string and then
+use an INPUT function to FETCH the string.
+
+- "gets()" is an input function that reads an ENTIRE LINE up through the newline character, DISCARDS the
+NEWLINE character, and STORES the REMAINING characters, adding a NULL CHARACTER to create a C string. It
+is often paired with "puts()", which DISPLAYS a string, ADDING a newline.
+- However, many compilers will issue a WARNING into the program or during the compiling process when it is
+used. The PROBLEM is that "gets()" DOESN'T check to see if the INPUT line actually FITS into the ARRAY
+(given that its only argument is a pointer-to-char, it CAN'T check).
+- If the input string is TOO LONG, we get a BUFFER OVERFLOW, meaning the EXCESS characters OVERFLOW the
+designated TARGET. When this happens, we get a SEGMENTATION FAULT (meaning the program ATTEMPTED to ACCESS
+memory NOT allocated to it).
+- Therefore, its UNSAFE BEHAVIOUR poses a SECURITY RISK. The C99 standard acknowledged the problems with
+"gets()" and DISCOURAGED its use. However, the C11 committee has taken a TOUGHER view and has DROPPED
+"gets()" from the standard (even though most compilers WILL continue to PROVIDE the function in the
+interests of backwards COMPATIBILITY).
+
+- The ALTERNATIVES to "gets()" are as follows:
+   a) fgets()  - The traditional alternative.
+   b) gets_s() - Introduced with the C11 standard (however, it's part of an OPTIONAL extension to the
+                 "stdio.h" family of I/O functions, so C11 C compilers need NOT to support it).
+
+- The "fgets()" function is designed for FILE input. Here is how "fgets()" DIFFERS from "gets()":
+   1) It takes a SECOND argument indicating the MAXIMUM number of CHARACTERS to READ. If this argument
+   has the value N, "fgets()" reads UP to N-1 characters OR through the NEWLINE character, whichever
+   comes FIRST.
+   2) If "fgets()" READS the NEWLINE, it STORES it in the STRING, UNLIKE "gets()", which DISCARDS it.
+   3) It takes a THIRD argument INDICATING which FILE to READ.
+
+- Because of the behaviour described at 2), "fgets()" it's often PAIRED with "fputs()", which works LIKE
+"puts()", EXCEPT that it DOESN'T automatically APPEND a NEWLINE, and it takes a SECOND argument to
+INDICATE which FILE to WRITE to.
+
+- The "fgets()" function RETURNS a POINTER-TO-CHAR. If all goes well, it just returns the SAME address
+that was PASSED to it as the FIRST ARGUMENT. If the function encounters EOF, however, it returns a 
+SPECIAL pointer called the NULL POINTER. This is a pointer GUARANTEED NOT to POINT to VALID data, so it
+can be used to INDICATE a SPECIAL case. In code it can be represented by the digit 0 or, more commonly in
+C, by the macro "NULL" (the function ALSO returns NULL if there is some sort of READ ERROR).
+
+- The fact that "fgets()" STORES the NEWLINE present BOTH a problem AND an opportunity.
+   1) The problem: We might NOT want a newline as part of the string we store.
+   2) The opportunity: The presence OR absence of a newline character in the stored string CAN be USED to
+                       tell WHETHER the WHOLE LINE was READ. 
+
+- The "NULL" (i.e NULL POINTER) and "Null" (i.e. Null Character) are CONCEPTUALLY DIFFERENT.
+   a) The null character (or '\0') is the character used to MARK the END of a C string. It's the CHARACTER
+   whose CODE is ZERO. Becuase that ISN'T the code of ANY character, it WON'T show up ACCIDENTALLY in some
+   OTHER part of the string.
+   b) The null pointer (or NULL) has a value that DOESN'T correspond to a VALID address of data. It's
+   often used by functions that otherwise return VALID addressed to INDICATE some SPECIAL occurence,
+   such as encountering EOF or FAILING to PERFORM as EXPECTED.
+- In short: the null character is an INTEGER type, while the null pointer is a POINTER type. What sometime
+causes CONFUSION is that BOTH can be represented NUMERICALLY by the VALUE 0 (but they are DIFFERENT TYPES
+of 0).
+
+- Here is how C11's optional "gets_s()" DIFFERS from "fgets()":
+   1) It ONLY reads from the STANDARD INPUT, so it DOESN'T need a third argument.
+   2) If it READS a NEWLINE, it DISCARDS it rather than storing it.
+   3) If it READS the MAXIMUM number of characters and FAILS to read a NEWLINE, it takes SEVERAL steps:
+        - It sets the FIRST character of the DESTIONATION array to the NULL CHARACTER.
+        - It READS and DISCARDS subsequent input UNTIL a NEWLINE or EOF is ENCOUNTERED.
+        - It RETURNS the NULL POINTER.
+        - It INVOKES an implementation-dependent "handler" function (or else one we've selected), which
+        MAY cause the program to EXIT or ABORT.
+
+- The "gets_s()" function, when input FAILS to meet expectations, is LESS convenient and flexible than
+"fgets()". Given that "gets_s()" is an OPTIONAL extension of the C library, using "fgets()" is USUALLY
+the BETTER choice.
+
+- The "scanf()" function is good for processing input ONE word at a time. However, note that it has the
+SAME potential DEFECT as "gets()": it can create an OVERVLOW if the input word DOESN'T FIT the
+destination, BUT we can use the FIELD-WIDTH option in the %s specifier to PREVENT overflow.
+
+#####################################################################################################
+- C has THREE standard library functions for printing strings: "puts()", "fputs()", and "printf()".
+
+- The "puts()" function takes the address of a string for an argument and it stops when it encounters
+the null character.
+
+- The "fputs()" function is the FILE-ORIENTED version of "puts()". The main differences are these:
+   - It takes a SECOND argument INDICATING the FILE to which to WRITE.
+   - It DOES NOT automatically APPEND a NEWLINE to the OUTPUT, UNLIKE "puts()".
+
+- "puts()" is DESIGNED to WORK with "gets()", and "fputs()" is DESIGNED to WORK with "fgets()".
+
+- The "printf()" function is LESS convenient to use than "puts()" or "fputs()", BUT it is more VERSATILE
+because it formats VARIOUS DATA types.
+
+#####################################################################################################
+- The "strcat()" function DOES NOT check to see whether the second string will fit in the first array.
+If we FAIL to ALLOCATE enough SPACE for the FIRST array, we will RUN into PROBLEMS as excess characters
+OVERFLOW adjacent memory locations.
+- This means that "strcat()", like "gets()", can LEAD to BUFFER OVERFLOWS. However, the C11 standard
+DOESN'T dump "strcat()" in favour of "strncat()", just like it did with "gets()", because:
+   a) "gets()" exposes a program to dangers from those who USE the program.
+   b) "strcat()" exposes the program to the dangers of a CARELESS PROGRAMMER.
+- We CAN'T control what SOME users WILL do in the future, BUT we CAN CONTROL what goes in OUR PROGRAMS.
+
+- The "strcmp()" function COMPARES string CONTENTS. It is the string equivalent of the relational
+operators for numbers. Its return values are as follows (according to the
+ANSI C standard):
+   - <0 if the first string comes BEFORE the second lexicographically.
+   - 0 if they are the SAME (EQUAL).
+   - >0 if the first string comes AFTER the second lexicographically.
+- However, the exact numerical values are LEFT open to the IMPLEMENTATION.
+
+- In general, "strcmp()" moves along until it finds the FIRST PAIR of DISAGREEING characters. It then
+returns the CORRESPONDING code. This points out that "strcmp()" compares all CHARACTERS, NOT just letters,
+so instead of saying the comparison is ALPHABETIC, we SHOULD say that "strcmp()" goes by the machine
+COLLATING SEQUENCE (i.e. the characters are compared ACCORDING to their NUMERIC REPRESENTATION; typically
+the ASCII values).
+
+- The "strncmp()" function compares the strings CONTENTS until they differ OR until it has compared a
+certain number of characters SPECIFIED by a THIRD argument (whichever comes first).
+
+- The "strcpy()" function COPIES string CONTENTS. The copy is called the "TARGET", and the original string
+is called the "SOURCE". It is the string equivalent of the assignment operator for numbers. This function
+has two more properties:
+   P1) It is type "char*". It returns the value of its first argument - the address of a character (just
+   like the "strcat()" function).
+   P2) The first argument need NOT point to the BEGINNING of a string. This lets us copy just PART of
+   a string.
+
+- Be aware that "strcpy()" copies the NULL CHARACTER from the SOURCE string.
+
+- Because the "strcpy()" function SHARES a PROBLEM with "strcat()" - neither check to see whether the
+source string actually fits in the target string - the SAFER way to COPY STRINGS is to use "strncpy()".
+It takes a THIRD argument, which is the MAXIMUM number of characters to COPY.
+This means that the function call "strncpy(target, source, n)" copies UP TO n characters OR up through
+the null character (whichever comes first) from SOURCE to TARGET.
+
+- The "sprintf()" function works just like "printf()", BUT it WRITES to a STRING instead of writing to a
+display. Therefore, it PROVIDES a way to COMBINE several elements INTO a SINGLE STRING. 
+The FIRST argument to "sprintf()" is the ADDRESS of the TARGET STRING. The remaining arguments are the
+same as for "printf()".
+
+#####################################################################################################
+- The "COMMAND LINE" is the line we type to run our programs in a command-line environment.
+
+- "COMMAND-LINE ARGUMENTS" are ADDITIONAL items on the SAME line.
+
+- C compilers ALLOW "main()" to have NO arguments OR else to have TWO arguments. In the two arguments
+case, the FIRST argument is the NUMBER of strings in the command line. By tradition (but NOT by
+necessity), this 'int' argument is called "argc" for "ARGUMENT COUNT". The program STORES the command line
+STRINGS in MEMORY and THEN stores the ADDRESS of EACH string in an ARRAY OF POINTERS. The ADDRESS of this
+ARRAY is STORED in the SECOND argument. By convention, this pointer to pointers is called "argv", for
+"ARGUMENT VALUES". When possible (some OSs DON'T allow this), argv[0] is assigned the NAME of the program
+itself.
+#####################################################################################################
+
+Review anwers:
+
+1. In this definition, the compiler WON'T automatically append the null character at the end of the
+array. Therefore, it's a character array, not a string.
+
+2. It will print:
+  See you at the snack bar.
+  ee you at the snack bar.
+  See you
+  e you
+
+3. It will print:
+  y
+  my
+  mmy
+  ummy
+  Yummy
+
+4. It will print:
+  I read part of it all the way through.
+
+5. 
+  a. Ho Ho Ho!!oH oH oH
+
+  b. x should be a pointer-to-char.
+  c. x gets the value "address of the first character in the string".
+  d. "*--pc" means "decrement pointer and dereference.
+     "--*pc" means "dereference pointer and decrement the pointed-to value".
+  e. Ho Ho Ho!!oH oH 
+  f. The first "while" expression tests for the null character, while the second "while" tests for the
+  number of characters between str and pc.
+  g. Infinity loop, because the (pc-str) test will NEVER evaluate to 0.
+  h. char *pr(char *);
+
+6. In the
+  # char sign = '$'
+ definition, sign uses ONE byte, the '$' character uses sizeof(int) BYTES, and the "$" string constant
+ uses TWO BYTES.
+
+7. It will print:
+  How are ya, sweetie? How are ya, sweetie? 
+  Beat the clock.
+  eat the clock.
+  Beat the clock. Win a toy.
+  Beat
+  chat
+  hat
+  at
+  t
+  t
+  at
+  How are ya, sweetie? 
+
+8. It will print:
+  faavrhee
+  *le*on*sm
+
+9. 
+   char *s_gets(char *st, int n){
+      char *ret_val;
+      if(ret_val=fgets(st, n, stdin)){
+         while(*st!='\n' && *st)
+            ++st;
+         if(*st=='\n')
+            *st='\0';
+         else
+            while(getchar()!='\n')
+               continue;
+       }
+       return ret_val;
+   }
+
+10. 
+   size_t strlen(char *str){
+      size_t length = 0;
+      while(*str++)
+         ++length;
+      return length;
+   }
+
+11. 
+   char *s_gets(char *st, int n){
+      char *ret_val;
+      if(ret_val=fgets(st, n, stdin)){
+         if((st=strchr(st, '\n')))
+            *st='\0';
+         else
+            while(getchar()!='\n')
+               continue;
+      }
+      return ret_val;         
+   }
+
+12. 
+   char *find_blank(const char *str){
+      while(*str!=' ' && *str)
+         ++str;
+      return *str? str : NULL;
+   } 

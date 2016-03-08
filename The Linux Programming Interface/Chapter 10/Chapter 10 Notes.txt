@@ -1,0 +1,685 @@
+- Within a program, we may be interested in TWO KINDS of time:
+      a) REAL TIME - this is the time as measured EITHER from some STANDARD POINT (CALENDAR TIME) or from some
+                     FIXED POINT (typically the START) in the LIFE of a PROCESS (ELAPSED or WALL CLOCK TIME).
+                     Obtaining the CALENDAR TIME is USEFUL for programs that, for example, TIMESTAMP DATABASE
+                     RECORDS or FILES. Measuring ELAPSED TIME is USEFUL for a program that takes PERIODIC
+                     ACTIONS or makes REGULAR MEASUREMENTS from some EXTERNAL INPUT DEVICE.
+                    
+      b) PROCESS TIME - this is the amount of CPU TIME used by a process. Measuring PROCESS TIME is USEFUL
+                        for CHECKING or OPTIMIZING the PERFORMANCE of a PROGRAM or ALGORITHM.
+
+- Most COMPUTER ARCHITECTURES have a BUILT-IN HARDWARE CLOCK that ENABLES the KERNEL to MEASURE REAL and
+PROCESS TIME. 
+
+#############################################################################################################
+- REGARDLESS of GEOGRAPHIC LOCATION, UNIX systems represent time INTERNALLY as a measure of seconds since the
+Epoch; that is, since MIDNIGHT on the MORNING of 1 January 1970, Universal Coordinated Time (UTC, previously
+known as Greenwich Mean Time, GMT). This is APPROXIMATELY the date when the UNIX system came into being.
+Calendar time is stored in variables of type 'time_t', an INTEGER type SPECIFIED by SUSv3.
+
+             Note:  On 32-bit Linux systems, 'time_t', which is a SIGNED INTEGER, can represent DATES in the
+                  RANGE [13 December 1901 20:45:52 to 19 January 2038 03:14:07] (SUSv3 LEAVES the MEANING of
+                  NEGATIVE 'time_t' values UNSPECIFIED). Thus, MANY CURRENT 32-bit UNIX systems face a
+                  THEORETICAL "Year 2038" problem, which they may encounter BEFORE 2038, if they do
+                  CALCULATIONS BASED on DATES in the FUTURE. This problem will be SIGNIFICANTLY ALLEVIATED by
+                  the fact that by 2038, PROBABLY ALL UNIX systems will have long BECOME 64-bit and beyond.
+                  However, 32-bit EMBEDDED SYSTEMS, which typically have a MUCH LONGER LIFESPAN than DESKTOP
+                  HARDWARE, may STILL BE AFFLICTED by the problem. Furthermore, the PROBLEM will REMAIN for
+                  ANY LEGACY DATA and APPLICATIONS that MAINTAIN TIME in a 32-bit 'time_t' format.
+
+- The "gettimeofday()" system call RETURNS the CALENDAR TIME in the buffer pointed to by "tv":
+         DEP: #include <sys/time.h>        PROTO: int gettimeofday(struct timeval *tv, struct timezone *tz);
+                                           RET: Returns 0 on success, or -1 on error
+
+- The "tv" argument is a POINTER to a STRUCTURE of the following form:
+        # struct timeval{
+        #    time_t      tv_sec;    /* Seconds since 00:00:00, 1 Jan 1970 UTC */
+        #    suseconds_t tv_usec;   /* Additional microseconds (long int) */
+        # }; 
+
+- Although the "tv_usec" field AFFORDS MICROSECOND PRECISION, the ACCURACY of the VALUE it returns is
+DETERMINED by the ARCHITECTURE-DEPENDENT IMPLEMENTATION (the 'u' in 'tv_usec' DERIVES from the RESEMBLANCE to
+the Greek letter "mu" used in the METRIC SYSTEM to DENOTE ONE-MILLIONTH). On MODERN x86-32 systems
+(i.e., Pentium systems with a Timestamp Counter register that is incremented once at each CPU clock cycle),
+"gettimeofday() DOES PROVIDE MICROSECOND ACCURACY.
+
+- The "tz" argument of "gettimeofday()" is a HISTORICAL ARTIFACT. In OLDER UNIX implementations, it was used
+to RETRIEVE TIMEZONE INFORMATION for the system. This argument is now OBSOLETE and SHOULD ALWAYS BE SPECIFIED
+as NULL. SUSv4 MARKS "gettimeofday()" OBSOLETE, PRESUMABLY in favor of the POSIX clocks API described in
+Section 23.5.
+
+- The "time()" system call RETURNS The NUMBER OF SECONDS since the Epoch (i.e., the SAME VALUE that
+"gettimeofday()" returns in the "tv_sec" field of its "tv" argument):
+         DEP: #include <time.h>        ROTO: time_t time(time_t *timep);
+                                       RET: Returns number of seconds since the Epoch, or (time_t)-1 on error
+
+- If the "timep" argument is NOT NULL, the NUMBER OF SECONDS since the Epoch is ALSO PLACED in the LOCATION
+to which "timep" points.
+
+- Since "time()" RETURNS the SAME VALUE in TWO WAYS, and the ONLY POSSIBLE ERROR that can OCCUR using "time()"
+is to GIVE an INVALID ADDRESS in the "timep" argument (EFAULT), we OFTEN SIMPLY USE the following call
+(WITHOUT ERROR CHECKING):
+        # t = time(NULL);
+
+             Note:  The REASON for the EXISTENCE of TWO SYSTEM CALLS ("time()" and "gettimeofday()") with
+                  ESSENTIALLY the SAME PURPOSE is HISTORICAL. Early UNIX implementations PROVIDED "time()".
+                  4.2BSD added the MORE PRECISE "gettimeofday()" system call. The EXISTENCE of "time()" as a
+                  SYSTEM CALL is now REDUNDANT; it could be IMPLEMENTED as a LIBRARY FUNCTION that calls
+                  "gettimeofday()".
+
+- However, SUSv4 SPECIFIES that the "time()" function MAY FAIL if:
+    [EOVERFLOW] - The NUMBER OF SECONDS since the Epoch will NOT FIT in an OBJECT of TYPE 'time_t'.
+
+#############################################################################################################
+- The functions used to CONVERT BETWEEN 'time_t' values and OTHER TIME FORMATS (including PRINTABLE
+REPRESENTATIONS) SHIELD US from the COMPLEXITY brought to such conversions by TIMEZONES, DAYLIGHT SAVING TIME
+(DST) REGIMES, and LOCALIZATION ISSUES (see Figure 10-1, Page 188).
+
+             Note:  SUSv4 MARKS "ctime()" and "asctime()" OBSOLETE, because they DO NOT RETURN LOCALIZED
+                  STRINGS (and they are NONREENTRANT).
+
+--------------------------------------------------------------------------------------------------------
+- The "ctime()" function PROVIDES a SIMPLE METHOD of CONVERTING a 'time_t' value into PRINTABLE FORM:
+         DEP: #include <time.h>        PROTO: char *ctime(const time_t *timep);
+                                       RET: Returns pointer to STATICALLY ALLOCATED STRING terminated
+                                                     by newline and '\0' on success, or NULL on error
+
+- Given a POINTER to a 'time_t' value in "timep", "ctime()" returns a 26-BYTE STRING containing the DATE and
+TIME in a STANDARD FORMAT, as illustrated:
+        # Wed Jun  8 14:22:34 2011
+
+- The string INCLUDES a TERMINATING NEWLINE character and a TERMINATING NULL BYTE. The "ctime()" function
+AUTOMATICALLY ACCOUNTS for LOCAL TIMEZONE and DST SETTINGS when performing the conversion. The returned string
+is STATICALLY ALLOCATED; FUTURE CALLS to "ctime()" will OVERWRITE it.
+
+- SUSv3 STATES that CALLS to ANY of the functions "ctime()", "gmtime()", "localtime()", or "asctime()" MAY
+OVERWRITE the STATICALLY ALLOCATED STRUCTURE that is RETURNED by ANY of the OTHER functions. In other words,
+these functions MAY SHARE SINGLE COPIES of the returned character array and "tm" structure, and this is done
+in SOME VERSIONS of "glibc". If WE NEED TO MAINTAIN the RETURNED INFORMATION across MULTIPLE CALLS to these
+functions, we MUST SAVE LOCAL COPIES.
+
+             Note:  A REENTRANT VERSION of "ctime()" is PROVIVED in the FORM of "ctime_r()". This function
+                 PERMITS THE CALLER to SPECIFY an ADDITIONAL ARGUMENT that is a POINTER to a (CALLER-SUPPLIED)
+                 BUFFER that is USED to RETURN the TIME STRING. Other REENTRANT VERSIONS of functions
+                 mentioned in this chapter OPERATE SIMILARLY.
+
+--------------------------------------------------------------------------------------------------------
+- The "gmtime()" and "localtime()" functions CONVERT a 'time_t' value INTO a so-called "BROKEN-DOWN TIME".
+The BROKEN-DOWN TIME is placed in a STATICALLY ALLOCATED STRUCTURE whose ADDRESS is RETURNED as the function
+result:
+         DEP: #include <time.h>        PROTO: struct tm *gmtime(const time_t *timep);
+                                       PROTO: struct tm *localtime(const time_t *timep);
+                                       RET: Both return a pointer to a STATICALLY ALLOCATED broken-down
+                                                            time structure on success, or NULL on error
+
+- The "gmtime()" function CONVERTS a CALENDAR TIME into a BROKEN-DOWN TIME corresponding to UTC (the letters
+"gm" DERIVE from Greenwich Mean Time). By CONTRAST, "localtime()" TAKES INTO ACCOUNT TIMEZONE and DST SETTINGS
+to return a BDT corresponding to the SYSTEM'S LOCAL TIME. 
+
+             Note: REENTRANT VERSIONS of these functions are PROVIDED as "gmtime_r()" and "localtime_r()".
+
+- The "tm" STRUCTURE returned by these functions CONTAINS the DATE and TIME FIELDS broken into INDIVIDUAL
+PARTS. This structure has the following form:
+        # struct tm{
+        #    int tm_sec;        /* Seconds (0-60) */
+        #    int tm_min;        /* Minutes (0-59) */
+        #    int tm_hour;       /* Hours (0-23) */
+        #    int tm_mday;       /* Day of the month (1-31) */
+        #    int tm_mon;        /* Month (0-11) */
+        #    int tm_year;       /* Year since 1900 */
+        #    int tm_wday;       /* Day of the week (Sunday = 0) */
+        #    int tm_yday;       /* Day in the year (0-365; 1 Jan = 0) */
+        #    int tm_isdst;      /* Daylight saving time flag
+        #                            > 0: DST is in effect;
+        #                            = 0: DST is not in effect;
+        #                            < 0: DST information not available */ 
+        # };
+
+- The "tm_sec" field can be UP TO 60 (rather than 59) to ACCOUNT for the LEAP SECONDS that are OCCASIONALLY
+APPLIED to ADJUST HUMAN CALENDARS to the ASTRONOMICALLY EXACT (the so-called TROPICAL) YEAR.
+
+- If the '_BSD_SOURCE' FTM is DEFINED, then the "glibc" definition of the "tm" structure ALSO INCLUDES TWO
+ADDITIONAL FIELDS containing FURTHER INFORMATION about the REPRESENTED TIME:
+      1) long int tm_gmtoff  - contains the NUMBER OF SECONDS that the represented time FALLS EAST of UTC.
+      2) const char *tm_zone - the ABBREVIATED TIMEZONE NAME (e.g., CEST for Central European Summer Time).
+
+- SUSv3 DOESN'T SPECIFY either of these fields, and they appear on ONLY A FEW other UNIX implementations
+(mainly BSD derivatives).
+
+- The "mktime()" function TRANSLATES a BROKEN-DOWN TIME, expressed as LOCAL TIME, into a 'time_t' value,
+which is returned as the function result. The CALLER SUPPLIES the BROKEN-DOWN TIME in a "tm" structure
+POINTED TO by "timeptr". During this translation, the ORIGINAL VALUES of the "tm_wday" and "tm_yday" fields
+of the input "tm" structure are IGNORED: 
+         DEP: #include <time.h>        PROTO: time_t mktime(struct tm *timeptr);
+                                       RET: Returns second since the Epoch corresponding to "timeptr"
+                                                                  on success, or (time_t)-1 on error
+
+- The "mktime()" function MAY MODIFY the structure pointed to by "timeptr". At a MINIMUM, it ENSURES that the
+"tm_wday" and "tm_yday" fields are SET to VALUES that CORRESPOND APPROPRIATELY to the VALUES of the OTHER
+INPUT FIELDS. 
+
+- In addition, "mktime()" DOESN'T REQUIRE the OTHER FIELDS of the "tm" structure to be RESTRICTED to the
+ranges described earlier. For EACH FIELD whose VALUE is OUT OF RANGE, "mktime()" ADJUSTS that FIELD'S VALUE so
+that it is IN RANGE and MAKES SUITABLE ADJUSTMENTS to the OTHER FIELDS. All of these ADJUSTMENTS are PERFORMED
+BEFORE "mktime()" UPDATES the "tm_wday" and "tm_yday" fields and CALCULATES the returned 'time_t' value.
+Moreover, the FINAL VALUE of "tm_mday" SHALL NOT BE SET UNTIL "tm_mon" and "ym_year" are DETERMINED.
+
+- For example, if the input "tm_sec" field were 123, then on return, the value of this field would be 3, and
+the value of the "tm_min" field would have 2 added to whatever value it previously had (and if that addition
+caused "tm_min" to overflow, then the "tm_min" value would be adjusted and the "tm_hour" field would be
+incremented, and so on). These adjustments EVEN APPLY for NEGATIVE FIELD VALUES. For example, SPECIFYING -1
+for "tm_sec" MEANS the 59th second of the PREVIOUS MINUTE. This FEATURE is USEFUL since it ALLOWS US to
+PERFORM DATE and TIME ARITHMETIC on a broken-down time value.
+
+- The TIMEZONE SETTING is used by "mktime()" when PERFORMING the TRANSLATION. In addition, the DST SETTING MAY
+or MAY NOT BE used, DEPENDING on the VALUE of the input "tm_isdst" field:
+         - If tm_isdst = 0, treat this time as STANDARD TIME (i.e., IGNORE DST, even if it would be in
+           effect at this time of year).
+
+         - If tm_isdst >= 0, treat this time as DST (i.e., behave as though DST is in effect, even if it
+           would not normally be so at this time of year).
+
+         - If tm_isdst < 0, attempt to determine if DST would be in effect at this time of the year.
+           This is TYPICALLY the SETTING WE WANT.
+
+- On COMPLETION (and REGARDLESS of the INITIAL SETTING of "tm_isdst"), "mktime()" SETS the "tm_isdst" FIELD
+to a POSITIVE VALUE if DST is IN EFFECT at the GIVEN DATE, or to 0 if DST is NOT IN EFFECT.
+
+--------------------------------------------------------------------------------------------------------
+- Given a POINTER to a BROKEN-DOWN TIME structure in the argument "tm", "asctime()" returns a pointer to a
+STATICALLY ALLOCATED STRING containing the TIME in the SAME FORM as "ctime()":
+         DEP: #include <time.h>        PROTO: char *asctime(const struct tm *timeptr);
+                                       RET: Returns pointer to STATICALLY ALLOCATED STRING terminated by
+                                                           newline and '\0' on success, or NULL on error
+
+- By CONSTRAST with "ctime()", LOCAL TIMEZONE SETTINGS have NO EFFECT on "asctime()", since it is CONVERTING
+a broken-down time that is TYPICALLY either ALREADY LOCALIZED via "localtime()" OR in UTC as returned by
+"gmtime()".
+
+- As with "ctime()", we have NO CONTROL over the FORMAT of the string produced by "asctime()". 
+
+             Note: A REENTRANT VERSION of "asctime()" is PROVIDED in the FORM of "asctime_r()".
+
+- The "strftime()" function PROVIDES us with MORE PRECISE CONTROL when CONVERTING a BROKEN-DOWN TIME into
+PRINTABLE FORM. Given a BDT pointed to by "timeptr", "strftime()" PLACES a CORRESPONDING NULL-TERMINATED,
+DATE-PLUS-TIME STRING in the buffer pointed to by "outstr":
+         DEP: #include <time.h>      PROTO: size_t strftime(char *outstr, size_t maxsize, const char *format,
+                                                            const struct tm *timeptr);
+                                     RET:  Returns number of bytes placed in outstr (excluding
+                                              terminating null byte) on success, or 0 on error
+
+- The STRING returned in "outstr" is FORMATTED ACCORDING to the SPECIFICATION in "format". The "maxsize"
+argument SPECIFIES the MAXIMUM SPACE AVAILABLE in "outstr". UNLIKE "ctime()" and "asctime()", "strftime()"
+DOESN'T INCLUDE a NEWLINE character at the end of the string (UNLESS one is included in "format").
+
+- On success, strftime() returns the number of bytes placed in "outstr", EXCLUDING the TERMINATING NULL BYTE.
+If the TOTAL LENGTH of the RESULTING STRING, INCLUDING the terminating null byte, WOULD EXCEED "maxsize"
+bytes, then "strftime()" returns 0 to INDICATE an ERROR, and the CONTENTS of "outstr" are INDETERMINATE.
+
+- The "format" argument to "strftime()" is a string AKIN to that given to "printf()". Sequences beginning with
+a percent character (%) are CONVERSION SPECIFICATIONS, which are REPLACED by VARIOUS COMPONENTS of the DATE
+and TIME according to the SPECIFIER CHARACTER following the percent character. A RICH SET of CONVERSION
+SPECIFIERS is PROVIDED (a SUBSET of which will follow shortly). EXCEPT as OTHERWISE NOTED, ALL of these
+CONVERSION SPECIFIERS are STANDARDIZED in SUSv3:
+        ------------------------------------------------------------------------------
+        | Specifier | Description                         | Example                  |
+        ------------------------------------------------------------------------------
+        | %%        | A % character                       | %                        |
+        | %a        | Abbreviated weekday name            | Tue                      |
+        | %A        | Full weekday name                   | Tuesday                  |
+        | %b, %h    | Abbreviated month name              | Feb                      |
+        | %B        | Full month name                     | February                 |
+        | %c        | Date and time                       | Tue Feb  1 21:39:46 2011 |
+        | %d        | Day of month (2 digits, 01 to 31)   | 01                       |
+        | %D        | American date (same as %m/%d/%y)    | 02/01/11                 |
+        | %e        | Day of month (2 characters)         |  1                       |
+        | %F        | ISO date (same as %Y-%m-%d)         | 2011-02-01               |
+        | %H        | Hour (24-hour clock, 2 digits)      | 21                       |
+        | %I        | Hour (12-hour clock, 2 digits)      | 09                       |
+        | %j        | Day of year (3 digits, 001 to 366)  | 032                      |
+        | %m        | Decimal month (2 digits, 01 to 12)  | 02                       |
+        | %M        | Minute (2 digits)                   | 39                       |
+        | %p        | AM/PM                               | PM                       |
+        | %P        | am/pm (GNU EXTENSION)               | pm                       |
+        | %R        | 24-hour time (same as %H:%M)        | 21:39                    |
+        | %S        | Second (00 to 60)                   | 46                       |
+        | %T        | Time (same as %H:%M:%S)             | 21:39:46                 |
+        | %u        | Weekday number (1 to 7, Monday = 1) | 2                        |
+        | %U        | Sunday week number (00 to 53)       | 05                       |
+        | %w        | Weekday number (0 to 6, Sunday = 0) | 2                        |
+        | %W        | Monday week number (00 to 53)       | 05                       |
+        | %x        | Date (localized)                    | 02/01/11                 |
+        | %X        | Time (localized)                    | 21:39:46                 |
+        | %y        | 2-digit year                        | 11                       |
+        | %Y        | 4-digit year                        | 2011                     |
+        | %Z        | Timezone name                       | CET                      |
+        ------------------------------------------------------------------------------
+
+- The "strptime() function is the CONVERSE of "strftime()". It CONVERTS a DATE-PLUS-TIME STRING to a
+BROKEN-DOWN TIME:
+     DEP: # _XOPEN_SOURCE
+          #include <time.h>   PROTO: char *strptime(const char *str, const char *format, struct tm *timeptr);
+                              RET:  Returns pointer to NEXT UNPROCESED CHARACTER in
+                                                 "str" on success, or NULL on error
+
+- The "strptime()" function USES the SPECIFICATION given in "format" to PARSE the DATE-PLUS-TIME STRING given
+in "str", and PLACES the CONVERTED broken-down time in the STRUCTURE pointed to by "timeptr".
+
+- On success, "strptime()" returns a pointer to the NEXT UNPROCESSED CHARACTER in "str" (this is USEFUL if the
+string contains FURTHER INFORMATION to be PROCESSED by the calling program). If the COMPLETE FORMAT STRING
+could NOT BE MATCHED, "strptime()" returns NULL to INDICATE the ERROR.
+
+- The FORMAT SPECIFICATION given to "strptime()" is AKIN to that given to "scanf(3)". It contains the
+following type of characters:
+      - CONVERSION SPECIFICATIONS beginning with a percent character (%);
+      - white-space characters, which match zero or more white spaces in the input string;
+      - non-white-space characters (other than %), which MUST MATCH EXACTLY the SAME CHARACTERS in the
+        INPUT STRING.
+
+- The CONVERSION SPECIFICATIONS are SIMILAR to those given to "strftime()". The MAJOR DIFFERENCE is that the
+SPECIFIERS are MORE GENERAL. For example, both %a AND %A can ACCEPT a WEEKDAY NAME in EITHER FULL or
+ABBREVIATED FORM, and %d or %e can be used to READ a DAY OF THE MONTH WITH or WITHOUT a LEADING 0 in the case
+of single-digit days. In addition, CASE is IGNORED; for example, "May" and "MAY" are EQUIVALENT month names.
+The string %% is used to MATCH a PERCENT CHARACTER in the INPUT STRING. The "strptime(3)" manual page provides
+more details.
+
+- The "glibc" implementation of "strptime()" DOESN'T MODIFY those fields of the "tm" structure that are NOT
+INITIALIZED by SPECIFIERS in "format". This means that we can EMPLOY a SERIES of "strptime()" CALLS to
+CONSTRUCT a SINGLE "tm" STRUCTURE from INFORMATION in MULTIPLE STRINGS, such as a DATE STRING and a
+TIME STRING. While SUSv3 PERMITS this behaviour, it DOESN'T REQUIRE IT, and so we CAN'T RELY ON IT on OTHER
+UNIX implementations. In a PORTABLE APPLICATION, we MUST ENSURE that "str" and "format" contain input that
+will SET ALL FIELDS of the resulting "tm" structure, or MAKE SURE that the "tm" structure is SUITABLY
+INITIALIZED before calling "strptime()". In most cases, it would be SUFFICIENT to ZERO OUT the ENTIRE
+STRUCTURE using "memset()", but be AWARE that a value of 0 in the "tm_mday" field CORRESPONDS to the LAST DAY
+of the PREVIOUS MONTH in "glibc" and MANY OTHER IMPLEMENTATIONS of the time-conversion functions. Finally,
+note that "strptime()" NEVER SETS the value of the "tm_isdst" field of the "tm" structure.
+
+             Note:  The GNU C Library also provides two other functions that serve a similar purpose to
+                  "strptime()": "getdate()" (SPECIFIED in SUSv3 and WIDELY AVAILABLE) and its REENTRANT ANALOG
+                  getdate_r() (NOT SPECIFIED in SUSv3 and AVAILABLE on ONLY A FEW other UNIX implementations).
+                  We don't describe these functions, because they employ an external file (identified by the
+                  environment varaible 'DATEMSK') to specify the format used for scanning the date, which
+                  makes them somethat awkward to use and also creates security vulnerabilities in the set-UID
+                  programs.
+
+#############################################################################################################
+- Different countries (and sometimes even different regions WITHIN a single country) OPERATE on DIFFERENT
+TIMEZONES and DST regimes. Programs that input and output times MUST TAKE INTO ACCOUNT the timezone and DST
+regime of the SYSTEM on which they are run. Fortunately, ALL of the DETAILS are HANDLED by the C library.
+
+- Timezone information tends to be BOTH VOLUMINOUS and VOLATILE. For this reason, RATHER than ENCODING it
+DIRECTLY into programs or libraries, the system MAINTAINS this information in FILES in STANDARD FORMATS.
+
+- These files RESIDE in the directory "/usr/share/zoneinfo". Each FILE in this directory CONTAINS INFORMATION
+about the TIMEZONE REGIME in a PARTICULAR COUNTRY or REGION. These FILES are NAMED ACCORDING to the TIMEZONE
+they DESCRIBE, so we may find files with names such as EST (US Eastern Standard Time), CET (Central European
+Time), UTC, Turkey, and Iran. In addition, SUBDIRECTORIES can be used to HIERARCHICALLY GROUP RELATED 
+TIMEZONES. Under a directory such as "Pacific", we may find the files "Auckland", "Port_Moresby", and
+"Galapagos". When we SPECIFY A TIMEZONE for use by a program, IN EFFECT, we are SPECIFYING A RELATIVE PATHNAME
+for one of the TIMEZONE FILES in this directory.
+
+- The LOCAL TIME for the SYSTEM is DEFINED by the TIMEZONE FILE "/etc/localtime", which is OFTEN LINKED to
+one of the files in "/usr/share/zoneinfo".
+
+             Note:  The FORMAT of TIMEZONE FILES is DOCUMENTED in "tzfile(5)" manual page. Timezone files
+                  are built using "zic(8)", the ZONE INFORMATION COMPILER. The "zdump(8)" command can be
+                  used to DISPLAY THE TIME as it would CURRENTLY BE ACCORDING to the TIMEZONE in a SPECIFIED
+                  TIMEZONE FILE.
+
+- To SPECIFY a TIMEZONE when RUNNING A PROGRAM, we SET the "TZ" environment variable to a STRING consisting of
+a colon (:) followed by one of the TIMEZONE NAMES defined in "/usr/share/zoneinfo". Setting the timezone
+AUTOMATICALLY INFLUENCES the functions "ctime()", "localtime()", "mktime()", and "strftime()".
+
+- To OBTAIN the CURRENT TIMEZONE SETTING, each of these functions uses "tzset(3)", which INITIALIZES THREE
+GLOBAL VARIABLES:
+        # char *tzname[2];    /* Name of timezone and alternate (DST) timezone */
+        # int daylight;       /* NONZERO if there is an alternate (DST) timezone */
+        # long timezone;      /* Seconds difference between UTC and local standard time */
+
+- The "tzset()" function FIRST CHECKS the "TZ" environment variable. If this variable is NOT SET, then the
+TIMEZONE is INITIALIZED to the DEFAULT defined in the TIMEZONE FILE "/etc/localtime". If the "TZ" environment
+variable IS DEFINED with a value that CAN'T BE MATCHED to a TIMEZONE FILE, or it is an EMPTY STRING, then UTC
+is used. The "TZDIR" environment variable (a NONSTANDARD GNU-extension) can be SET to the NAME OF A DIRECTORY
+in which TIMEZONE INFORMATION should be SOUGHT INSTEAD of in the default "/usr/share/zoneinfo".
+
+- SUSv3 defines TWO GENERAL WAYS in which the "TZ" environment variable can be SET. As just described, "TZ"
+can be SET to a CHARACTER SEQUENCE consisting of a colon plus a string that identifies the timezone in an
+implementation-specific manner, typically as a pathname for a timezone description file (Linux and SOME OTHER
+UNIX implementations PERMIT the colon to be OMITTED when using this form, BUT SUSv3 DOESN'T SPECIFY this;
+for PORTABILITY, we SHOULD ALWAYS INCLUDE the colon).
+
+- The OTHER METHOD of setting "TZ" is FULLY SPECIFIED in SUSv3. In this method, we ASSIGN a STRING of the
+following form to "TZ":
+       # std offset [ dst [ offset ][ , start-date [ /time ], end-date [ /time ]]]
+
+- Spaces are included in the line above for CLARITY, but NONE SHOULD APPEAR in the "TZ" value. The brackets 
+([]) are used to INDICATE OPTIONAL COMPONENTS.
+
+- The "std" and "dst" components are STRINGS that DEFINE NAMES for the STANDARD and DST TIMEZONES;
+for example, CET and CEST for Central European Time and Central European Summer Time. The "offset" in
+each case SPECIFIES the POSITIVE or NEGATIVE ADJUSTMENT to add to the LOCAL TIME to CONVERT IT to UTC.
+The final four components provide a RULE describing WHEN the CHANGE from STANDARD TIME to DST OCCURS.
+
+- The DATES can be SPECIFIED in a VARIETY OF FORMS, one of which is "Mm.n.d". This notations means day 'd'
+(0 = Sunday, 6 = Saturday) of week 'n' (1 to 5, where 5 ALWAYS MEANS the LAST 'd' day) of month 'm' (1 to 12).
+If the "time" is OMITTED, it DEFAULTS to 02:00:00 (2 AM) in each case.
+
+- Here is HOW we could DEFINE "TZ" for Central Europe, where STANDARD TIME is ONE HOUR AHEAD of UTC,
+and DST - running from the last Sunday in March to the last Sunday in October - is 2 HOURS AHEAD of UTC:
+        # TZ="CET-1:00:00CEST-2:00:00,M3.5.0,M10.5.0"
+
+- We OMITTED the SPECIFICATION of the "time" for the DST CHANGEOVER, since it occurs at the default of
+02:00:00. Of course, the PRECEDING FORM is LESS READABLE than the NEAR EQUIVALENT:
+        # TZ=":Europe/Berlin"
+
+############################################################################################################
+- Several thousand languages are spoken across the world, of which a SIGNIFICANT PERCENTAGE are REGULARLY
+USED on COMPUTER SYSTEMS. Furthermore, DIFFERENT COUNTRIES use DIFFERENT CONVENTIONS for DISPLAYING
+INFORMATION such as NUMBERS, CURRENCY AMOUNTS, DATES, and TIMES. For example, in most European countries,
+a comma, rather than a decimal point, is used to separate the integer and fractional parts of (real) numbers,
+and most countries use formats for writing dates that are different from the MM/DD/YY format used in the
+United States. SUSv3 defines a 'LOCALE' as the "subset of a user's environment that depends on language and
+cultural conventions".
+
+- Ideally, all programs DESIGNED TO RUN in MORE THAN ONE LOCATION should DEAL with LOCALES in order to display
+and input information in the user's PREFERRED LANGUAGE and FORMAT. This CONSTITUTES the COMPLEX SUBJECT of
+'INTERNATIONALIZATION'. In the IDEAL WORLD, we would write a program ONCE, and then, wherever it was run, it
+would AUTOMATICALLY do the right things when performing I/O; that is, it would PERFORM the TASK of
+'LOCALIZATION'. Internationalizing programs is a somewhat time-consuming job, although various tools are
+available to EASE THE TASK. Program libraries such as "glibc" ALSO PROVIDE FACILITIES to HELP with
+INTERNATIONALIZATION.
+
+             Note:  The TERM 'internationalization' is OFTEN WRITTEN as I18N, for I plus 18 letters plus N.
+                  As well as being QUICKER to write, this term has the ADVANTAGE of AVOIDING the DIFFERENCE
+                  in the SPELLING of the term itself in British and American English.
+
+- Like timezone information, LOCALE INFORMATION tends to be BOTH VOLUMINOUS and VOLATILE. For this reason,
+RATHER than REQUIRING each program and library to STORE LOCALE INFORMATION, the SYSTEM MAINTAINS this
+INFORMATION in FILES in STANDARD FORMATS.
+
+- Locale information is MAINTAINED in a DIRECTORY HIERARCHY under "/usr/share/locale" (or "/usr/lib/locale"
+in some distributions). Each SUBDIRECTORY under this directory CONTAINS INFORMATION about a PARTICULAR LOCALE.
+These directiores are named using the following convention:
+          # language[_territory[.codeset]][@modifier]
+
+- The "language" is a two-letter ISO LANGUAGE CODE, and the "territory" is a two-letter ISO COUNTRY CODE.
+The "codeset" DESIGNATES a CHARACTER-ENCODING SET. The "modifier" provides a means of DISTINGUISHING MULTIPLE
+LOCALE DIRECTORIES whose language, territory, and codeset are THE SAME. An EXAMPLE of a COMPLETE LOCALE
+DIRECTORY NAME is "de_DE.utf-8@euro", as the LOCALE for: German language, Germany, UTF-8 character encoding,
+employing the euro as the monetary unit.
+
+- As indicated by the brackets shown in the directory naming format, various parts of the name of a locale
+directory can be OMITTED. Often the name consists of JUST a LANGUAGE and a TERRITORY. Thus, the directory
+"en_US" is the LOCALE DIRECTORY for the (English-speaking) United States, and "fr_CH" is the LOCALE DIRECTORY
+for the French-speaking region of Switzerland.
+
+           Note:  The 'CH' stands for "Confoederatio Helvetica", the Latin (and thus LOCALLY LANGUAGE-NEUTRAL)
+                name for Switzerland. With FOUR OFFICIAL NATIONAL LANGUAGES, Switzerland is an EXAMPLE of a
+                LOCALE ANALOG of a COUNTRY with MULTIPLE TIMEZONES.
+
+- When we SPECIFY a LOCALE to be used within a program, we are, IN EFFECT, SPECIFYING the NAME of one of the
+SUBDIRECTORIES under "/usr/share/locale". If the LOCALE SPECIFIED to the program DOESN'T MATCH a locale
+directory name EXACTLY, then the C library SEARCHES for a MATCH by STRIPPING COMPONENTS from the specified
+locale in the following order:
+       1. codeset;
+       2. normalized codeset;
+       3. territory;
+       4. modifier;
+
+- The NORMALIZED CODESET is a VERSION of the CODESET NAME in which ALL NONALPHANUMERIC CHARACTERS are REMOVED,
+ALL LETTERS are CONVERTED to LOWERCASE, and the RESULTING STRING is PREPRENDED with the characters "iso".
+The AIM of NORMALIZING is to HANDLE VARIATIONS in the CAPITALIZATION and PUNCTUATION (e.g., extra hyphens)
+of CODESET NAMES.
+
+- As an EXAMPLE of this stripping process, if the locale for a program is specified as "fr_CH.utf-8", but no
+locale directory by that name exists, then the "fr_CH" locale directory will be matched if it exists. If the
+"fr_CH" directory doesn't exist, then the "fr" locale directory will be used. In the unlikely event that the
+"fr" directory doesn't exist, then the "setlocale()" function will REPORT an ERROR.
+
+           Note:  The file "/usr/share/locale/locale.alias" defines ALTERNATIVE WAYS of specifying locales
+                to a program. See the "locale.aliases(5)" manual page for details.
+
+- Under each locale subdirectory is a STANDARD SET of FILES that SPECIFY the CONVENTIONS for this locale:
+       -----------------------------------------------------------------------------------
+       | Filename      | Purpose                                                         |
+       -----------------------------------------------------------------------------------
+       | LC_CTYPE      | A file containing character classifications (see "isalpha(3)")  |
+       |               | and rules for case conversion                                   |
+       | LC_COLLATE    | A file containing the collation rules for a character set       |
+       | LC_MONETARY   | A file containing formatting rules for monetary values          |
+       |               | (see "localeconv(3)" and <locale.h>)                            |
+       | LC_NUMERIC    | A file containing formatting rules for numbers other than       |
+       |               | monetary values (see "localeconv(3)" and <locale.h>)            |
+       | LC_TIME       | A file containing formatting rules for dates and times          |
+       | LC_MESSAGES   | A directory containing files specifying formats and values      |
+       |               | used for affirmative and negative (yes/no) responses            |
+       -----------------------------------------------------------------------------------
+
+- Note the following further points concerning the information in this table:
+         a) The "LC_COLLATE" file DEFINES a SET OF RULES describing HOW the characters in a character set are
+           ORDERED (i.e., the "alphabetical" order for the character set) These rules DETERMINE the OPERATION
+           of the "strcoll(3)" and "strxfrm(3)" functions. Even languages using Latin-based scripts DON'T
+           FOLLOW the SAME ORDERING RULES. For example, several European languages have ADDITIONAL LETTERS
+           that, in some cases, sort AFTER the letter 'Z'. Other SPECIAL CASES include the Spanish two-letter
+           sequence 'll', which sorts as a SINGLE LETTER AFTER 'l', and the German umlauted characters, such
+           as ä, which corresponds to "ae" and sorts as those two letters.
+ 
+         b) The "LC_MESSAGES" directory is one step toward INTERNATIONALIZING the MESSAGES DISPLAYED by a 
+           program. More EXTENSIVE INTERNATIONALIZATION of PROGRAM MESSAGES can be ACCOMPLISHED through the
+           use of EITHER MESSAGE CATALOGS (see the "catopen(3)" and "catgets(3)" manual pages) OR the GNU
+           "gettext" API (available at "http://www.gnu.org").
+
+             Note:  Version 2.2.2 of "glibc" introduced a number of NEW, NONSTANDARD LOCALE CATEGORIES.
+                  "LC_ADDRESS" defines RULES for the locale-specific representation of a POSTAL ADDRESS;
+                  "LC_IDENTIFICATION" specifies information IDENTIFYING the LOCALE;
+                  "LC_MEASUREMENT" defines the MEASUREMENT SYSTEM for the LOCALE (e.g., metric vs imperial);
+                  "LC_NAME" defines the locale-specific RULES for REPRESENTATION of a PERSONS'S NAMES AND
+                   TITLE;
+                  "LC_PAPER" defines the STANDARD PAPER SIZE for the LOCALE (e.g., US letter versus the A4
+                   format used in most other countries);
+                  "LC_TELEPHONE" defines the RULES for locale-specific representation of DOMESTIC and
+                  INTERNATIONAL TELEPHONE NUMBERS, as well as the INTERNATIONAL COUNTRY PREFIX and 
+                  INTERNATIONAL DIAL-OUT PREFIX.
+
+- The ACTUAL LOCALES that are defined on a system can VARY. SUSv3 DOESN'T MAKE ANY REQUIREMENTS about this,
+EXCEPT that a STANDARD LOCALE called POSIX (and synonymously, C, a name that exists for historical reasons)
+MUST be DEFINED. This locale MIRRORS the HISTORICAL BEHAVIOUR of UNIX systems. Thus, it is based on an ASCII
+character set, and uses English for names of days and months, and for yes/no responses. The MONETARY and
+NUMERIC COMPONENTS of this locale are UNDEFINED.
+
+             Note:  The "locale" command DISPLAYS INFORMATION about the CURRENT LOCALE ENVIRONMENT (within the
+                  shell). The command "locale -a" LISTS the FULL SET OF LOCALES defined on the system.
+
+- The "setlocale()" function is used to BOTH SET and QUERY a program's CURRENT LOCALE:
+     DEP: #include <locale.h>      PROTO: char *setlocale(int category, const char *locale);
+                                   RET: Returns pointer to a (USUALLY STATICALLY ALLOCATED) string identifying
+                                                        the new or current locale on success, or NULL on error
+
+- The "category" argument SELECTS WHICH PART of the LOCALE to SET or QUERY, and is specified as one of a set
+of constants whose names are the same as the locale categories listed in the above table. Thus, for example,
+it is possible to set the locale for time displays to be Germany, while setting the locale for monetary
+displays to US dollars. Alternatively, and MORE COMMONLY, we can use the value "LC_ALL" to specify that we
+want to SET ALL ASPECTS of the LOCALE.
+
+- There are TWO DIFFERENT METHODS of setting the locale using "setlocale()". The "locale" argument may be a
+STRING specifying one of the locales defined on the system (i.e., the name of one of the subdirectories under
+"/usr/lib/locale"), such as "de_DE" or "en_US". Alternatively, "locale" may be specified as an EMPTY STRING,
+meaning that the LOCALE SETTINGS should be TAKEN from the ENVIRONMENT VARIABLES:
+         # setlocale(LC_ALL, "");
+
+- We MUST MAKE this call in order for a program to be COGNIZANT of the LOCALE ENVIRONMENT VARIABLES. If the
+call is OMITTED, these ENVIRONMENT VARIABLES will have NO EFFECT on the program.
+
+- When running a program that makes a "setlocale(LC_ALL, "")" call, we can CONTROL VARIOUS ASPECTS of the
+LOCALE using a SET OF ENVIRONMENT VARIABLES whose names AGAIN CORESSPOND to the categories listed in the
+above table: LC_CTYPE, LC_COLLATE, LC_MONETARY, LC_NUMERIC, LC_TIME, and LC_MESSAGES. Alternatively, we can
+use the 'LC_ALL' or the 'LANG' ENVIRONMENT VARIABLE to SPECIFY the SETTING of the ENTIRE LOCALE. If MORE THAN
+ONE of the preceding variables is set, then 'LC_ALL' has PRECEDENCE OVER ALL of the other LC_* environment
+variables, and "LANG" has the LOWEST PRECEDENCE. Thus, it is possible to use "LANG" to SET a DEFAULT LOCALE
+for ALL CATEGORIES, and then use INDIVIDIAL LC_* variables to SET ASPECTS of the LOCALE to SOMETHING OTHER
+than this default.
+
+- As its result, "setlocale()" returns a pointer to a (usually STATICALLY ALLOCATED) string that IDENTIFIES
+the LOCALE SETTING for this CATEGORY. If we are ONLY INTERESTED in DISCOVERING the CURRENT LOCALE SETTING,
+WITHOUT CHANGING IT, then we can specify the "locale" argument as NULL.
+
+- Locale settings control the operation of a WIDE RANGE of GNU/Linux utilities, as well as many functions in
+"glibc". Among these are the functions "strftime()" and "strptime()".
+
+############################################################################################################
+- We now look at TWO INTERFACES that UPDATE the SYSTEM CLOCK: "settimeofday()" and "adjtime()". These
+interfaces are RARELY USED by application programs (since the SYSTEM TIME is USUALLY MAINTAINED by TOOLS such
+as the "Network Time Protocol" daemon), and they REQUIRE that the CALLER be PRIVILEGED (CAP_SYS_TIME);
+
+- The "settimeofday()" system call performs the CONVERSE of "gettimeofday()": it SETS the SYSTEM'S CALENDAR
+TIME to the number of seconds and microseconds specified in the "timeval" structure pointed to by "tv".
+     DEP: #define _BSD_SOURCE 
+          #include <sys/time.h>  PROTO: int settimeofday(const struct timeval *tv, const struct timezone *tz);
+                                 RET: Returns 0 on success, or -1 on error.
+
+- As with "gettimeofday()", the use of the "tz" argument is OBSOLETE, and this argument SHOULD ALWAYS BE
+SPECIFIED as NULL.
+
+- The MICROSECOND PRECISION of the "tv.tv_usec" field DOESN'T MEAN that we have MICROSECOND ACCURACY in
+CONTROLLING the SYSTEM CLOCK, since the CLOCK'S GRANULARITY may be LARGER than ONE MICROSECOND.
+
+- Although "settimeofday()" is NOT SPECIFIED in SUSv3, it is WIDELY AVAILABLE on OTHER UNIX implementations.
+
+             Note:  Linux ALSO PROVIDES the "stime()" system call for SETTING the SYSTEM CLOCK. The DIFFERENCE
+                  between "settimeofday()" and "stime()" is that the LATTER call ALLOWS the NEW CALENDAR TIME
+                  to be EXPRESSED with a PRECISION of ONLY 1 SECOND. As with "time()" and "gettimeofday()",
+                  the REASON for the EXISTENCE of BOTH "stime()" and "settimeofday()" is HISTORICAL:
+                  the LATTER, MORE PRECISE call, was ADDED by 4.2BSD.
+
+- ABRUPT CHANGES in the SYSTEM TIME of the sort CAUSED by calls to "settimeofday()" can have DELETERIOUS
+EFFECTS on applications (e.g., "make(1)", a database system using timestamps, or time-stamped log files) that
+DEPEND on a MONOTONICALLY INCREASING SYSTEM CLOCK. For this reason, when making SMALL CHANGES to the time
+(of the ORDER of a FEW SECONDS), it is USUALLY PREFERABLE to use the "adjtime()" LIBRARY FUNCTION, which
+CAUSES the SYSTEM CLOCK to GRADUALLY ADJUST to the DESIRED VALUE.
+
+     DEP: #define _BSD_SOURCE 
+          #include <sys/time.h>  PROTO: int adjtime(struct timeval *delta, struct timeval *olddelta);
+                                 RET: Returns 0 on success, or -1 on error.
+
+- The "delta" argument points to a "timeval" structure that SPECIFIES the number of seconds and microseconds
+by which to CHANGE the TIME. If this value is POSITIVE, then a SMALL AMOUNT of ADDITIONAL TIME is ADDED to the
+system clock EACH SECOND, UNTIL the DESIRED AMOUNT OF TIME has been ADDED. If the "delta" value is NEGATIVE,
+the CLOCK is SLOWED DOWN in a SIMILAR FASHION.
+
+             Note:  The RATE OF CLOCK ADJUSTMENTS on Linux/x86-32 amounts to 1 second per 2000 seconds
+                   (or 43.2 seconds per day).
+
+- It may be that an INCOMPLETE CLOCK ADJUSTMENT was IN PROGRESS at the time of the "adjtime()" call. In this
+case, the AMOUNT of REMAINING, UNADJUSTED TIME is RETURNED in the "timeval" structure pointed to by
+"olddelta". If we are NOT INTERESTED in this value, we CAN SPECIFY "olddelta" as NULL. CONVERSELY, if we are
+ONLY INTERESTED in knowing the CURRENTLY OUTSTANDING TIME CORRECTION to be made, and DON'T WANT TO CHANGE the
+value, we CAN SPECIFY the "delta" argument as nULL.
+
+- Although NOT SPECIFIED in SUSv3, "adjtime()" is AVAILABLE on MOST UNIX implementations.
+
+             Note:  On Linux, "adjtime()" is implemented ON TOP of a MORE GENERAL (and COMPLEX) Linux-specific
+                  system call, "adjtimex()". This system call is EMPLOYED by the "Network Time Protocol" (NTP)
+                  daemon.
+
+############################################################################################################
+- The ACCURACY of various time-related system calls described here is LIMITED to the RESOLUTION of the system
+"SOFTWARE CLOCK", which MEASURES TIMES in UNITS CALLED "jiffies". The SIZE of a "jiffy" is DEFINED by the
+CONSTANT "HZ" within the kernel source code. This is the unit in which the kernel ALLOCATES the CPU to
+PROCESSES under the round-robin time-sharing SCHEDULING ALGORITHM.
+
+- On Linux/x86-32 in kernel versions UP TO AND INCLUDING 2.4, the RATE of the SOFTWARE CLOCK was 100 hertz;
+that is, a jiffy is 10 milliseconds.
+
+- Because CPU speeds have GREATLY INCREASED since Linux was first implemented, in kernel 2.6.0, the RATE of
+the SOFTWARE CLOCK was RAISED to 1000 hertz on Linux/x86-32. The ADVANTAGES of a HIGHER SOFTWARE CLOCK RATE
+are that TIMERS can OPERATE with GREATER ACCURACY and TIME MEASUREMENTS can be made with GREATER PRECISION.
+However, it ISN'T DESIRABLE to SET the CLOCK RATE to ARBITRARILY HIGH VALUES, because EACH clock interrupt
+CONSUMES a SMALL AMOUNT of CPU TIME, which is time that the CPU CAN'T SPEND EXECUTING PROCESSES.
+
+- Debate among kernel developers eventually resulted in the SOFTWARE CLOCK RATE becoming a CONFIGURABLE KERNEL
+OPTION (under "Processor type and features, Timer frequency"). Since kernel 2.6.13, the CLOCK RATE can be SET
+to 100, 250 (the default), or 1000 hertz, giving jiffy values of 10, 4, and 1 milliseconds.
+Since kernel 2.6.20, a FURTHER FREQUENCY is AVAILABLE: 300 hertz, a number that DIVIDES EVENLY for TWO COMMON
+VIDEO FRAME RATES: 25 frames per second (PAL) and 30 frames per second (NTSC);
+
+############################################################################################################
+- Process time is the AMOUNT of CPU TIME used by a process since it was created. For RECORDING PURPOSES, the
+kernel SEPARATES CPU TIME into the following two components:
+     a) USER CPU TIME - the amount of time spent EXECUTING in USER MODE. Sometimes referred to as VIRTUAL
+                        TIME, this is the time that it appears to the program that it has access to the CPU.
+
+     b) SYSTEM CPU TIME - the amount of time spent EXECUTING in KERNEL MODE. This is the time that the kernel
+                          spends EXECUTING SYSTEM CALLS or PERFORMING OTHER TASKS on BEHALF of the program
+                          (e.g., SERVICING PAGE FAULTS).
+
+- Sometimes, we refer to PROCESS TIME as the TOTAL CPU TIME consumed by the process.
+
+- When we run a program from the shell, we can use the "time(1)" command to obtain BOTH PROCESS TIME VALUES,
+as well as the REAL TIME REQUIRED to RUN the program:
+         $ time ./myprog
+
+- The "times()" system call retrieves PROCESS TIME information, returning it in the structure pointed to by
+"buf":
+         DEP: #include <sys/times.h>          PROTO: clock_t times(struct tms *buf);
+                                              RET: Returns number of CLOCK TICKS (sysconf(_SC_CLK_TCK)) since
+                                                 "arbitrary" time in past on success, or (clock_t)-1 on error
+
+- The "tms" structure pointed to by "buf" has the following form:
+         # struct tms{
+         #    clock_t tms_utime;      /* User CPU time used by caller   */
+         #    clock_t tms_stime;      /* System CPU time used by calelr */
+         #    clock_t tms_cutime;     /* User CPU time of all (waited for) children */
+         #    clock_t tms_cstime;     /* System CPU time of all (waited for) children */
+         # };
+
+- The first two fields of the "tms" structure return the USER and SYSTEM COMPONENTS of CPU TIME used so far
+by the calling process. The last two fields return information about the CPU TIME used by ALL CHILD PROCESSES
+that have TERMINATED and for which the PARENT (i.e., the CALLER of "times()") has DONE a "wait()" system call.
+
+- The 'clock_t' data type used to type the four fields of the "tms" structure is an INTEGER TYPE that MEASURES
+TIME in UNITS called "CLOCK TICKS". We can call "sysconf(_SC_CLK_TCK)" to obtain the number of CLOCK TICKS
+PER SECOND, and then DIVIDE a 'clock_t' value by THIS NUMBER to CONVERT to SECONDS.
+
+             Note:  On MOST Linux hardware architectures, "sysconf(_SC_CLK_TCK)" returns the number 100.
+                  This corresponds to the kernel constant 'USER_HZ'. However, 'USER_HZ' can be defined with
+                  a value OTHER THAN 100 on a FEW ARCHITECTURES, such as Alpha and IA-64.
+
+- On success, "times()" returns the ELAPSED (REAL) TIME in clock ticks since some arbitrary point in the past.
+SUSv3 DELIBERATELY does NOT SPECIFY what this point is, MERELY STATING that it will be CONSTANT during the
+life of the calling process. Therefore, the ONLY PORTABLE USE of this return value is to MEASURE ELAPSED TIME
+in the execution of the process by calculating the difference in the value returned by PAIRS of "times()"
+calls. However, even for this use, the return value of "times()" is UNRELIABLE, since it can OVERFLOW the
+range of 'clock_t', at which point the value would CYCLE to start again at 0 (i.e, a later "times()" call
+could return a number that is lower than an earlier "times()" call). The RELIABLE WAY to MEASURE the PASSAGE 
+OF ELAPSED TIME is to use "gettimeofday()".
+
+- On Linux, we can specify "buf" as NULL; in this case, "times()" simply returns a function result. However,
+this is NOT PORTABLE. The use of NULL for "buf" is NOT SPECIFIED in SUSv3, and MANY OTHER UNIX implementations
+REQUIRE a NON-NULL value for this argument.
+
+- The "clock()" function provides a SIMPLER INTERFACE for RETRIEVING the PROCESS TIME. It returns a single
+value that measures the TOTAL (i.e., USER PLUS SYSTEM) CPU TIME used by the calling process:
+         DEP: #include <time.h>          PROTO: clock_t clock(void);
+                                         RET: Returns total CPU time used by calling process measured
+                                                           in CLOCKS_PER_SEC, or (clock_t)-1 on error
+
+- The value returned by "clock()" is measured in UNITS of 'CLOCKS_PER_SEC', so we MUST DIVIDE by this value
+to arrive at the number of seconds of CPU TIME used by the process. 'CLOCKS_PER_SEC' is FIXED at 1 million
+by POSIX.1, REGARDLESS of the RESOLUTION of the UNDERLYING SOFTWARE CLOCK. The ACCURACY of "clock()" is
+nevertheless LIMITED to the RESOLUTION of the SOFTWARE CLOCK.
+
+             Note:  Although the 'clock_t' return type of "clock()" is the SAME DATA TYPE that is used in
+                  the "times()" call, the UNITS of MEASUREMENT employed by these two interfaces ARE DIFFERENT.
+                  This is the RESULT of HISTORICALLY CONFLICTING DEFINITIONS of 'clock_t' in POSIX.1 and the
+                  C programming language standard.
+
+- Even though 'CLOCKS_PER_SEC' is FIXED at 1 million, SUSv3 notes that this CONSTANT could be an INTEGER
+VARIABLE on NON-XSI-CONFORMANT SYSTEMS, so that we CAN'T PORTABLY treat it as a COMPILE-TIME CONSTANT
+(i.e., we CAN'T USE it in #ifdef preprocessor expressions). Because it MAY BE DEFINED as a LONG INTEGER, we
+ALWAYS CAST this constant to 'long' so that we can PORTABLY PRINT IT with "printf()".
+
+- SUSv3 states that "clock()" should return "the processor time used by the process". This is OPEN to
+DIFFERENT INTERPRETATIONS. On SOME UNIX implementations, the TIME returned by "clock()" INCLUDES the CPU TIME
+used by ALL WAITED-FOR CHILDREN. On Linux, it DOES NOT.
+
+############################################################################################################

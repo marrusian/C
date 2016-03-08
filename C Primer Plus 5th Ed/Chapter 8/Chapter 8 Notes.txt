@@ -1,0 +1,129 @@
+- Originally, input/output functions were NOT part of the definition of C. Their development was left to
+C implementations. In practice, the UNIX implementation of C has served as a MODEL for these functions.
+The ANSI C library, recognizing past practice, contains a large number of these Unix I/O functions.
+Because such standard functions must work on a WIDE VARIETY of computer environments, they SELDOM take
+advantage of features peculiar to a particular system. Therefore, many C vendors SUPPLY ADDITIONAL I/O
+functions that DO make use of SPECIAL FEATURES of the hardware. Other functions or families of functions
+TAP into PARTICULAR operating systems that support, for example, SPECIFIC graphical interfaces, such as
+those provided by Windows or Macintosh OS. These specialized, nonstandard functions enable us to write
+programs that use a particular computer more effectively. Unfortunately, they often CAN'T be used on
+OTHER computer systems.
+
+- The process of FETCHING characters from input and SENDING them to the SCREEN is called "ECHOING THE
+INPUT".
+
+- The IMMEDIATE echoing of input characters is an instance of UNBUFFURED (or DIRECT) input, meaning that
+the characters we type are IMMEDIATELY made AVAILABLE to the waiting program.
+
+- The DELAYED echoing, on the other hand, illustrates BUFFERED input, in which the characters we type are
+COLLECTED and STORED in an area of TEMPORARY STORAGE called a BUFFER. Pressing 'Enter' causes the block
+of characters we typed to be made available to our program.
+
+- Buffered input is desirable because:
+   1) It is less time-consuming to transmit several characters as a block than to send them one by one.
+   2) If we mistype, we can use our keyboard correction features to fix our mistakes.
+
+- Unbuffered input, on the other hand, is desirable for some interactive programs. In a game,
+for instance, we'd like each command to take place AS SOON as we press a key (i.e. ASAP).
+
+- Buffering comes in TWO variaties:
+   a) FULLY BUFFERED I/O
+   b) LINE-BUFFERED I/O
+
+a) The buffer is FLUSHED when it is FULL. This kind of buffering usually occurs with FILE INPUT. The
+buffer size DEPENDS on the system, but 512 bytes and 4096 bytes are COMMON  values.
+
+b) The buffer is FLUSHED whenever a NEWLINE character SHOWS UP. Keyboard input is normally line buffered,
+so that pressing 'Enter' flushes the buffer.
+
+- ANSI C and subsequent C standards SPECIFY that input should be BUFFERED (however, K&R ORIGINALLY left
+the choice open to the compiler writer). The reason is that some computer designs DON'T permit unbuffered
+input. If a particular computer DOES allow unbuffered input, most likely its C compiler OFFERS unbuffered
+input as an option. Many compilers, for example, SUPPLY a SPECIAL FAMILY of functions, supported by the
+"conio.h" header file, for unbuffered input. These functions include "getche()" for ECHOED unbuffered
+input and "getch()" for UNECHOED unbuffered input.
+
+- UNIX systems use a DIFFERENT approach, because Unix ITSELF controls buffering. With Unix, we use the
+"ioctl()" function (part of the UNIX LIBRARY, but NOT part of standard C) to specify the type of input
+we want and "getchar()" behaves accordingly.
+
+- In ANSI C, the "setbuf()" and "setvbuf()" functions SUPPLY SOME control over buffering, but the INHERENT
+limitations of some systems can RESTRICT the EFFECTIVENESS of these functions. In short, there is NO
+standard ANSI way of invoking unbuffered input; the means DEPEND on the computer system.
+
+- A FILE is an area of memory in which information is stored. C has MANY library functions for opening,
+reading, writing, and closing files. It can deal with files in TWO ways:
+   1) By using the BASIC file tools of the host OPERATING SYSTEM. This is called LOW-LEVEL I/O. Because of
+   the differences among computer systems, it is IMPOSSIBLE to create a standard library of universal
+   low-level I/O functions, and ANSI C does NOT attempt to do so.
+   2) By creating a standard model and a standard set of I/O functions for dealing with files. This is
+   called the "STANDARD I/O PACKAGE". At this higher level, differences between systems are HANDLED by
+   specific C implementations so that we can deal with a UNIFORM interface.
+
+- By "differences between systems" regarding files, we mean:
+   - Storing file differently. Some store the file contents in one place and information about the file
+   elsewhere. Some build a description of the file into the file itself.
+   - Dealing with text differently. Some systems use a SINGLE newline character to MARK the end of a line.
+   Others MIGHT use the CR/LF combination to represent the end of a line.
+   - Measuring file sizes differently. Some systems measure file sizes to the NEAREST byte, while others
+   measure in BLOCKS of bytes.
+
+- With the standard I/O packages we are SHIELDED from these differences. For example, when we are checking
+for a NEWLINE, IF the system ACTUALLY uses the CR/LF combination, the I/O functions AUTOMATICALLY
+TRANSLATE back and forth between the two representations.
+
+- Conceptually, C programs deal with STREAMS instead of directly with a file. A "STREAM" is an IDEALIZED
+flow of data to which the actual input or output is mapped. This means various kinds of input with
+differing properties are represented by streams with more UNIFORM properties. The process of OPENING a
+file then becomes one of ASSOCIATING a stream with the file, and reading and writing take place VIA the
+stream.
+
+- C treats input and output DEVICES the SAME as it treats regular FILES on storage devices. Keyboard input
+is represented by a stream called "STDIN" and output to the screen is represented by a stream called
+"STDOUT".
+
+- Operating systems NEED some way to tell where each file begins and ends:
+   a) One method to DETECT the end of a file is to place a SPECIAL character in the file to MARK the end.
+   b) A second method is for the operating system to STORE INFORMATION on the SIZE of the file.
+   For example, if a file has 3000 bytes and a program has read 3000 bytes, the program has reached
+   the end. (Unix uses this approach for ALL files).
+
+- There are TWO ways to get a program to work with files:
+  1) EXPLICITLY use SPECIAL functions that open files, close files, read files, write files etc.
+  2) Use a program designed to work with a keyboard and screen, but REDIRECT input and output along
+  different channels - TO and FROM files, for example. In other words, we REASSIGN the "STDIN" and/or
+  the "STDOUT" streams to a FILE. This approach is more limited in some respects than the first.
+
+- A "TEXT FILE" is one containing text - that is, data stored as HUMAN-READABLE characters.
+########################################################################################################
+
+Review Answers:
+
+1. putchar(getchar()) is valid, but getchar(putchar()) ("putchar()" should take an argument and
+"getchar()" shouldn't);
+
+2.
+  a. H;
+  b. 7;
+  c. newline
+  d. backspace
+
+3. count < essay > essayct (or, equivalent, count > essayct < essay)
+
+4. None of the options are valid commands.
+
+5. The EOF (i.e. "end of file") is a signal sent by the OS when the end of a file has been reached. This
+signal is then interpreted by C's input functions from the standard I/O package and returned back to the
+program as an int value defined in the "stdio.h" header file as a manifest constant.
+
+6. 
+   a. If you qu
+   b. HJacrtacrt
+
+7. C's standard I/O package shields us from the differences among computer systems by using the concept
+of a STREAM, which is an IDEALIZED flow of data to which the ACTUAL input/output is mapped. This means
+those differences are translated back and forth, so that we can program in a uniform manner, without
+worrying about peculiar behaviours.
+
+8. When intermixing numeric input with character input on buffered systems, there may be residues left in
+the stream with which we must deal properly.

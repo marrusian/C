@@ -1,0 +1,238 @@
+- There are two ways of implementing constants in a program:
+  1) Using C's Preprocessor.
+  2) Using the C90 "const" modifier.
+
+- The names of the symbolic constants must satisfy the same rules that the names of variables do.
+
+1) The C preprocessor lets you define constants. The general form of defining a constant is as
+follows: #define <SYMBOLIC_NAME> <value> (note that this construction does NOT use the '=' sign)
+
+- When the program is compiled, the value will be substituted everywhere we have used <SYMBOLIC_NAME>.
+This is called a COMPILE-TIME SUBSTITUTION. By the time we run the program, all the substitutions
+have already been made. Such defined constants are often termed MANIFEST CONSTANTS.
+
+- No semicolon is used because this is a substitution mechanism handled by the preprocessor, NOT a
+C statement.
+
+2) By using the "const" keyword, we can convert a declaration for a variable into a declaration for a
+constant. This makes the variable into a READ-ONLY value. This newer approach is more flexible than
+using #define, because it lets us declare a type, and it allows better control over which parts of
+a program can use the constant.
+
+- The C header files "limits.h" and "float.h" supply detailed information about the size limits of
+integer types and floating types, respectively, by defining a series of manifest constants that apply
+to our implementation.
+
+- Some symbolic constants from "limits.h":
+  Symbolic Constants           Represents
+      CHAR_BIT                 Number of bits in a char
+      CHAR_MAX                 Maximum char value
+      CHAR_MIN                 Minimum char value
+      SCHAR_MAX                Maximum signed char value
+      SCHAR_MIN                Minimum signed char value
+      UCHAR_MAX                Maximum unsigned char value
+      SHRT_MAX                 Maximum short value
+      SHRT_MIN                 Minimum short value
+      USHRT_MAX                Maximum unsigned short value
+      INT_MAX                  Maximum int value
+      INT_MIN                  Minimum int value
+      UINT_MAX                 Maximum unsigned int value
+      LONG_MAX                 Maximum long value
+      LONG_MIN                 Minimum long value
+      ULONG_MAX                Maximum unsigned long value
+      LLONG_MAX                Maximum long long value
+      LLONG_MIN                Minimum long long value
+      ULLONG_MAX               Maximum unsigned long long value
+
+- Some symbolic constants from "float.h":
+  Symbolic Constants           Represents
+      FLT_MANT_DIG             Number of bits in the mantissa of a float
+      FLT_DIG                  Minimum number of significant digits for a float
+      FLT_MIN_10_EXP           Minimum base-10 negative exponent for a float
+      FLT_MAX_10_EXP           Maximum base-10 positive exponent for a float
+      FLT_MIN                  Minimum value for a positive float retaining full precision
+      FLT_MAX                  Maximum value for a positive float
+      FLT_EPSILON              Difference between 1.00 and the least float value greater than 1.00
+
+- Equivalent constants are defined for types "double" and "long double", with "DBL" and "LDBL"
+substituted for "FLT" in name.
+
+##################################################################################################
+- The functions "printf()" and "scanf()" enable us to communicate with a program. They are called
+input/output functions (or I/O functions, for short). Historically, these functions, like all other
+functions in the C library, were not part of the definition of C. C originally left the
+implementations of I/O up to the compiler writers in order to better match I/O to specific machines.
+However, there were occasional discrepancies between implementations so the C90 and C99 standards
+described standard versions of these functions.
+
+- Although they are different functions, both work much the same, each using a CONTROL STRING and a
+list of arguments.
+
+- Notations like "%d" or "%f" are called CONVERSION SPECIFICATIONS because they specify how the data
+is to be converted into displayable form. 
+
+- The general format for using printf() is: printf(Control-string, arg1, arg2, ...);
+
+- A "control-string" contains two distinct forms of information:
+  a) Characters that are actually printed.
+  b) Conversion specifications.
+
+- Because the "printf()" function uses the '%' symbol to identify the conversion specifications, if
+we want to print the '%' sign itself, we just use TWO '%' symbols (otherwise, the compiler thinks we
+have bungled a conversion specification.)
+
+- We can modify a basic conversion specification by inserting modifiers between the '%' sign and the
+defining conversion character. The general format specifier is as follows: 
+   - %[flags][width][.period][length]specifier
+
+- For type portability, the "stddef.h" header file (included in "stdio.h") defines size_t to be
+whatever the type our system uses for "sizeof"; this is called the UNDERLYING TYPE. Second, "printf()"
+uses the 'z' modifier to indicate the corresponding type for printing. Similarly, C defines the
+"ptrdiff_t" type and 't' modifier to indicate whatever underlying signed integer type the system used
+for the difference between two addresses.
+
+- There is no "double" conversion specification. The reason is that "float" values were automatically
+converted to type "double" before being used in an expression or as an argument under K&R C. ANSI C,
+in general, does not automatically convert "float" to "double", but in order to be backward compliant
+with K&R C style programs, all "float" arguments to any C function not using an EXPLICIT prototype
+are still automatically converted to "double".
+
+- A conversion specification converts a value stored in the computer in some binary format to a
+series of characters (a string) to be displayed. For example, let's take the internally stored binary
+number 01001100. The "%d" conversion specifier converts this to the characters '7' and '6', displaying
+"76". The "%x" conversion convers the same value (01001100) to the hexadecimal representation "4c".
+The "%c" converts the same value to the character representation 'L'
+
+- The term 'CONVERSION' is probably somewhat misleading. Conversion specifications are really
+translation specifications; For example, "%d" means "translate the given value to a decimal integer
+text representation and print the representation.".
+
+- The "printf()" function returns the number of characters it printed. If there's an output error,
+it returns a negative value.
+
+- There are three methods to split a long string over several lines when using "printf()":
+   Method 1) Use more than one printf() statement.
+   Method 2) Terminate the end of the first line with a backslash/return combination. The effect is to
+          continue the string over to the next line.
+   Method 3) String concatenation, introduced by ANSI C. If we follow one quoted string constant with
+          another, separated only by whitespace, C treats the combination as a SINGLE string.
+
+##################################################################################################
+- "scanf()" converts string input into various froms: integers, floating-point numbers, characters
+and C strings. It is the "inverse" of "printf()", which converts integers, floating-points numbers,
+characters, and C strings to text that is to be displayed onscreen.
+
+- "scanf()" uses pretty much the same set of conversion-specification characters as "printf()". The
+main difference is that "printf()" uses %f/F, %e/E and %g/G for BOTH type "float" AND type "double",
+whereas "scanf()" uses them JUST for type "float", requiring the 'l' modifier for "double".
+
+- ANSI C conversion specifiers for "scanf()":
+   - "%c" => Interpret input as a character. If a width other than 1 is specified, the function reads
+             EXACTLY 'width' characters and stores them in the successive locations of the array
+             passed as argument. No null character is appended at the end.
+   - "%d" => Interpret input as a signed DECIMAL integer.
+   - "%u" => Interpret input as an UNSIGNED DECIMAL integer.
+   - "%e","%f","%g","%a" => Interpret input as a floating-point number ("%a" is C99).
+   - "%i" => Interpret input as a SIGNED integer. Decimal digits assumed by default, but a '0' prefix
+             introduces octal digits, and '0x' or '0X' introduces hexadecimal digits.
+   - "%o" => Interpret input as an UNSIGNED octal integer.
+   - "%x" => Interpret input as an UNSIGNED hexadecimal integer.
+   - "%p" => Interpret input as a pointer (an address).
+   - "%s" => Interpret input as a STRING, reading any number of non-whitespace characters, stopping at
+             the first whitespace character found. A terminating null character is automatically
+             added at the end of the stored sequence.
+
+- Conversion modifiers for "scanf()":
+   - "*" => An optional starting asterisk indicated that the data is to be read from the stream, but
+            ignored (i.e. it is NOT stored in the location pointed by an argument).
+   - (width) => Maximum field width. Input stops when the maximum field width is reached or when the
+                first whitespace character is encountered, whichever comes first.
+   - "hh" => signed/unsigned char* conversion.
+   - "h"  => signed/unsigned short* conversion.
+   - "l"  => signed/unsigned long* conversion, DOUBLE* conversion, wchar_t* conversion.
+   - "ll" => signed/unsigned long long* conversion.
+   - "j"  => intmax_t*/uintmax_t* conversion.
+   - "z"  => size_t*/size_t* conversion.
+   - "t"  => ptrdiff_t*/ptrdiff_t* conversion.
+   - "L"  => LONG double* conversion.
+
+- Suppose we use a "%d" specifier to read an integer. The "scanf()" function begins reading input a
+character at a time. It skips over whitespace characters until it finds a non-whitespace character and
+continues reading and saving characters until it encounters a nondigit. It then concludes that it has
+reached the end of the integer, so "scanf()" places the nondigit back into the input. This means that
+the next time the program goes to read input, it starts at the previously rejected, nondigit
+character. Finally, "scanf()" computes the numerical value corresponding to the digits (and possible
+sign) it read and places that value in the specified variable.
+
+- If we use a "scanf()" statement with several specifiers, C requires the function to STOP reading
+input at the first failure.
+
+- If we use a "%s" specifier, any character other than whitespace is acceptable, so "scanf()" skips
+whitespace to the first non-whitespace character and then saves up non-whitespace characters until
+hitting whitespace again. This means that "%s" results in "scanf()" reading a SINGLE WORD.
+
+- If we use a "%c" specifier, all input characters are acceptable. If the next input character is a 
+space or a newline, it is assigned to the indicated variable(i.e. whitespace is NOT skipped).
+
+- "scanf()" function enables us to place ordinary characters in the format string. Ordinary characters
+other than the space character must be MATCHED EXACTLY by the input string. A space in the format 
+string means to SKIP over ANY whitespace before the next input item. Except for "%c", the specifiers
+automatically skip over whitespace preceding an input value. For "%c", adding a space character to the
+format string DOES make a difference. For example, "scanf("%c",&ch)" reads the FIRST character
+encountered in input, and "scanf(" %c",&ch)" reads the FIRST NON-WHITESPACE character encountered.
+
+- "scanf()" function returns the number of items that it SUCCESSFULLY read. If it reads no items,
+"scanf()" returns the value 0. Also, it returns 'EOF' when it detects the "end of file" condition.
+##################################################################################################
+
+Review answers:
+
+2. 
+  a. He sold the painting for $234.50.
+  b. Hi!
+  c. His Hamlet was funny without being vulgar.
+     has 42 characters.
+  d. Is 1.20e3 the same as 1201.00?\n
+
+3. printf("\"%s\"\nhas %d characters.\n", Q, strlen(Q));
+
+5. printf("This copy of \"%s\" sells for %.2f.\n", BOOK, cost);
+   printf("That is %.f%% of list.\n", percent);
+
+6. 
+  a. "%d"
+  b. "%4X"
+  c. "%10.3f"
+  d. "%12.2e"
+  e. "%-30s"
+
+7. 
+  a. "%15lu"
+  b. "%4#x"
+  c. "%-12.2E"
+  d. "%+10.3f"
+  e. "%.8s"
+
+8.
+  a. "%6d"
+  b. "%*o"
+  c. "%2c"
+  e. "%+.2f"
+  f. "%-7.5s"
+
+9.
+  a. unsigned int n;
+     scanf("%u", &n);
+  b. float f1, f2;
+     scanf("%f %E", &f1, &f2);
+  c. char str[12] = {};
+     scanf("%s",str);
+  d. char str[6] = {};
+     unsigned int n;
+     scanf("%s %u", str, &n);
+  e. unsigned int n; 
+     scanf("%*s %u", &n);
+
+10. Whitespace are characters that represent blanks, tabs and newlines.
+
+11. "%zd"

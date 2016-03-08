@@ -1,0 +1,110 @@
+########################################################################################################
+- Put most simply, a PROCESS is an INSTANCE of an EXECUTING PROGRAM. When a program is EXECUTED, the kernel
+LOADS the code of the program into virtual memory, ALLOCATES space for program variables, and SETS UP
+kernel bookkeeping data structures to RECORD various information (such as PID, termination status, UIDs,
+GIDs) about the process.
+- From a KERNEL POV, processes are the entities among which the kernel must SHARE the VARIOUS RESOURCES
+of the computer. For resources that are LIMITED, such as memory, the kernel INITIALLY ALLOCATES some amount
+of the resource to the process, and ADJUSTS this allocation over the lifetime of the process in REPONSE to
+the DEMANDS of the process and the OVERALL SYSTEM DEMAND for that resource. When the process TERMINATES,
+all such resources are RELEASED for REUSE by other processes. Other resources, such as the CPU and NETWORK
+BANDWITH, are RENEWABLE, but MUST be shared EQUITABLY among all processes.
+
+- A process is LOGICALLY DIVIDED into the following parts (known as SEGMENTS):
+  a) Text: the instructions of the program.
+  b) Data: the static variables used by the program.
+  c) Heap: an area from which programs can DYNAMICALLY ALLOCATED extra memory.
+  d) Stack: a piece of memory that GROWS and SHRINKS as functions are CALLED and RETURN and that is used
+            to allocated storage for LOCAL VARIABLES and FUNCTION CALL LINKAGE INFORMATION.
+
+- A process can CREATE a NEW PROCESS using the "fork()" system call. The process that calls "fork()" is
+referred to as the PARENT PROCESS, and the new process is referred to as the CHILD PROCESS. The kernel
+CREATES the child process by MAKING a DUPLICATE of the parent process. The child INHERITS COPIES of the
+parent's data, stack, and heap segments, which it may then MODIFY INDEPENDENTLY of the parent's copies
+(the program text, which is placed in memory marked as READ-ONLY, is SHARED by the two processes).
+- The child process goes on EITHER to execute a DIFFERENT SET OF FUNCTIONS in the same code as the parent,
+or, frequently, to use the "execve()" system call to LOAD and EXECUTE an ENTIRELY NEW PROGRAM.
+An "execve()" call DESTROYS the existing text, data, stack, and heap segments, REPLACING them with NEW
+SEGMENTS based on the code of the new program.
+
+- A process can TERMINATE in one of TWO WAYS:
+   a) By REQUESTING its own termination using the "_exit()" system call (or the "exit()" lib. function).
+   b) By BEING KILLED by the delivery of a signal.
+- In either case, the process yields a TERMINATION STATUS, a small nonnegative integer value that is
+AVAILABLE FOR INSPECTION by the PARENT PROCESS using the "wait()" system call. In the case of a call to
+"_exit()", the process EXPLICITLY specifies its OWN TERMINATION STATUS. If a process is KILLED by a SIGNAL,
+the termination status is set ACCORDING to the TYPE OF SIGNAL that CAUSED THE DEATH of the process
+(sometimes we refer to the argument passed to "_exit()" as the EXIT STATUS of the process, as distinct
+from the termination status).
+- By convention, a termination status of 0 indicates that the process SUCCEEDED, and a NONZERO STATUS 
+indicates that SOME ERROR OCCURED.
+  Note: Most shells make the termination status of the LAST EXECUTED PROGRAM available via a shell variable
+        named "$?".
+
+- Each process has a number of ASSOCIATED UIDs and GIDs. These include:
+   a) REAL USER ID and REAL GROUP ID: These IDENTIFY the user and group to which the PROCESS BELONGS. A
+      new process INHERITS these IDs from ITS PARENT. A LOGIN SHELL gets its RUID and RGID from the
+      CORRESPONDING FIELDS in the SYSTEM PASSWORD FILE.
+   b) EFFECTIVE USER ID and EFFECTIVE GROUP ID: These two IDs (in conjunction with the SUPPLEMENTARY GIDs)
+      are used in DETERMINING the PERMISSIONS that the process has when ACCESSING PROTECTED RESOURCES such
+      as FILES and INTERPROCESS COMMUNICATION OBJECTS. Typically, the process's EIDs have the SAME VALUES
+      as the corresponding RIDs. Changing the EIDs is a MECHANISM that ALLOWS A PROCCESS to ASSUME the
+      PRIVILEGES of ANOTHER USER or GROUP.
+   c) SUPPLEMENTARY GROUP IDs: These IDs identify ADDITIONAL GROUPS to which a process belongs. A new
+      process INHERITS its SGIDs from its PARENT. A LOGIN SHELL gets its SGIDs from the SYSTEM GROUP FILE.
+
+- Traditionally, on UNIX systems, a PRIVILEGED PROCESS is one whose EUID is 0 (superuser). Such a process
+BYPASSES the PERMISSION RESTRICTIONS normally applied by the kernel. By contrast, the term UNPRIVILEGED is
+applied to processes run by OTHER USERS. Such processes have a NONZERO EUID and MUST ABIDE by the
+PERMISSION RULES ENFORCED by the KERNEL.
+- A process may be PRIVILEGED because it was CREATED by ANOTHER PRIVILEGED PROCESS (for example, by a login
+shell started by root). Another way a process MAY BECOME PRIVILIGED is via the set-UID MECHANISM, which
+allows a process to ASSUME AN EUID that is the SAME as the UID of the program file that it is EXECUTING.
+
+- Since kernel 2.2, Linux DIVIDES the PRIVILEGES traditionally accorded to the superuser into a SET of
+DISTINCT UNITS called CAPABILITIES. Each privileged operation is ASSOCIATED with a PARTICULAR CAPABILITY,
+and a process can peform an operation ONLY IF it has the corresponding capability. A traditional superuser
+process (EUID of 0) corresponds to a process with ALL CAPABILITIES ENABLED.
+- Granting a SUBSET of capabilities to a process allows it to perform SOME of the operations normally
+permitted to the superuser, while PREVENTING IT from performing others.
+
+- When BOOTING the SYSTEM, the kernel CREATES a SPECIAL PROCESS called "init", the "PARRENT OF ALL
+PROCESSES", which is DERIVED from the program file "/sbin/init". All processes on the system are CREATED
+(using "fork()") EITHER by "init" or by one of ITS DESCENDANTS. The "init" process ALWAYS has the PID 1 and
+runs with SUPERUSER PRIVILEGES. The "init" process CAN'T BE KILLED (not even by the superuser), and it
+TERMINATES ONLY when the SYSTEM is SHUT DOWN. The MAIN TASK of "init" is to CREATE and MONITOR a range of
+processes required by a running system.
+
+- A DAEMON is a special-purpose process that is CREATED and HANDLED by the SYSTEM in the SAME WAY as other
+processes, but which is DISTINGUISHED by the following characteristics:
+  a) It is LONG-LIVED. A daemon process is often started at SYSTEM BOOT and remains in existence until the
+     SYSTEM IS SHUT DOWN.
+  b) It RUNS in the BACKGROUND, and has NO CONTROLLING TERMINAL from which it can read input or to which it
+     can write output.
+- Examples of DAEMON PROCESSES include: 
+  - "syslogd", which records messages in the system log;
+  - "httpd", which serves web pages via the HTTP.
+
+- Each process has an ENVIRONMENT LIST, which is a set of ENVIRONMENT VARIABLES that are MAINTAINED within
+the USER-SPACE MEMORY of the process. Each element of this list consists of a NAME and an ASSOCIATED VALUE.
+When a NEW PROCESS is created via "fork()", it INHERITS a COPY of its PARENT'S ENVIRONMENT. Thus, the
+environment provides a MECHANISM for a parent process to COMMUNICATE INFORMATION to a child process. When
+a process REPLACES the program that it is running using "exec()", the new program EITHER inherits the
+environment used by the OLD PROGRAM or recives a NEW ENVIRONMENT specified as part of the "exec()" call.
+- Environment variables are CREATED with the "EXPORT" command in most shells. C programs can ACCESS the
+environment using an EXTERNAL VARIABLE (char **environ), and various library functions allow a process to
+RETRIEVE and MODIFY VALUES in its environment.
+- Environment variables are used for a VARIETY OF PURPOSES. For example, the shell DEFINES and USES a range
+of variables that can be accessed by SCRIPTS and PROGRAMS executed from the shell. These include the
+variables HOME, PATH, TERM, BASH_VERSION, SHELL etc.
+
+- Each process CONSUMES RESOURCES, such as: open files, memory, and CPU time. Using the "setrlimit()"
+system call, a process can ESTABLISH UPPER LIMITS on its consumption of various resources. Each such
+RESOURCE LIMIT has TWO ASSOCIATED VALUES:
+  a) A SOFT LIMIT, which limits the amount of the resource that the process MAY CONSUME.
+  b) A HARD LIMIT, which is a CEILING on the value to which the soft limit MAY BE ADJUSTED.
+- An UNPRIVILEGED PROCESS may change its soft limit for a particular resource to any value IN THE RANGE
+from ZERO up to the CORRESPONDING HARD LIMIT, but can only lower its hard limit.
+- When a new process is created with "fork()", it INHERITS COPIES of its PARENT'S resource limit settings.
+
+########################################################################################################

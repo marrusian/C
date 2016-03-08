@@ -1,0 +1,313 @@
+- A FILE is a named section of storage, usually on a disk, or, more recently, on a solid-state device.
+
+- C views a file as a CONTINUOUS sequence of bytes, each of which can be read INDIVIDUALLY. This
+corresponds to the file structure in the UNIX environment, where C grew up. Because other environments
+MAY NOT correspond exactly to this model, C provides TWO ways to view files:
+  1) The TEXT view.
+  2) The BINARY view.
+
+- All file content is in binary form. But if a file PRIMARILY uses the binary codes for characters 
+(for instance, ASCII or Unicode) to represent text, then it is a TEXT FILE (it has text content). If,
+instead, the binary values in the file represent MACHINE-LANGUAGE code or numeric data or images or
+music encoding etc, the content is binary.
+
+- UNIX uses the SAME FILE FORMAT for BOTH kinds of content. Unix directories maintain a file-size count
+that programs can use to determine when EOF is reached. However, other systems have had OTHER ways of
+handling files specifically intended to hold text. That is, they have a format for text file DIFFERENT
+from the UNIX model:
+   - pre-OS X Macintosh files used '\r' to indicate a new line.
+   - Early MS-DOS files used the combination '\r\n' to indicate a newline and imbedded an CTRL+Z
+   character to denote EOF.
+
+- To bring some regularity to the handling of files, C provides TWO ways of accessing a file:
+   1) The BINARY mode - each and every byte of a file is ACCESSIBLE to a program. No mapping takes place.
+   2) The TEXT mode - the local environment's representation of such things as the end of a line or EOF
+                    are MAPPED to the C view when a file is READ. Similarly, the C view is MAPPED to the
+                    local representation of OUTPUT. For example, a C text-mode program compiled on:
+                        - Older Macintosh would convert '\r' to \n\ when READING a file in text mode and
+                        convert '\n' to '\r' when WRITING to a file.
+                        - MS-DOS platform would convert '\r\n' to '\n' when READING from a file and
+                        convert '\n' to '\r\n' when WRITING to a file.
+
+- In addition to selecting the VIEW of a file, we can choose between TWO levels of I/O (that is, two
+levels of handling access to files):
+   - Low-level I/O - uses the fundamental I/O services provided by the OS.
+   - Standard high-level I/O - uses a STANDARD PACKAGE of C library functions and "stdio.h" header file
+                             definitions. 
+
+- The C standard supports ONLY the standard I/O package, because there is NO WAY to GUARANTEE that all
+OSs can be represented by the same low-level I/O model. 
+
+- C programs AUTOMATICALLY open THREE files on our behalf. They are termed:
+   a) The STANDARD INPUT (stdin);
+   b) The STANDARD OUTPUT (stdout)
+   c) The STANDARD ERROR OUTPUT (stderr);
+
+- The STANDARD INPUT is, by default, the normal input device for our system, usually our keyboard. The
+STANDARD OUTPUT and STANDARD ERROR OUTPUT are, by default, the normal output device for our system,
+usually our display screen.
+
+- The purpose of the STANDARD ERROR OUTPUT file is to provide a LOGICALLY DISTINCT place to send error
+messages. If, for example, we use redirection to send output to a file instead of to the screen, output
+sent to the standard error output STILL goes to the screen.
+
+- The standard I/O package has THREE advantages:
+   a) Portability over low-level I/O;
+   b) It has MANY specialized functions that simplify handling different I/O problems (for example,
+   functions used for formatted I/O like "printf()" or "scanf()").
+   c) Input and output are BUFFERED. That is, information is transferred in LARGE CHUNKS (typically 512
+   bytes at a time or more) instead of a byte at a time. When a program READS a file, for example, a
+   chunk of data is copied to a buffer (an intermediate storage area). This buffering GREATLY increases
+   the data transfer rate. The program can then examine individual bytes in the buffer. Because the
+   buffer is handled BEHIND the scenes, we have the illusion of character-by-character access.
+
+########################################################################################################
+- The string argv[0] is the NAME of the program. However, some OSs MAY NOT recognize argv[0], so its
+usage is NOT COMPLETELY portable.
+
+- The "exit()" function causes the program to TERMINATE, closing any open files. The argument to "exit()"
+is passed on to some OSs, including Unix, Linux, Windows, and MS-DOS, where it can be used by OTHER
+programs. The USUAL CONVENTION is to pass a value of 0 for programs that terminate NORMALLY and to pass
+NONZERO values for ABNORMAL termination. Because NOT all OSs recognize the same range of possible return
+values, the C standard requires a rather restricted minimum range:
+   - The value 0 (or the macro EXIT_SUCCESS) be used to indicate SUCCESSFUL termination.
+   - The macro EXIT_FAILURE be used to indicate UNSUCCESSFUL termination. 
+
+- Under ANSI C, using "return" in the INITIAL CALL to "main()" has the SAME EFFECT as calling "exit()".
+Therefore the statement "return 0" is EQUIVALENT IN EFFECT to "exit(0)". However, there IS a difference
+between them:
+   - The "exit()" function TERMINATES the program WHEREVER it is called, but "return" passes control back
+to the caller.
+
+########################################################################################################
+- The C library provides several modes in which a file is to be opened:
+    - "r"  => Open a text file for READING.
+    - "w"  => Open a text file for WRITING, TRUNCATING an existing file to zero length, or creating the
+              file if it does not exist.
+    - "a"  => Open a text file for WRITING, APPENDING to the end of an existing file, or creating the
+              file if it does not exist.
+    - "r+" => Open a text file for UPDATE (that is, for BOTH reading AND writing).
+    - "w+" => Open a text file for UPDATE (reading and writing), first TRUNCATING the file to zero length
+              if it exists or creating the file if it does not exist.
+    - "a+" => Open a text file for UPDATE, appending to the end of an existing file, or creating the file
+              if it does not yet exist; the WHOLE file can be READ, but WRITING can ONLY be APPENDED.
+    - "rb", "wb", "ab", => Like the preceding modes, EXCEPT they use BINARY MODE instead of text mode.
+      "ab+", "a+b",
+      "wb+", "w+b",
+      "ab+", "a+b"
+    
+    - "wx", "wbx", => C11 feature. Like the non-x modes, except they FAIL if the file ALREADY exists and
+      "w+x","wb+x",   they open a file in EXCLUSIVE MODE, if possible.
+      "w+bx"
+
+- For systems such as Unix and Linux that have just ONE FILE TYPE, the modes with the "b" are equivalent
+to the corresponding modes lacking the "b".
+
+- The NEW C11 write modes with x provide a couple of features compared to the older write modes:
+   1) If we open an existing file in one of the traditional write modes, "fopen()" truncates the file to
+   zero length, thus losing the file contents. But the modes with "x" cause "fopen()" to fail instead,
+   leaving the file UNHARMED.
+   2) To the extend that the environment allows, the EXCLUSIVITY feature of the "x" modes keeps other
+   programs or threads from accessing the file until the current process closes the file.
+
+- "FILE" is a derived type defined in "stdio.h" that IDENTIFIES a stream. The pointer-to-FILE DOESN'T
+point to the actual file. Instead, it points to a DATA OBJECT (a C structure) containing information
+ABOUT the file, including a pointer to its bufer, its position indicator and all its state indicators.
+
+- The "fopen()" function can fail because the disk is full, because the file is not in the searched
+directory, because the name is illegal, because access is restricted, because of a hardware problem etc.
+
+- The "fclose()" function closes the file identified by its argument, flushing buffers as needed. We
+SHOULD CHECK to see whether the file has been CLOSED SUCCESSFULLY.
+
+- The "fclose()" function can fail because the disk is full, because a removable storage device has been
+removed, because of an I/O error etc.
+
+- It's a standard C practice to send error messages to the STANDARD ERROR OUTPUT.
+
+########################################################################################################
+- The "fseek()" function has three arguments:
+   1) A FILE pointer to the file being searched (which should have been opened by using "fopen()").
+   2) An "OFFSET". This argument tells how far to move from the STARTING POINT. The argument must be a
+   'LONG' value. It can be POSITIVE (move forward), NEGATIVE (move backward), or ZERO (stay put).
+   3) The MODE, which identifies the STARTING POINT. Since the ANSI standard, the "stdio.h" header file
+   specifies the following manifest constants for the mode:
+           Mode               Measures Offset From
+         - SEEK_SET     =>    Beginning of file
+         - SEEK_CUR     =>    Current position
+         - SEEK_END     =>    End of file
+(pre-ANSI C implementations MAY LACK these definitions and, instead, use the numeric values 0L, 1L and 2L)
+
+- The value RETURNED by "fseek()" is 0 if everything is okay, and -1 if there is an ERROR (such as
+attempting to move PAST the bounds of the file).
+
+- The "ftell()" function is type 'LONG', and it returns the CURRENT FILE LOCATION. Under ANSI C, it is
+declared in "stdio.h". As ORIGINALLY implemented in UNIX, "ftell()" specifies the FILE POSITION by
+returning the NUMBER OF BYTES from THE BEGINNING, with the first byte being byte 0, and so on.
+Under ANSI C, this definition applies to files OPENED in BINARY MODE, but NOT necessarily to files opened
+in the TEXT MODE.
+
+- The "ftell()" function may work DIFFERENTLY in the TEXT MODE than in the BINARY MODE. Many systems have
+text file FORMATS that are DIFFERENT enough from the UNIX MODEL that a byte count from the beginning of
+the file is NOT a MEANINGFUL QUANTITY. ANSI C states that, for the TEXT MODE, "ftell()" returns a value
+that can be used as the SECOND ARGUMENT to "fseek()". For MS-DOS, for example, "ftell()" can RETURN a
+COUNT that sees '\r\n' as a SINGLE BYTE.
+
+- IDEALLY, "fseek()" and "ftell()" SHOULD conform to the UNIX MODEL. However, differences in REAL SYSTEMS
+sometimes make this IMPOSSIBLE. Therefore, ANSI provides LOWERED EXPECTATIONS for these functions.
+Here are SOME LIMITATIONS:
+   a) In the BINARY MODE, implementations NEED NOT support the SEEK_END mode. A MORE PORTABLE approach is
+   to READ the WHOLE FILE byte-by-byte UNTIL the END. But reading the file SEQUENTIALLY to find the end
+   is SLOWER than simply jumping to the end. 
+   b) In the TEXT MODE, the ONLY CALLS to "fseek()" that are GUARANTEED to WORK are these:
+         - fseek(file, 0L, SEEK_SET)        =>  Go to the beginning of the file.
+         - fseek(file, 0L, SEEK_CUR)        =>  Stay at the current position.
+         - fseek(file, 0L, SEEK_END)        =>  Go to the file's end.
+         - fseek(file, ftell-pos, SEEK_SET) =>  Go to position ftell-pos from the beginning; where
+                                                ftell-pos is a value returned by ftell().
+
+- One potential problem with "fseek()" and "ftell()" is that they LIMIT file sizes to values that can be
+represented by type 'LONG'. Because of this, ANSI C introduced TWO new positioning functions DESIGNED to
+work with LARGER file sizes. Instead of using a 'LONG' value to represent a position, it uses a NEW TYPE,
+called 'FPOS_T' (for FILE POSITION type) for that purpose.
+- The 'FPOS_T' type is NOT a fundamental type; A variable or data object of 'FPOS_T' type can SPECIFY a
+LOCATION within a file, and it CANNOT be an ARRAY type, but its nature is NOT SPECIFIED beyond that.
+
+- Random access is most often used with binary files written using binary I/O.
+
+########################################################################################################
+- The "fopen()" function not only opens a file, but SETS UP a BUFFER (or TWO buffers for read-write modes)
+and it SETS UP a DATA STRUCTURE containing DATA about the FILE and about the BUFFER. Also, "fopen()"
+returns a POINTER to this STRUCTURE so that other functions KNOW where to FIND it. The "fopen()" function
+is SAID to "open a stream". If the file is opened in the TEXT MODE, we get a TEXT STREAM, and if the file
+is opened in the BINARY MODE, we get a BINARY STREAM.
+
+- The DATA STRUCTURE typically INCLUDES a FILE POSITION INDICATOR to specify the CURRENT POSITION in the
+stream. It also has INDICATORS for ERRORS and END-OF-FILE, a POINTER to the BEGINNING of the BUFFER, a
+FILE IDENTIFIER, and a COUNT for the NUMBER OF BYTES actually COPIED into the BUFFER.
+
+- Calling any one of the input functions declared in "stdio.h" causes a CHUNK OF DATA to be COPIED from
+the FILE to the BUFFER. The BUFFER SIZE is IMPLEMENTATION DEPENDENT, but it typically is 512 bytes or
+some multiple thereof, such as 4096 or 16384 (as hard drives and computer memories get larger, the choice
+of buffer size TENDS to get larger, too). In addition to FILLING THE BUFFER, the INITIAL function call
+SETS values in the STRUCTURE pointed to by the FILE pointer. In particular, the CURRENT POSITION in the
+STREAM and the number of bytes COPIED into the BUFFER are set. Usually the CURRENT POSITION starts at
+byte 0.
+
+- After the DATA STRUCTURE and BUFFER are INITIALIZED, the input function READS the REQUESTED DATA from
+the BUFFER. As it does so, the FILE POSITION INDICATE is SET to POINT to the character FOLLOWING the
+LAST character read (because all the input functions from the "stdio.h" family use the SAME BUFFER, a
+call to ANY one function resumes where the previous call to any of the functions stopped).
+
+- When an input function FINDS that it has READ ALL THE CHARACTERS in the BUFFER, it REQUESTS that the
+NEXT BUFFER-SIZED CHUNK of DATA be COPIED from the FILE into the BUFFER. In this manner, the input
+functions can READ ALL THE FILE CONTENTS up to the EOF. After a function READS the LAST CHARACTER of the
+FINAL BUFFER's worth of data, it SETS the END-OF-FILE INDICATOR to TRUE. The NEXT CALL to an INPUT
+FUNCTION then returns EOF.
+
+- In a similar manner, output functions WRITE to a BUFFER. When the BUFFER is FILLED, the DATA is COPIED
+to the FILE.
+
+########################################################################################################
+- The # int ungetc(int c, FILE *fp) function PUSHES the character specified by 'c' BACK ONTO the INPUT
+STREAM. The ANSI C standard GUARANTESS only ONE pushback at a time. If an implementation permits us to
+push several characters in a row, the input functions read them in the REVERSED order of pushing.
+
+- The #int fflush(FILE *fp) function causes any UNWRITTEN DATA in the OUTPUT BUFFER to be SENT to the
+OUTPUT FILE identified by 'fp'. This process is called "FLUSHING A BUFFER". If 'fp' is the NULL pointer,
+ALL output buffers are flushed. The effect of using "fflush()" on an INPUT STREAM is UNDEFINED. We
+can ALSO use it with an UPDATE STREAM (any read-write modes), PROVIDED that the MOST RECENT operation
+using the STREAM was NOT input.
+
+- The #int setvbuf(FILE * restrict fp, char * restrict buf, int mode, size_t size) function SETS UP an
+ALTERNATIVE BUFFER to be used by the standard I/O functions. It is called AFTER the FILE has been OPENED
+and BEFORE any other OPERATIONS have been PERFORMED on the stream. The pointer 'fp' IDENTIFIES a stream,
+'buf' POINTS to the STORAGE to be used, and the 'size' variable specifies HOW BIG the ARRAY is.
+If we use the NULL pointer for the value of 'buf', the function ALLOCATES a BUFFER itself.
+The MODE is selected from the following choices: 
+   - _IOFBF means FULLY BUFFERED (buffer FLUSHED when FULL).
+   - _IOLBF means LINE-BUFFERED (buffer FLUSHED when FULL or when a NEWLINE is WRITTEN).
+   - _IONBN means NONBUFFERED.
+- Suppose we have a program that works with stored data objects having, say, a size of 3000 bytes EACH.
+We could use "setvbuf()" to CREATE a BUFFER whose SIZE is a MULTIPLE of the data object's SIZE.
+
+- The MOST ACCURATE and CONSISTENT way to STORE a number is to use the SAME PATTERN of bits that the
+computer does. Therefore, a 'double' value should be stored in a size 'double' unit. When DATA is STORED
+in a file using the SAME REPRESENTATION that the PROGRAM uses, we say that the DATA is STORED in
+"BINARY FORM" (there is NO conversion from numeric forms to character sequences). For standard I/O, the
+"fread()" and "fwrite()" functions provide this binary service.
+
+- All data is stored in BINARY FORM. Even characters are stored using the BINARY REPRESENTATION of the
+CHARACTER CODE. However:
+   - If ALL DATA in the FILE is interpreted as CHARACTER CODES, we say that the file contains TEXT DATA.
+   - If SOME or ALL of the DATA is interpreted as NUMERIC DATA in BINARY FORM, we say that the file
+   contains BINARY DATA (also, files in which the data represents machine-language instructions are 
+   BINARY FILES).
+
+- The uses of the terms "BINARY" and "TEXT" can get confusing. They are related, but NOT identical. 
+We can open a TEXT FORMAT FILE in the BINARY MODE. We can STORE TEXT in a BINARY FORMAT FILE. We can use
+"getc()" to COPY FILES containing BINARY DATA. In general, however, we use the BINARY MODE to store
+BINARY DATA in a BINARY FORMAT FILE. Similarly, we most often use TEXT DATA in TEXT FILES opened
+in the TEXT FORMAT.
+
+- The # size_t fwrite(const void * restrict ptr, size_t size, size_t nmemb, FILE * restrict fp) function
+WRITES BINARY DATA to a FILE. The pointer 'ptr' is the ADDRESS of the CHUNK OF DATA to be written, the
+'size' represents the SIZE, in BYTES, of the chunks to be written, 'nmemb' represents the NUMBER of
+chunks to be written, and 'fp' IDENTIFIES the FILE to be written to.
+The "fwrite()" functions RETURNS the NUMBER of ITEMS SUCCESSFULLY WRITTEN. Normally, this equals 'nmemb',
+but it can be less IF there is a WRITE ERROR.
+
+- The # size_t fread(void * restrict ptr, size_t size, size_t nmemb, FILE * restrict fp) function takes
+the SAME SET of ARGUMENTS that "fwrite()" does. This time, 'ptr' is the ADDRESS of the MEMORY STORAGE
+into which FILE DATA is READ, and 'fp' IDENTIFIES the FILE to be READ. We use this function to read data
+that was written to a file using "fwrite()".
+The "fread()" function RETURNS the NUMBER of ITEMS SUCCESSFULLY READ. Normally, this equals 'nmemb', but
+it ca be less IF there is a READ EROR or if the EOF is reached.
+
+- The #int feof(FILE *fp) and #int ferror(FILE *fp) functions enable us to DISTINGUISH between WHEN
+a standard input function has REACHED the EOF of a FILE or a READ ERROR has OCCURED. The "feof()" 
+function returns a NONZERO VALUE if the LAST input call DETECTED the EOF, and it returns ZERO otherwise.
+The "ferror()" function returns a NONZERO VALUE if a READ or WRITE ERROR has OCURED, and it returns ZERO
+otherwise.
+
+########################################################################################################
+
+Review answers:
+
+1. It should include the "stdio.h" header for the declarations.
+  'fp' should be of type FILE*
+   fopen() takes a second argument which specifies the file MODE
+   The arguments in the fputs() function should be swapped.
+   fclose() takes a pointer-to-FILE argument, not the name of a file.
+
+2. The program takes a filename from the command-line and prints any (character) digit stored in that file.
+
+3. 
+  a. ch = getc(fp1);
+  b. fprintf(fp2, "%c\n", ch);
+  c. putc(ch, fp2);
+  d. fclose(fp1);
+
+6. Binary files are files for which some or all data is binary data (i.e. the data is interpreted as
+numeric data in binary form), while text files are files for which all data is text data (i.e. the data
+is interpreted as character codes).
+A binary stream is obtained through opening a file in binary mode. In binary streams, no mapping of data
+is performed and each individual byte can be accessed. A text stream is obtained through opening a file
+in text mode. In text streams, the local environment's representation of data is mapped to the C view and
+vice-versa.
+
+7. 
+  a. The fprintf() function with the %d conversion specifier will save the 8238201 internal representation
+  as the 7 characters '8', '2', '3', '8', '2', '0', and '1'. The fwrite() function won't do any kind of 
+  numerical conversion, so it will save it just the way it is represented in binary form.
+
+  b. In this case, saving the caracter 'S' with both putc() and fwrite() will result in the same behaviour,
+  because the internal representation DOESN'T differ from its character code.
+
+8. The first call will implicitly print that string on the standard output stream.
+   The second call is equivalent to the first, except the stream is explicitly mentioned.
+   The third call will print that string on the standard error output stream.
+
+9. The best mode is "r+", because it will let us modify the existing content. The "w+" mode will TRUNCATE
+the file to ZERO LENGTH, and the "a+" mode, although it will let us read the WHOLE file, will only write
+to the end of the file.

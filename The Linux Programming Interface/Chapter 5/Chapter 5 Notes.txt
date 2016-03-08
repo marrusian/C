@@ -1,0 +1,632 @@
+- In continuing the discussion of the "open()" system call, we EXPLAIN the CONCEPT of "ATOMICITY" - the notion
+that the ACTIONS PERFORMED by a SYSTEM CALL are EXECUTED as a SINGLE UNINTERRUPTIBLE STEP. This is a NECESSARY
+REQUIREMENT for the CORRECT OPERATION of many system calls.
+
+- We introduce another file-related system call, the multipurpose "fcntl()", and show one of its uses:
+FETCHING and SETTING open file STATUS FLAGS.
+
+- Next, we look at the KERNEL DATA STRUCTURES used to represent FILE DESCRIPTORS and OPEN FILES. Understanding
+the RELATIONSHIP between these structures CLARIFIES some of the SUBTLETIES of FILE I/O discussed in subsequent
+chapters. Building on this model, we EXPLAIN HOW to DUPLICATE file descriptors.
+
+- We then consider some system calls that provide EXTENDED READ and WRITE functionality. These system calls
+allow us to perform I/O at a SPECIFIC LOCATION in a file WITHOUT CHANGING the FILE OFFSET, and to TRANSFER
+DATA TO and FROM MULTIPLE BUFFERS in a program.
+
+- We briefly introduce the concept of NONBLOCKING I/O, and DESCRIBE some EXTENSIONS provided to SUPPORT I/O
+on VERY LARGE FILES.
+
+- Since TEMPORARY FILES are used by many system programs, we'll also look at some LIBRARY FUNCTIONS that
+ALLOW US to CREATE and USE temporary files with RANDOMLY GENERATED UNIQUE NAMES.
+
+##########################################################################################################
+- ATOMICITY is a concept that we'll ENCOUNTER REPEATEDLY when discussing the operation of system calls.
+Various system call operations are executed ATOMICALLY. By this, we mean that the kernel GUARANTEES that ALL
+of the STEPS in the operation are COMPLETED as a SINGLE OPERATION, WITHOUT being INTERRUPTED by ANOTHER
+process or thread.
+
+- Atomicity is ESSENTIAL to the SUCCESSFUL COMPLETION of some operations. In particular, it allows us to
+AVOID "RACE CONDITIONS" (sometimes known as "RACE HAZARDS"). A RACE CONDITION is a situation where the RESULT
+PRODUCED by TWO processes (or threads) operating on SHARED resources DEPENDS in an UNEXPECTED WAY on the
+RELATIVE ORDER in which the processes GAIN ACCESS to the CPU(s).
+
+- We'll next look at TWO SITUATIONS involving file I/O where RACE CONDITIONS occur, and show HOW these
+conditions are ELIMINATED through the use of "open()" FLAGS that GUARANTEE the ATOMICITY of the RELEVANT FILE
+OPERATIONS.
+
+a) Situation 1 - Creating a file EXCLUSIVELY
+
+- We noted that SPECIFYING 'O_EXCL' in CONJUNCTION with 'O_CREAT" causes "open()" to RETURN an ERROR if the
+file ALREADY EXISTS. This provides a way for a process to ENSURE that it is the CREATOR of a file. The CHECK
+on the PRIOR EXISTENCE of the file and the CREATION of the file are performed ATOMICALLY. To see WHY this is
+IMPORTANT, consider the following code to which we MIGHT RESORT TO in the ABSENCE of the 'O_EXCL' flag.
+       <See Listings/bad_exclusive_open.c>
+
+- Aside from the LONG-WINDED use of two calls to "open()", the code ALSO CONTAINS a BUG. Suppose that when
+our process FIRST CALLED "open()", the file DID NOT exist, but by the time of the SECOND "open()", some OTHER
+PROCESS had CREATED the file. This COULD HAPPEN if the KERNEL SCHEDULER decided that the process's TIME SLICE
+had EXPIRED and GAVE CONTROL to ANOTHER PROCESS, or if the TWO PROCESSES were RUNNING at THE SAME TIME on a
+MULTIPROCESSOR system.
+
+- While the CHANCE of the process WRONGLY BELIEVING it was the creator of the file is RELATIVELY SMALL, the
+POSSIBILITY that it MAY OCCUR nevertheless RENDERS the code UNRELIABLE. The fact that the OUTCOME of these
+operations DEPENDS on the ORDER of SCHEDULING of the two processes means that this is a RACE CONDITION.
+
+- If we create an artificially long delay between the check for file existence and the creation of the file,
+BOTH procesess will CLAIM to have CREATED the file, because the code of the FIRST PROCESS was INTERRUPTED
+between the EXISTENCE CHECK and the CREATION of the file. Using a SINGLE "open()" call that specifies the
+'O_CREAT' and 'O_EXCL' flags PREVENTS this possibility by GUARANTEEING that the CHECK and CREATION steps are
+CARRIED OUT as a SINGLE ATOMIC (i.e. uninterruptible) OPERATION.
+
+b) Situation 2 - APPENDING data to a file
+
+- A second example of the NEED for ATOMICITY is when we have MULTIPLE processes APPENDING DATA to the SAME
+FILE (e.g., a global log file). For this purpose, we might consider using a piece of code such as the
+following in each of our writers:
+       # if(lseek(fd, 0, SEEK_END) == -1)
+       #    errExit("lseek");
+       # if(write(fd, buf, len) != len)
+       #    fatal("Partial/failed write");
+
+- However, this code suffers the SAME DEFECT as the previous example. If the FIRST PROCESS executing the code
+is INTERRUPTED between the "lseek()" and "write()" calls by a SECOND PROCESS doing the SAME THING, then BOTH
+PROCESSES will SET their FILE OFFSET to the SAME LOCATION before writing, and when the FIRST PROCESS is
+RESCHEDULED, it will OVERWRITE the data ALREADY WRITTEN by the SECOND PROCESS. Again, this is a RACE CONDITION
+because the results DEPEND on the ORDER of SCHEDULING of the two processes.
+
+- Avoiding this problem REQUIRES that the SEEK to the next byte past EOF and the WRITE OPERATION happen
+ATOMICALLY. This is what opening a file with the 'O_APPEND' flag GUARANTEES.
+
+      Note: Some file systems (e.g., NFS) DON'T SUPPORT 'O_APPEND'. In this case, the kernel REVERTS to the
+           NONATOMIC SEQUENCE of calls shown above, with the CONSEQUENT POSSIBILITY of FILE CORRUPTION as
+           just described.
+
+##########################################################################################################
+- The "fcntl()" system call performs a RANGE of CONTROL OPERATIONS on an OPEN FILE DESCRIPTOR. 
+
+- Prototype and dependencies:
+      #include <fcntl.h>
+
+      int fcntl(int fd, int cmd, ...);
+                         Return on success DEPENDS on "cmd", or -1 on error
+
+- The "cmd" argument can SPECIFIY a WIDE RANGE of OPERATIONS. As indicated by the ellipsis, the THIRD argument
+to "fcntl()" can be of DIFFERENT TYPES, or it can be OMITTED. The kernel uses the value of the "cmd" argument
+do DETERMINE the DATA TYPE (if any) to EXPECT for this argument.
+
+##########################################################################################################
+- One use of "fcntl()" is to RETRIEVE or MODIFY the ACCESS MODE and OPEN FILE STATUS FLAGS of an open file
+(these are the values set by the "flags" argument specified in the call to "open()"). To RETRIEVE these
+settings, we specify "cmd" as 'F_GETFL':
+         # int flags, accessMode;
+ 
+         # flags = fcntl(fd, F_GETFL);     /* Third argument is NOT required */
+         # if(flags == -1)
+         #    errExit("fcntl");
+
+- After the above piece of code, we COULD TEST if the file was OPENED for SYNCHRONIZED WRITES as follows:
+         # if(flags & O_SYNC)
+         #    printf("Writes are synchronized\n");
+
+      Note: SUSv3 REQUIRES that ONLY status flags that were specified during an "open()" or a later "fcntl()"
+           'F_SETFL' should be SET on an open file. However, Linux DEVIATES from this in one respect: if an
+           application was COMPILED using one of the techniques (described in Section 5.10) for opening LARGE
+           FILES, then 'O_LARGEFILE' will ALWAYS BE SET in the flags RETRIEVED by 'F_GETFL'.
+
+- Checking the ACCESS MODE of the file is SLIGHTLY MORE COMPLEX, since the 'O_RDONLY' (0), 'O_WRONLY' (1),
+and 'O_RDWR' (2) constants DON'T CORRESPOND to SINGLE BITS in the open file STATUS FLAGS. Therefore, to MAKE
+this CHECK, we MASK the "flags" value with the constant 'O_ACCMODE', and THEN TEST for EQUALITY with one of
+the constants:
+         # accessMode = flags & O_ACCMODE:
+         # if(accessMode == O_WRONLY || accessMode == O_RDWR)
+         #    printf("File is writtable\n");
+
+- We can use the "fcntl() F_SETFL" command to MODIFY some of the open file STATUS FLAGS. The FLAGS that CAN
+be MODIFIED are 'O_APPEND', 'O_NONBLOCK', 'O_NOATIME', 'O_ASYNC', and 'O_DIRECT'. Attempts to modify OTHER
+FLAGS are IGNORED (Some other UNIX implementations allow "fcntl()" to modify other flags, such as 'O_SYNC').
+
+- Using "fcntl()" to modify open file status flags is PARTICULARLY USEFUL in the following cases:
+    a) The file was NOT OPENED by the CALLING PROGRAM, so that it had NO CONTROL over the FLAGS used in the
+      "open()" call (e.g., the file may be one of the three standard descriptors that are opened BEFORE the
+      program is started).
+    b) The file descriptor was OBTAINED from a system call OTHER THAN "open()". Examples of such system calls
+      are "pipe()", which creates a PIPE and returns TWO FILE DESCRIPTORS referring to EITHER END of the pipe,
+      and "socket()", which creates a SOCKET and returns a FILE DESCRIPTOR referring to the socket.
+
+- To MODIFY the open file status flags, we use "fctnl()" to RETRIEVE a COPY of the EXISTING FLAGS, then MODIFY
+the BITS we WISH TO CHANGE, and FINALLY make a FURTHER CALL to "fctnl()" to UPDATE the FLAGS. Thus, to ENABLE
+the 'O_APPEND' flag, we would write the following:
+          # int flags;
+  
+          # flags = fcntl(fd, F_GETFL);
+          # if(flags == -1)
+          #    errExit("fcntl");
+          # flags |= O_APPEND;
+          # if(fnctl(fd, F_SETFL, flags) == -1)
+          #    errExit("fcntl");
+
+##########################################################################################################
+- Up until now, it MAY have appeared that there is a ONE-TO-ONE CORRESPONDENCE between a FILE DESCRIPTOR and
+an OPEN FILE. However, this is NOT the case. It is POSSIBLE - and USEFUL - to have MULTIPLE DESCRIPTORS
+referrin to the SAME OPEN FILE. These file descriptors may be OPEN in the SAME PROCESS or in DIFFERENT
+PROCESSES.
+
+- To UNDERSTAND what is going on, we NEED to EXAMINE three DATA STRUCTURES maintained by the KERNEL:
+     a) The PER-PROCESS file descriptor table;
+     b) The SYSTEM-WIDE table of OPEN FILE DESCRIPTIONS (a.k.a. Open file table);
+     c) The (SYSTEM-WIDE) file system i-node table.
+
+- For EACH process, the kernel maintains a table of "OPEN FILE DESCRIPTORS". Each ENTRY in this table RECORDS
+information about a single file descriptor, including:
+     - A set of flags controlling the operation of the file descriptor (there is JUST ONE such flag, the
+       close-on-exec flag);
+     - A REFERENCE to the OPEN FILE DESCRIPTION.
+
+- The kernel maintains a system-wide table of all "OPEN FILE DESCRIPTIONS" (this table is sometimes referred
+to as the "OPEN FILE TABLE", and its entries are sometimes called "OPEN FILE HANDLES"). An open file
+description stores ALL INFORMATION relating to an OPEN FILE, including:
+     - The current FILE OFFSET (as updated by "read()" and "write()", or EXPLICITLY MODIFIED using "lseek()");
+     - Status flags specified when OPENING the file (i.e., the "flags" argument to "open()");
+     - The file ACCESS MODE (read-only, write-only, or read-write, as specified in "open()");
+     - Settings relating to SIGNAL-DRIVEN I/O;
+     - A REFERENCE to the "I-NODE" object for this file.
+
+- Each FILE SYSTEM has a TABLE of I-NODES for ALL FILES RESIDING in the file system. For now, we NOTE that the
+I-NODE for EACH FILE includes the following information:
+     - FILE TYPE (e.g., a regular file, socket, or FIFO) and PERMISSIONS;
+     - A POINTER to a LIST OF LOCKS held on this file;
+     - Various properties of the file, including its SIZE and TIMESTAMPS relating to DIFFERENT TYPES of
+      FILE OPERATIONS.
+
+      Note: Here, we are OVERLOOKING the DISTINCTION between ON-DISK and IN-MEMORY representations of an
+           I-NODE. The ON-DISK I-NODE records the PERSISTENT ATTRIBUTES of a file, such as its TYPE,
+           PERMISSIONS, and TIMESTAMPS. When a file is ACCESSED, an IN-MEMORY COPY of the I-NODE is CREATED,
+           and THIS VERSION of the i-node RECORDS a COUNT of the OPEN FILE DESCRIPTIONS referring to the
+           i-node and the MAJOR and MINOR IDs of the DEVICE from which the i-node was COPIED. The in-memory
+           i-node ALSO RECORDS various EPHEMERAL ATTRIBUTES that are associated with a file while it is open,
+           such as FILE LOCKS.
+
+- We can draw a NUMBER OF IMPLICATIONS from the preceding discussion:
+      a) Two DIFFERENT file descriptors that REFER to the SAME open file description SHARE a FILE OFFSET
+        value. Therefore, if the FILE OFFSET is CHANGED via ONE FILE DESCRIPTOR (as a consequence of calls to
+        "read()" or "write()", or "lseek()") this change is VISIBLE through the OTHER file descriptor. This
+        applies BOTH when:
+              a1) The two file descriptors BELONG to the SAME PROCESS.
+              and
+              a2) When they BELONG to DIFFERENT PROCESSES. 
+
+      b) Similar SCOPE RULES apply when RETRIEVING and CHANGING the OPEN FILE STATUS FLAGS (e.g., 'O_APPEND',
+        'O_NONBLOCK', and 'O_SYNC') using the "fcntl()" F_GETFL and F_SETFL operations.
+ 
+      c) By CONSTRAST, the FILE DESCRIPTOR FLAGS (i.e, the close-on-exec flag) are PRIVATE to the PROCESS and
+        FILE DESCRIPTOR. Modifying these flags DOES NOT affect OTHER file descriptors in the SAME process or
+        a DIFFERENT process.
+
+##########################################################################################################
+- Using the (BASH) I/O redirection syntax "2>&1" informs the shell that we wish to have standard error (file
+descriptor 2) REDIRECTED to the SAME PLACE to which STANDARD OUTPUT (file descriptor 1) is being SENT. Thus,
+the following command would (since the shell evaluates I/O directions from LEFT to RIGHT) send BOTH standard
+output AND standard error to the file "result.log":
+        $ ./myscript > results.log 2>&1
+
+- The shell ACHIEVES the REDIRECTION of standard error by DUPLICATING file descriptor 2 so that it REFERS to
+the SAME OPEN FILE DESCRIPTION as file descriptor 1. This EFFECT can be ACHIEVED by using the "dup()" and
+"dup2()" system calls.
+
+- Note that it is NOT SUFFICIENT for the shell to SIMPLY OPEN the "result.log" file TWICE: once on descriptor
+1 and once on descriptor 2. One REASON for this is that the TWO FILE DESCRIPTORS would NOT SHARE a FILE OFFSET
+pointer, and hence could end up OVERWRITING each other's output. Another reason is that the file MAY NOT BE
+a DISK FILE. Consider the following command, which sends standard error down the SAME PIPE as standard output:
+        $ ./myscript 2>&1 | less
+
+- The "dup()" call takes "oldfd", an open file descriptor, and RETURNS a NEW DESCRIPTOR that REFERS to the
+SAME open file description. The NEW DESCRIPTOR is GUARANTEED to be the LOWEST-NUMBERED UNUSED FILE DESCRIPTOR.
+
+- Prototype and dependencies:
+        #include <unistd.h>
+
+        int dup(int oldfd);
+                      Returns (new) file descriptor on success, or -1 on error
+
+- To make the code using "dup()" SIMPLER, and to ENSURE we ALWAYS GET the FILE DESCRIPTOR we WANT, we can use
+"dup2()":
+ 
+        #include <unistd.h>
+
+        int dup2(int oldfd, int newfd);
+                       Returns (new) file descriptor on success, or -1 on error
+
+- The "dup2()" system call makes a DUPLICATE of the FILE DESCRIPTOR given in "oldfd" using the DESCRIPTOR
+NUMBER SUPPLIED in "newfd". If the file descriptor specified in "newfd" is ALREADY OPEN, "dup2()" CLOSES it
+FIRST (any ERROR that OCCURS during this close is SILENTLY IGNORED; The closing and reuse of "newfd" are
+performed atomically, which avoids the possibility that "newfd" is reused between the two steps in a
+signal handler or a parallel thread that allocates a file descriptor).
+
+- If "oldfd" is NOT a VALID file scriptor, then "dup2()" FAILS with the error 'EBADF' and "newfd" is NOT
+CLOSED. If "oldfd" is a VALID file descriptor, and "oldfd" and "newfd" have the SAME VALUE, then "dup2()"
+DOES NOTHING - "newfd" is NOT closed, and "dup2()" returns the "newfd" as its function result.
+
+- A further interface that provides some EXTRA FLEXIBILITY for DUPLICATING file descriptors is the "fcntl()
+F_DUPFD" operation:
+        # newfd = fctnl(oldfd, F_DUPFD, startfd);
+
+- This call makes a DUPLICATE of "oldfd" by using the LOWEST UNUSED file descriptor GREATER THAN OR EQUAL to
+"startfd". This is useful if we want a GUARANTEE that the NEW DESCRIPTOR ("newfd") falls in a CERTAIN RANGE
+of values. Calls to "dup()" and "dup2()" can ALWAYS be RECODED as calls to "close()" and "fcntl()", ALTHOUGH
+the FORMER CALLS are MORE CONCISE (also note that some of the "errno" error codes return by "dup2()" and
+"fcntl()" DIFFER).
+
+- From the relationship between file descriptors and open files, we can see that DUPLICATE file descriptors
+SHARE the SAME FILE OFFSET value and STATUS FLAGS in their SHARED OPEN FILE DESCRIPTION. However, the NEW
+file descriptor has ITS OWN SET of FILE DESCRIPTOR FLAGS, and its close-on-exec flag (FD_CLOEXEC) is ALWAYS
+TURNED OFF. The interfaces that we describe next allow EXPLICIT CONTROL of the NEW FILE DESCRIPTOR'S
+close-on-exec flag.
+
+- The "dup3()" system call performs the SAME TASK as "dup2()", but ADDS an ADDITIONAL ARGUMENT, "flags", that
+is a BIT-MASK that MODIFIES the BEHAVIOUR of the system call.
+        #define _GNU_SOURCE
+        #include <unistd.h>
+
+        int dup3(int oldfd, int newfd, int flags);
+                               Returns (new) file descriptor on success, or -1 on error
+
+- Currently, "dup3()" supports ONE FLAG, 'O_CLOEXEC', which CAUSES the kernel to ENABLE the close-on-exec flag
+(FD_CLOEXEC) for the NEW FILE DESCRIPTOR. This flag is USEFUL for the SAME REASONS as the "open()" O_CLOEXEC
+flag.
+      Note: The "dup3()" system call is NEW in Linux 2.6.27, and is LINUX-SPECIFIC !!!
+
+- Since Linux2.6.24, Linux ALSO SUPPORTS an ADDITIONAL "fcntl()" operation for DUPLICATING file descriptors:
+'F_DUPFD_CLOEXEC'. This flag does the SAME THING as 'F_DUPFD, but ADDITIONALLY SETS the close-on-exec flag
+(FD_CLOEXEC) for the NEW FILE DESCRIPTOR.
+      Note: 'F_DUPFD_CLOEXEC' is NOT SPECIFIED in SUSv3, BUT is SPECIFIED in SUSv4.
+
+##########################################################################################################
+- The "pread()" and "pwrite()" system calls operate JUST LIKE "read()" and "write()", EXCEPT that the file
+I/O is performed at the LOCATION SPECIFIED by "offset", RATHER THAN at the CURRENT FILE OFFSET. The FILE
+OFFSET is LEFT UNCHANGED by these calls.
+
+- Prototypes and dependencies:
+      #include <unistd.h>
+
+      ssize_t pread(int fd, void *buf, size_t count, off_t offset);
+                               Returns number of bytes read, 0 on EOF, or -1 on error
+      ssize_t pwrite(int fd, void *buf, size_t count, off_t offset);
+                               Returns number of bytes written, or -1 on error
+
+- Calling "pread()" is EQUIVALENT to ATOMICALLY performing the following calls: 
+      # off_t orig;
+ 
+      # orrig = lseek(fd, 0, SEEK_CUR);  /* Save current offset */
+      # lseek(fd, offset, SEEK_SET);
+      # s = read(fd, buf, len);
+      # lseek(fd, orig, SEEK_SET);       /* Restore original file offset */
+
+- For BOTH "pread()" AND "pwrite()", the file referred to by "fd" MUST be SEEKABLE (i.e., a FILE DESCRIPTOR
+on which it is PERMISSIBLE to call "lseek()").
+
+- These system calls can be PARTICULARLY USEFUL in MULTITHREADED applications. As we'll see, ALL of the
+THREADS in a process SHARE the SAME FILE DESCRIPTOR TABLE. This means that the FILE OFFSET for EACH open file
+is GLOBAL to ALL THREADS. Using "pread()" or "pwrite()", MULTIPLE THREADS can SIMULTANOUSLY perform I/O on
+the same file descriptor WITHOUT BEING AFFECTED by CHANGES made to the file offset by OTHER THREADS. 
+- If we attempted to use "lseek()" plus "read()" (or "write()") instead, then we would create a RACE CONDITION
+similar to the one that we described when discussing the 'O_APPEND' flag in Section 5.1 (the "pread()" and
+"pwrite()" system calls can SIMILARLY be USEFUL for AVOIDING RACE CONDITIONS in applications where MULTIPLE
+PROCESSES have FILE DESCRIPTORS referring to the SAME open file description).
+
+     Note: If we are REPETEADLY performing "lseek()" calls followed by file I/O, then the "pread()" and
+          "pwrite()" system calls can ALSO offer a PERFORMANCE ADVANTAGE in some cases. This is because the
+          COST of a SINGLE "pread()" (or "pwrite()") system call is LESS than the COST of TWO system calls:
+          "lseek()" and "read()" (or "write()"). However, the COST of system calls is USUALLY DWARFED by the
+          TIME REQUIRED to ACTUALLY PERFORM I/O.
+
+##########################################################################################################
+- The "readv()" and "writev()" system call perform SCATTER-GATHER I/O.
+
+- Prototypes and dependencies:
+        #include <sys/uio.h>
+ 
+        ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+                                Returns number of bytes read, 0 on EOF, or -1 on error
+        ssize_t writev(int fd, const struct ioved *iov, int iovcnt);
+                                Returns number of bytes written, or -1 on error
+
+- Instead of accepting a SINGLE BUFFER of data to be READ or WRITTEN, these functions transfer MULTIPLE
+BUFFERS of data in a SINGLE system call. The SET of BUFFERS to be TRANSFERRED is DEFINED by the ARRAY "iov".
+The integer "count" specifies the NUMBER OF ELEMENTS in "iov". Each element of "iov" is a STRUCTURE of the
+following form:
+         # struct iovec{
+         #    void *iov_base;    /* Start address of buffer */
+         #    size_t iov_len;    /* Number of bytes to transfer to/from buffer */
+         # };
+
+       Note:  SUSv3 allows an implementation to PLACE a LIMIT on the NUMBER OF ELEMENTS in "iov". An
+            implementation can ADVERTISE it's LIMIT by defining 'IOV_MAX' in <limits.h> or at RUN TIME via
+            the RETURN from the call "sysconf(_SC_IOV_MAX)". SUSv3 REQUIRES that this LIMIT be AT LEAST 16.
+            On Linux, 'IOV_MAX' is defined as 1024, which CORRESPONDS to the KERNEL'S LIMIT on the size of
+            of this vector (defined by the kernel constant 'UIO_MAXIOV');
+              However, the "glibc" WRAPPER FUNCTIONS for "readv()" and "writev()" SILENTLY do some EXTRA WORK.
+            If the system call FAILS because "iovcnt" is TOO LARGE, then the WRAPPER ffunction TEMPORARILY
+            ALLOCATES a SINGLE BUFFER that is LARGE ENOUGH to hold ALL of the items described by "iov" and
+            PERFORMS a "read()" and "write()" call.
+
+----------------------------------------------------------------------
+a) Scatter input:
+
+- The "readv()" system call performs SCATTER INPUT: it reads a CONTIGUOUS SEQUENCE OF BYTES from the file
+referred to by the file descriptor "fd" and PLACES ("SCATTERS") these bytes INTO the BUFFERS specified by
+"iov". Each of the buffers, STARTING WITH the one defined by iov[0], is COMPLETELY FILLED before "readv()"
+proceeds to the NEXT buffer.
+
+- An IMPORTANT PROPERTY of "readv()" is that it COMPLETES ATOMICALLY; that is, from the POV of the CALLING
+PROCESS, the kernel performs a SINGLE DATA TRANSFER between the file referred to by "fd" and user memory.
+This means, for example, that WHEN READING from a file, we CAN BE SURE that the RANGE of BYTES read is
+CONTIGUOUS, EVEN if ANOTHER process (or thread) sharing the SAME file offset ATTEMPTS to MANIPULATE the offset
+at the SAME TIME as the "readv()" call.
+
+- On SUCCESSFUL COMPLETION, "readv()" returns the number of bytes read, or 0 if EOF was encountered. The
+CALLER must EXAMINE this count to VERIFY whether ALL REQUESTED BYTES were READ. If INSUFFICIENT DATA was
+available, then ONLY SOME of the buffers may have been filled, and the LAST of these may be ONLY PARTIALLY
+filled.
+----------------------------------------------------------------------
+b) Gather output:
+
+- The "writev()" system call performs GATHER OUTPUT. It CONCATENATES ("GATHERS") data from ALL of the BUFFERS
+specified by "iov" and WRITES them as a SEQUENCE of CONTIGUOUS BYTES to the file referred to by the file
+descriptor "fd". The buffers are GATHERED in ARRAY ORDER, starting with the buffer defined by iov[0].
+
+- Like "readv()", "writev()" COMPLETES ATOMICALLY, with ALL DATA being TRANSFERRED in a SINGLE OPERATION from
+user memory to the file referred to by fd. Thus, when writing to a REGULAR FILE, we CAN BE SURE that ALL of
+the REQUESTED DATA is written CONTIGUOUSLY to the file, RATHER THAN being INTERSPERSED with writes by OTHER
+processes (or threads).
+
+- As with "write()", a PARTIAL WRITE is POSSIBLE. Therefore, we MUST CHECK the return value from "writev()"
+to see if ALL REQUESTED BYTES were written.
+----------------------------------------------------------------------
+
+- The PRIMARY ADVANTAGES of "readv()" and "writev()" are CONVENIENCE and SPEED. For example, we could REPLACE
+a call to "writev()" by either:
+     1) Code that ALLOCATES a SINGLE LARGE BUFFER, copies the data to be written from other locations in the
+        process's address space into that buffer, and then calls "write()" to output the buffer;
+     2) A series of "write()" calls that output the buffers INDIVIDUALLY.
+
+- The FIRST of these options, while SEMANTICALLY EQUIVALENT to using "writev()", leaves us with the
+INCONVENIENCE (and INEFFICIENCY) of ALLOCATING buffers and COPYING data in USER SPACE.
+
+- The SECOND option is NOT semantically equivalent to a single call to "writev()", since the "write()" calls
+are NOT PERFORMED ATOMICALLY. Furthermore, performing a SINGLE "writev()" call is CHEAPER than performing
+MULTIPLE "write()" calls.
+
+##########################################################################################################
+- The "truncate()" and "ftruncate()" system calls SET the SIZE of a FILE to the value specified by "length".
+
+- Prototypes and dependencies:
+       #include <unistd.h>
+ 
+       int truncate(const char *pathname, off_t length);
+       int ftruncate(int fd, off_t length);
+                                            Both return 0 on success, or -1 on error
+
+- If the file is LONGER than "length", the EXCESS DATA is LOST. If the file is CURRENTLY SHORTER than "length",
+it is EXTENDED by PADDING with either:
+         a) A SEQUENCE of NULL BYTES;
+         b) A hole.
+
+- The DIFFERENCE between the two system calls LIES in HOW the file is SPECIFIED. With "truncate()", the file,
+which must be ACCESSIBLE and WRITABLE, is specified as a PATHNAME STRING. If "pathname" is a SYMBOLIC LINK, it
+is DEREFERENCED. The "ftruncate()" system call takes a DESCRIPTOR for a file that HAS BEEN OPENED for WRITING.
+It DOESN'T CHANGE the FILE OFFSET of the file.
+
+- If the "length" argument to "ftruncate()" EXCEEDS the current FILE SIZE, SUSv3 allows TWO possible behaviors:
+         a) The file is EXTENDED (as on Linux);
+         or
+         b) The system call RETURNS an ERROR.
+
+- XSI-conformant systems MUST ADOPT the FORMER BEHAVIOUR (a). SUSv3 REQUIRES that "truncate()" ALWAYS EXTEND
+the file if "length" is GREATER than the current FILE SIZE.
+
+         Note: The "truncate()" system call is UNIQUE in being the ONLY system call that can change the contents
+              of a file WITHOUT first obtaining a DESCRIPTOR for the file via "open()" (or by some other means).
+
+##########################################################################################################
+- Specifying the 'O_NONBLOCK' flag when OPENING a file serves TWO purposes:
+      a) If the file CAN'T be OPENED IMMEDIATELY, then "open()" returns an ERROR instead of BLOCKING. One case
+        where "open()" CAN BLOCK is with FIFOs.
+      b) After a SUCCESSFUL "open()", SUBSEQUENT I/O operations are ALSO NONBLOCKING. If an I/O system call
+        CAN'T complete immediately, then EITHER a PARTIAL DATA TRANSFER is performed OR the system call FAILS
+        with one of the errors 'EGAIN' or 'EWOULDBLOCK'. Which error is returned DEPENDS on the system call.
+        On Linux, as on many UNIX implementations, these two error constants are SYNONYMOUS.
+
+- Nonblocking mode can be used with DEVICES (e.g., TERMINALS and PSEUDOTERMINALS), PIPES, FIFOs, and SOCKETS
+(because file descriptors for PIPES and SOCKETS are NOT OBTAINED using "open()", we MUST ENABLE this flag using
+the "fcntl() FSETFL" operation).
+
+- 'O_NONBLOCK' is GENERALLY IGNORED for REGULAR FILES, because the kernel buffer cache ENSURES that I/O on
+regular files DOES NOT block. However, 'O_NONBLOCK' DOES HAVE an EFFECT for regular file when MANDATORY FILE
+LOCKING is EMPLOYED.
+
+          Note:  Historically, System V-derived implementations provided the 'O_NDELAY' flag, with SIMILAR
+               SEMANTICS to 'O_NONBLOCK'. The MAIN DIFFERENCE was that a NONBLOCKING "write()" on System V
+               returned 0 if a "write()" COULD NOT be COMPLETED and a NONBLOCK "read()" returned 0 if NO INPUT
+               WAS AVAILABLE. This behaviour was PROBLEMATIC for "read()" because it was INDISTINGUISHABLE
+               from an EOF condition, and os the first POSIX.1 standard introduced 'O_NONBLOCK'. Some UNIX
+               implementations CONTINUE to PROVIDE the 'O_NDELAY' flag with the OLD SEMANTICS. On Linux, the
+               'O_NDELAY' constant IS defined, BUT it is SYNONYMOUS with 'O_NONBLOCK'.
+
+##########################################################################################################
+- The 'off_t' data type used to hold a file offset is TYPICALLY IMPLEMENTED as a SIGNED LONG INTEGER.
+On 32-architectures (such as x86-32) this WOULD LIMIT the SIZE of FILES to 2^31-1 bytes (i.e., 2GB).
+
+- The need arose for 32-bit UNIX implementations to HANDLE files LARGER than this size. Since this is a COMMON
+PROBLEM for MANY IMPLEMENTATIONS, a CONSORTIUM of UNIX vendors cooperated on the "Large File Summit" (LFS),
+to ENCHANCE the SUSv2 specification with the EXTRA FUNCTIONALITY REQUIRED to ACESS LARGE FILES. We now OUTLINE
+the LFS enchancements.
+
+- Linux has provided LFS support on 32-bit systems since kernel 2.4 ("glibc" 2.2 or later is ALSO required).
+In addition, the CORRESPONDING file system MUST ALSO SUPPORT large files. Most NATIVE Linux file systems PROVIDE
+this support, but some NONNATIVE file systems DO NOT (notable examples are Microsoft's VFAT and NFSv2).
+
+         Note:  Because LONG integers use 64 bits on 64-bit architectures (e.g., x86-64, Alpha, IA-64), these
+              architectures generally DON'T SUFFER the LIMITATIONS that the LFS enchancements were designed
+              to address. Nevertheles, the IMPLEMENTATION DETAILS of some NATIVE Linux file systems mean that
+              the THEORETICAL MAXIMUM SIZE of a FILE may be LESS than 2^63-1, even on 64-bit systems. In most
+              cases, these limits are MUCH HIGHER than CURRENT DISK SIZES, so they DON'T IMPOSE a PRACTICAL
+              LIMITATION on FILE SIZES.
+
+- We can write applications requiring LFS functionality in one of TWO ways:
+      a) Use an ALTERNATIVE API that SUPPORTS large files. This API was designed by the LFS as a "transitional
+        extension" to the SUS. Thus, this API is NOT REQUIRED to be present on systems conforming to SUSv2 or
+        SUSv3, but MANY conforming systems DO PROVIDE it. This approach is now OBSOLETE.
+     
+      b) Define the '_FILE_OFFSET_BITS' macro with the value 64 when COMPILING our programs. This is the
+        PREFERRED APPROACH, because it allows CONFORMING APPLICATIONS to obtain LFS functionality WITHOUT
+        making ANY source code changes.
+
+----------------------------------------------------------------------
+a) The transitional LFS API
+
+- To use the transitional LFS API, we MUST define the '_LARGEFILE64_SOURCE' feature test macro when COMPILING
+our program, EITHER on the COMMAND LINE, or WITHIN the SOURCE FILE before including ANY header files. This API
+provides functions CAPABLE of HANDLING 64-bits FILE SIZES and OFFSETS. These functions have the SAME NAMES as
+their 32-bit counterparts, but have the suffix 64 appended to the function name. Among these functions are:
+"fopen64()", "open64()", "lseek64()", "truncate64()", "stat64()" etc.
+
+- In order to ACCESS a LARGE FILE, we SIMPLY USE the 64-bit version of the function. For example, to OPEN a
+LARGE FILE, we could write the following:
+           # fd = open64(name, O_CREAT|O_RDWR, mode);
+           # if(fd == -1)
+           #    errExit("open");
+
+         Note:  Calling "open64()" is EQUIVALENT to specifying the 'O_LARGEFILE' flag when calling "open()".
+              Attempts to open a file LARGER than 2 GB by calling "open()" WITHOUT this flag RETURN an ERROR.
+
+- In addition to the aforementioned functions, the transitional LFS API adds some NEW DATA TYPES, including:
+      - struct stat64: an ANALOG of the 'stat' structure allowing for LARGE FILE SIZES.
+      - off64_t: a 64-bit type for representing FILE OFFSETS.
+
+- The 'off64_t' data type is to be used with (among others) the "lseek64()" function.
+----------------------------------------------------------------------
+b) The _FILE_OFFSET_BITS macro
+
+- The RECOMMENDED METHOD of obtaining LFS functionality is to DEFINE the MACRO '_FILE_OFFSET_BITS' with the
+value 64 when COMPILING a program. One way to do this is via a COMMAND-LINE OPTION to the C compiler:
+     $ cc -D_FILE_OFFSET_BITS=64 prog.c
+
+- Alternatively, we can DEFINE this MACRO in the C SOURCE before including any header files:
+     #define _FILE_OFFSET_BITS 64
+
+- This AUTOMATICALLY converts ALL of the relevant 32-bit functions and data types into their 64-bit
+counterparts. Thus, for example, calls to "open()" are ACTUALLY CONVERTED into calls to "open64()", and the
+'off_t' data type is DEFINED to be 64-bits long. In other words, we can RECOMPILE an EXISTING PROGRAM to HANDLE
+large files WITHOUT needing to make ANY CHANGES to the SOURCE CODE.
+
+- Using '_FILE_OFFSET_BITS' is CLEARLY SIMPLER than using the transitional LFS API, but this approach RELIES on
+applications being CLEANLY WRITTEN (e.g., CORRECTLY using 'off_t' to declare variables holding file offsets,
+RATHER than using a native C integer type).
+
+- The '_FILE_OFFSET_BITS' macro is NOT REQUIRED by the LFS specification, which MERELY MENTIONS this MACRO as
+an OPTIONAL METHOD of SPECIFYING the SIZE of the 'off_t' data type. Some UNIX implementations use a DIFFERENT
+feature test macro to obtain this functionality.
+
+          Note:  If we ATTEMPT to ACCESS a LARGE FILE using 32-bit functions (i.e., from a program compiled
+               WITHOUT setting '_FILE_OFFSET_BITS' to 64), then we MAY ENCOUNTER the error 'EOVERFLOW'.
+               For example, this error can occur if we attempt to use the 32-bit version of "stat()" to
+               retrieve information about a file whose size EXCEEDS 2 GB.
+----------------------------------------------------------------------
+
+- One PROBLEM that the LFS extensions DON'T SOLVE for us is HOW to pass 'off_t' values to "printf()" calls.
+We noted that the PORTABLE METHOD of DISPLAYING values of one of the PREDEFINED SYSTEM DATA TYPES (e.g., 'pid_t'
+or 'uid_t') was to CAST that value to 'long', and use the "%ld" printf() specifier. However, if we are EMPLOYING
+the LFS extensions, then this is often NOT SUFFICIENT for the 'off_t' data type, because it MAY BE DEFINED as a
+type LARGER than 'long', TYPICALLY 'long long'. Therefore, to DISPLAY a value of type 'off_t', we CAST it to
+'long long' and USE the "%lld" printf() specifier, as in the following:
+         #define _FILE_OFFSET_BITS 64
+ 
+         # off_t offset;          /* Will be 64 bits, the size of 'long long' */
+         # /* Code assigning a value to 'offset' */
+         # printf("offset = %lld\n", (long long) offset);
+
+- Similar remarks ALSO APPLY for the RELATED 'blkcnt_t' data type, which is EMPLOYED in the 'stat' structure.
+
+##########################################################################################################
+- For EACH PROCESS, the kernel PROVIDES the SPECIAL VIRTUAL DIRECTOY "/dev/fd". This directory contains
+filenames of the form "/dev/fd/n", where 'n' is a NUMBER corresponding to ONE of the OPEN FILE DESCRIPTORS for
+the process. Thus, for example, "dev/fd/0" is STANDARD INPUT for the process (the "dev/fd" feature is NOT
+SPECIFIED by SUSv3, but SEVERAL other UNIX implementations PROVIDE this feature).
+
+- On SOME SYSTEMS (but NOT Linux), opening one of the files in the "/dev/fd" directory is EQUIVALENT to
+DUPLICATING the CORRESPONDING FILE DESCRIPTOR. Thus, the following statements are EQUIVALENT:
+            # fd = open("/dev/fd/1", O_WRONLY);
+            # fd = dup(1);                        /* Duplicate standard output */
+
+- On LINUX, opening one of the files in "/dev/fd" is EQUIVALENT to REOPENING the ORIGINAL FILE; that is, the
+NEW FILE DESCRIPTOR is ASSOCIATED with a NEW OPEN FILE DESCRIPTION (and thus has DISTINCT file status flags
+AND file offset).
+
+- The "flags" argument of the "open()" call IS interpreted, so that we should TAKE CARE to SPECIFY the SAME
+ACESS MODE as was used by the ORIGINAL descriptor. Specifying OTHER flags, such as 'O_CREAT', is MEANINGLESS
+(and IGNORED) in this context.
+
+        Note:  "dev/fd" is actually a SYMBOLIC LINK to the Linux-specific "/proc/self/id" directory. The
+             LATTER is a SPECIAL CASE of the Linux-specific "/proc/PID/fd" directories, EACH of which
+             contains SYMBOLIC LINKS corresponding to ALL of the files HELD OPEN by a PROCESS.
+
+
+##########################################################################################################
+- Some programs NEED to create TEMPORARY FILES that are used ONLY WHILE the program is RUNNING, and these
+files should be REMOVED when the program TERMINATES. For example, MANY COMPILERS create temporary files during
+the compilation process. The GNU C library provides a RANGE of LIBRARY FUNCTIONS for this purpose (the VARIETY
+is, in part, a CONSEQUENCE of INHERITANCE from various other UNIX implementations). Here, we describe TWO of
+these functions: "mkstemp()" and "tmpfile()".
+
+- The "mkstemp()" function GENERATES a UNIQUE FILENAME based on a TEMPLATE supplied by the caller and OPENS the
+file, RETURNING a FILE DESCRIPTOR that can be used with I/O system calls.
+
+- Prototype and dependencies:
+         #include <stdlib.h>
+   
+         int mkstemp(char *template);
+                            Returns file descriptor on success, or -1 on error
+
+- The "template" argument takes the form of a PATHNAME in which the LAST 6 characterst MUST BE "XXXXXX". These
+6 characters are REPLACED with a STRING that MAKES the filename UNIQUE, and this MODIFIED STRING is RETURNED
+via the "template" argument. Because "template" is MODIFIED, it MUST be specified as a CHARACTER ARRAY, rather
+than as a STRING CONSTANT.
+
+- The "mkstemp()" funtion CREATES the file with READ and WRITE PERMISSIONS for the FILE OWNER (and NO
+PERMISSIONS for OTHER users), and OPENS it with the 'O_EXCL' flag, GUARANTEEING that the caller has EXCLUSIVE
+ACCESS to the file.
+
+- Typically, a temporary file is UNLINKED (deleted) SOON AFTER it is opened, using the "unlink()" system call.
+Thus, we could employ "mkstemp()" as follows:
+        # int fd;
+        # char template[] = "/tmp/somestringXXXXXX";
+
+        # fd = mkstemp(template);
+        # if(fd == -1)
+        #    errExit("mkstemp");
+        # printf("Generated filename was: %s\n", template);
+        # unlink(template);        /* Name disappears immediately, but the file
+                                      is removed only AFTER close() */
+
+        # /* Use file I/O system calls - read(), write(), etc */
+  
+        # if(close(fd) == -1)
+        #    errExit("close");
+
+       Note:  The "tmpnam()", "tempnam()", and "mktemp()" functions can ALSO be used to GENERATE UNIQUE
+            FILENAMES. However, these functions should be AVOIDED because they CAN create SECURITY HOLES in
+            an application.
+
+- The "tmpfile()" functions creates a UNIQUELY named TEMPORARY FILE that is OPENED for READING and WRITING 
+(the file is opened with the 'O_EXCL' flag to GUARD AGAINST the UNLIKELY POSSIBILITY that ANOTHER PROCESS has
+ALREADY created a file with the SAME NAME).
+
+- Prototype and dependencies:
+       #include <stdio.h>
+    
+       FILE *tmpfile(void);
+                  Returns file pointer on success, or NULL on error;
+
+- On sucess, "tmpfile()" returns a FILE STREAM that can be used with the "stdio" library functions. The
+TEMPORARY FILE is AUTOMATICALLY DELETED when it is CLOSED. To do this, "tmpfile()" makes an INTERNAL CALL to
+"unlink()" to REMOVE the filename IMMEDIATELY AFTER OPENING the file.

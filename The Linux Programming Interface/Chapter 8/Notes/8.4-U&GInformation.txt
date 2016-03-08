@@ -1,0 +1,166 @@
+#############################################################################################################
+- The "getpwnam()" and "getpwuid()" functions RETRIEVE RECORDS from the PASSWORD FILE:
+         DEP: #include <pwd.h>        PROTO: struct passwd *getpwnam(const char *name);
+                                      PROTO: struct passwd *getpwuid(uid_t uid);
+
+               RET: Both return a pointer on success, or NULL on ERROR
+                    (see main text for description of the "not found" case)
+
+- Given a LOGIN NAME in "name", the "getpwnam()" function returns a pointer to a STRUCTURE of the following
+type, containing the corresponding information from the PASSWORD RECORD:
+            # struct passwd{
+            #     char *pw_name;      /* Login name (username) */
+            #     char *pw_passwd;    /* Encrypted password */
+            #     uid_t pw_uid;       /* User ID */
+            #     gid_t pw_gid;       /* Group ID */
+            #     char *pw_gecos;     /* Comment (user information) */
+            #     char *pw_dir;       /* Initial working (home) directory */
+            #     char *pw_shell;     /* Login shell */
+            # };
+
+- The "pw_gecos" and "pw_passwd" fields of the "passwd" structure are NOT DEFINED in SUSv3, but ARE AVAILABLE
+on MOST UNIX implementations. The "pw_passwd" field contains VALID information ONLY IF password shadowing is
+NOT ENABLED (programmatically, the SIMPLEST WAY to DETERMINE whether PASSWORD SHADOWING is ENABLED is to
+FOLLOW a SUCCESSFUL "getpwnam()" call with a call to "getspnam()", to see IF it returns a SHADOW PASSWORD
+RECORD for the SAME USERNAME). Some OTHER IMPLEMENTATIONS provide ADDITIONAL, NONSTANDARD FIELDS in this
+STRUCTURE.
+
+              Note:  The "pw_gecos" field DERIVES ITS NAME from EARLY UNIX implementations, where this field
+                   CONTAINED INFORMATION that was USED for COMMUNICATING with a MACHINE running the General
+                   Electric Comprehensive Operating System (GECOS). Although this usage has LONG SINCE BECOME
+                   OBSOLETE, the FIELD NAME has SURVIVED, and the FIELD is USED for RECORDING INFORMATION
+                   about the USER.
+
+- The "getpwuid()" functions returns EXACTLY the SAME INFORMATION as "getpwnam()", but it does a LOOKUP using
+the NUMERIC USER ID supplied in the argument "uid".
+
+- Both "getpwnam()" and "getpwuid()" return a POINTER to a STATICALLY ALLOCATED STRUCTURE. This structure is
+OVERWRITTEN on EACH CALL to EITHER of these FUNCTIONS (or to the "getpwent()" function).
+ 
+              Note:  Because they return a pointer to STATICALLY ALLOCATED MEMORY, "getpwnam()" and
+                   "getpwuid()" are NOT REENTRANT. In fact, the SITUATION is EVEN MORE COMPLEX, since the
+                   RETURNED "passwd" STRUCTURE contains pointers to OTHER INFORMATION (e.g, the "pw_name"
+                   field) that is ALSO STATICALLY ALLOCATED. Similar statements apply to the "getgrnam()" and
+                   "getgrgid()" functions).
+                     SUSv3 SPECIFIES an EQUIVALENT SET of REENTRANT FUNCTIONS - "getpwnam_r()","getpwuid_r()",
+                   "getgrnam_r()", and "getgrgid_r()" - that INCLUDE as ARGUMENTS both a "passwd" (or "group")
+                    STRUCTURE and a BUFFER AREA to HOLD the OTHER STRUCTURES to which the FIELDS of the 
+                    "passwd" or "group" STRUCTURE point. The number of bytes REQUIRED for this ADDITIONAL
+                    BUFFER can be OBTAINED using the call "sysconf(_SC_GETPW_R_SIZE_MAX)"
+                    (or "sysconf(_SC_GETGR_R_SIZE_MAX)" in the case of GROUP-RELATED functions).
+
+- According to SUSv3, if a MATCHING "passwd" RECORD CAN'T BE FOUND, then "getpwnam()" and "getpwuid()" should
+return NULL and LEAVE "errno" UNCHANGED. This means that we SHOULD BE ABLE to DISTINGUISH the ERROR and the 
+"NOT FOUND" CASES using code such as the following:
+        # struct passwd *pwd;
+         
+        # errno = 0;
+        # pwd = getpwnam(name);
+        # if(!pwd){
+        #    if(!errno)
+        #       /* Not Found */;
+        #    else
+        #       /* Error */; 
+        # }  
+
+- However, a number of UNIX implementations DON'T CONFORM to SUSv3 on this point. If a MATCHING "passwd"
+RECORD is NOT FOUND, then these functions return NULL and SET "errno" to a NONZERO VALUE, such as "ENOENT" or
+"ESRCH". Before version 2.7, "glibc" produced the error 'ENOENT' for this case, but SINCE VERSION 2.7, "glibc"
+CONFORMS to the SUSv3 REQUIREMENTS. This VARIATION across implementations ARISES in part because POSIX.1-1990
+DID NOT REQUIRE these functions to SET "errno" on ERROR and ALLOWED them to SET "errno" for the "NOT FOUND"
+case. The UPSHOT of ALL OF THIS is that it ISN'T REALLY POSSIBLE to PORTABLY DISTINGUISH the ERROR and the
+"NOT FOUND" cases when using these functions.
+
+- The "getgrnam()" and "getgrgid()" functions RETRIEVE RECORDS from the GROUP FILE:       
+         DEP: #include <grp.h>        PROTO: struct group *getgrnam(const char *name);
+                                      PROTO: struct group *getgrgid(gid_t gid);    
+
+               RET: Both return a pointer on success, or NULL on ERROR
+                    (see main text for description of the "not found" case) 
+
+- The "getgrnam()" function LOOKS UP group information BY GROUP NAME, and the "getgrgid()" functions performs
+lookups BY GROUP ID. Both functions return a pointer to a STRUCTURE of the following type:
+            # struct group{
+            #     char *gr_name;    /* Group name */
+            #     char *gr_passwd;  /* Encrypted password (if not password shadowing) */
+            #     gid_t gr_gid;     /* Group ID */
+            #     char **gr_mem;    /* NULL-terminated ARRAY OF POINTERS to NAMES of MEMBERS LISTED in
+                                       "/etc/group" */
+            # };
+
+              Note:  The "gr_passwd" field of the GROUP STRUCTURE is NOT SPECIFIED in SUSv3, but IS AVAILABLE
+                   on MOST UNIX implementations.
+
+- As with the CORRESPONDING PASSWORD FUNCTIONS mentioned above, this STRUCTURE is OVERWRITTEN on EACH CALL
+to EITHER of these FUNCTIONS.
+
+- If these functions CAN'T FIND a MATCHING GROUP RECORD, then they show the SAME VARIATIONS in BEHAVIOUR that
+we described for "getpwnam()" and "getpwuid()".
+
+- The "setpwent()", "getpwent()", and "endpwent()" functions are used to perform SEQUENTIAL SCANS of the
+RECORDS in the PASSWORD FILE:
+         DEP: #include <pwd.h>     PROTO: struct passwd *getpwent(void);   
+                                   RET: Returns pointer on success, or NULL on END OF STREAM or ERROR.
+    
+                                   PROTO: void setpwent(void);
+                                   PROTO: void endpwent(void);
+
+- The "getpwent()" function returns RECORDS from the PASSWORD FILE ONE BY ONE, returning NULL when there are
+NO MORE RECORDS (or an ERROR occurs). On the first call, "getpwent()" AUTOMATICALLY OPENS the PASSWORD FILE.
+When we have FINISHED with the FILE, we call "endpwent()" to CLOSE IT.
+
+- We can walk through the ENTIRE PASSWORD FILE printing login names and user IDs with the following code:
+               # struct passwd *pwd;
+               #
+               # while(!(pwd = getpwent()))
+               #    printf("%-8s %5ld\n", pwd->pw_name, (long) pwd->pw_uid);
+               #
+               # endpwent();
+
+- The "endpwent()" call is NECESSARY so that ANY SUBSEQUENT "getpwent()" CALL (perhaps in SOME OTHER PART of
+our program or in SOME LIBRARY FUNCTION that we call) will REOPEN the PASSWORD FILE and START from the
+BEGINNING. On the OTHER HAND, if we are PART-WAY THROUGH the file, we can use the "setpwent()" function to
+RESTART from the BEGINNING.
+
+- The "getgrent()", "setgrent()", and "endgrent()" functions PERFORM ANALOGOUS TASKS for the GROUP FILE. 
+The PROTOTYPES of these FUNCTIONS are SIMILAR to those of the PASSWORD FILE FUNCTIONS.
+
+- The following functions are used to RETRIEVE INDIVIDUAL RECORDS from the SHADOW PASSWORD FILE and to SCAN
+ALL RECORDS in that file:
+         DEP: #include <shadow.h>   PROTO: struct spwd *getspnam(const char *name);
+                                    RET: Returns pointer on success, or NULL on NOT FOUND or ERROR.
+
+                                    PROTO: struct spwd *getspent(void);
+                                    RET: Returns pointer on success, or NULL on END OF STREAM or ERROR
+
+                                    PROTO: void setspent(void);
+                                    PROTO: void endspent(void);
+
+- Their operation is SIMILAR to the CORRESPONDING PASSWORD FILE FUNCTIONS. These functions AREN'T SPECIFIED
+in SUSv3, and AREN'T PRESENT on ALL UNIX implementations.
+
+- The "getspnam()" and "getspent()" function return POINTERS to a STRUCTURE of type 'spwd'. This STRUCTURE has
+the following form:
+
+              # struct spwd{
+              #    char *sp_namp;         /* Login name (username) */
+              #    char *sp_pwdp;         /* Encrypted password */
+              # 
+              #    /* 
+              #     * Remaining fields support "PASSWORD AGING", an OPTIONAL feature that FORCES USERS
+              #     * to REGULARLY CHANGE their PASSWORDS, so that EVEN IF an ATTACKER MANAGES to OBTAIN
+              #     * a PASSWORD, it will EVENTUALLY CEASE to be USABLE
+              #    */
+
+              #    long sp_lstchg;        /* Time of LAST PASSWORD CHANGE (days since 1 Jan 1970) */
+              #    long sp_min;           /* Min. number of days between password changes */
+              #    long sp_max;           /* Max. number of days before change required */
+              #    long sp_warn;          /* Number of days beforehand that user is WARNED of
+              #                              upcoming password expiration */
+              #    long sp_inact;         /* Number of days after expiration that account is
+              #                              considered inactive and locked */
+              #    long sp_expire;        /* Date when account expires (days since 1 Jan 1970) */
+              #    unsigned long sp_flag; /* Reserved for future use */
+              # };
+
+#############################################################################################################

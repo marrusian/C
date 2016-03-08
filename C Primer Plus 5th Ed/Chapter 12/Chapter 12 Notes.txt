@@ -1,0 +1,425 @@
+- C provides several different models, or STORAGE CLASSES, for storing data in memory.
+
+- There are TWO aspects for data in memory:
+   a) The hardware aspect: each stored value occupies physical memory. C uses the term "OBJECT" for such
+   a chunk of memory. An object might NOT yet actually have a stored value, but it will be of the right
+   size to hold an APPROPRIATE value.
+   b) The software aspect: the program NEEDS a WAY to ACCESS the object. This can be accomplished through
+   declarations.
+
+- An IDENTIFIER is a NAME that can be used to designate the CONTENTS of a PARTICULAR object. 
+
+- We can DESCRIBE an OBJECT in terms of its "STORAGE DURATION", which is how long it stays in memory.
+Also, we can DESCRIBE an IDENTIFIER used to access the object by its "SCOPE" and its "LINKAGE", which
+together indicate WHICH parts of a PROGRAM can use it.
+
+- "SCOPE" describes the REGION (or regions) of a PROGRAM that can ACCESS an IDENTIFIER. A C variable has
+ONE of the following scopes:
+   a) Block scope;
+   b) Function scope;
+   c) Function prototype scope;
+   d) File scope;
+
+a) A "BLOCK" is a REGION of CODE contained WITHIN an opening brace and the matching closing brace. 
+A variable defined INSIDE a block has BLOCK SCOPE, and it is VISIBLE from the point it is defined UNTIL
+the END of the BLOCK containing the definition.
+Also, FORMAL function PARAMETERS, even though they occur BEFORE the opening brace of a function,
+have block scope and BELONG to the BLOCK containing the FUNCTION BODY.
+
+- Traditionally, variables with block scope HAD to be DECLARED at the BEGINNING of a block. C99 relaxed
+that rule, allowing us to declare variables ANYWHERE in a BLOCK.
+As part of this new feature, C99 EXPANDED the CONCEPT of a BLOCK to include the code controlled by a
+'for' loop, 'while' loop, 'do-while' loop or 'if' statement, EVEN if NO brackets are used.
+More completely, an ENTIRE loop is a SUB-BLOCK of the BLOCK containing it, and the LOOP BODY is a 
+SUB-BLOCK of the ENTIRE LOOP BLOCK.
+
+b) Applies JUST to labels used with 'goto' statements. This means that even if a label first appears
+inside an inner block in a function, its scope extends to the WHOLE function.
+
+c) Applies to VARIABLE NAMES used in function prototypes. Function prototype scope runs from the point
+the variable is defined to the end of the prototype declaration. This means that all the compiler cares
+about when handling a function prototype is the TYPES; the names we use, if any, normally DON'T matter.
+
+d) Applies to variables defined OUTSIDE of ANY function. A variable with file scope is VISIBLE from the
+point it is defined to the end of the file containing the definition. Because they can be used in MORE
+than one function, file scope variables are ALSO called "GLOBAL VARIABLES".
+
+#######################################################################################################
+- A C variable has ONE of the following linkages:
+   a) External linkage;
+   b) Internal linkage;
+   c) No linkage.
+
+- Variables with BLOCK SCOPE, FUNCTION SCOPE, or FUNCTION PROTOTYPE SCOPE have NO LINKAGE. That means
+they are PRIVATE to the block, function, or function prototype in which they are defined.
+
+- Variables with FILE SCOPE can have either INTERNAL or EXTERNAL linkage.
+A variable with EXTERNAL linkage can be used ANYWHERE in a MULTIFILE program.
+A variable with INTERNAL linkage can be used ANYWHERE in a SINGLE translation unit.
+
+- The C standard uses the term:
+  - "File scope with INTERNAL linkage" to describe scope LIMITED to ONE translation unit (i.e. a source
+   code file PLUS its included header files);
+  - "File scope with EXTERNAL linkage" to describe scope that, at least POTENTIALLY, EXTENDS to OTHER
+   translation units.
+
+- However, programmers don't always use those terms. Some COMMON SHORTCUTS are to use:
+   - "File scope" for "file scope with INTERNAL linkage".
+   - "Global scope"/"Program scope" for "file scope with EXTERNAL linkage".
+
+- If a variable has the "STATIC" storage class specifier in the external definition, then it is PRIVATE
+to that PARTICULAR FILE. For example:
+   # int giants = 5;          // File scope, EXTERNAL linkage
+   # static int dodgers = 3;  // File scope, INTERNAL linkage
+
+#######################################################################################################
+- Scope and linkage describe the VISIBILITY of identifiers. Storage duration describes the PERSISTENCE of
+the objects accessed by these identifiers. A C object has one of the following FOUR storage durations:
+   a) Static storage duration.
+   b) Thread storage duration.
+   c) Automatic storage duration.
+   d) Allocated storage duration.
+
+a) Means that the object exists THROUGHOUT program execution. Variables with FILE SCOPE have this type of
+storage duration. Note that for FILE SCOPE variables, the keyword "STATIC" indicates the LINKAGE type, NOT
+the storage duration. A file scope variable declared using "STATIC" has INTERNAL linkage, but ALL file
+scope variables, using INTERNAL or EXTERNAL linkage, have STATIC STORAGE DURATION.
+
+b) Means that the object exists from when it's declared until the THREAD terminates. Such an object is
+CREATED when a DECLARATION that would OTHERWISE create a file scope object is modified with the keyword
+"_Thread_local". When a varaible is declared with this specifier, EACH thread gets its OWN PRIVATE COPY
+of that variable.
+
+c) Means the variables have memory ALLOCATED for them when the program ENTERS the block in which they are
+DEFINED, and the memory is FREED when the block is EXITED. Variables with block scope normally have this
+type of storage duration.
+However, it is POSSIBLE for a variable to have BLOCK SCOPE but STATIC STORAGE duration, by declaring it
+inside a block with the keyword 'static'. For example:
+    # <type> function(<arguments>)
+    # {
+    # static int ct = 0;  // Block scope, static storage duration, no linkage
+    # ...
+    # }
+
+//  Storage Class          Duration            Scope             Linkage          How Declared
+//  automatic              Automatic           Block             None             In a block
+//
+//  register               Automatic           Block             None             In a block with the
+//                                                                                keyword 'register'
+//
+//  static with            Static              File              External         Outside of all
+//  external linkage                                                              functions
+//
+//  static with            Static              File              Internal         Outside of all
+//  internal linkage                                                              functions with the
+//                                                                                keyword 'static'
+//
+//  static with no         Static              Block             None             In a block with the
+//  linkage                                                                       keyword 'static'
+
+#######################################################################################################
+- We can make our intentions of declaring a variable in a BLOCK with automatic storage perfectly clear
+by EXPLICITLY using the keyword 'auto'. However, C++ has REPURPOSED the 'auto' keyword for a DIFFERENT
+use, so simply NOT using 'auto' as a storage-class specifier is BETTER for C/C++ compatibility.
+
+- Variables are NORMALLY stored in computer MEMORY. With luck, REGISTER variables are stored in the CPU
+registers or, more generally, in the FASTEST MEMORY available. Because a register variable MAY be in a
+register RATHER than in memory, we CAN'T take the address of a register variable, but in most other
+aspects, they are the same as AUTOMATIC variables. 
+   A register variable is declared by using the storage class-specifier 'register'. However, declaring a
+variable as a 'register' class is more of a REQUEST. The COMPILER has to weight our demands again the
+number of register or amount of fast memory available, or it can simply IGNORE the request. In this case,
+the variable becomes an ORDINARY automatic variable (but we still can't use the address operator with it).
+   We can request that FORMAL PARAMETERS be REGISTER variables in the same way. 
+
+- Static variables with BLOCK scope have the same scope as automatic variables, but they DON'T vanish
+when the containing function ends its job.
+  Static variables are INITIALIZED to ZERO if we DON'T EXPLICITLY initialize them to some OTHER value.
+  Static variables definitions are NOT runtime actions, because they are NOT part of the function in
+which they were defined. Static variables and EXTERNAL variables are ALREADY in place after a program is
+loaded into memory. 
+  We CAN'T use 'static' for function parameters.
+
+- The STATIC STORAGE DURATION class is sometimes termed the "EXTERNAL STORAGE" class, and variables of
+this type are called "EXTERNAL VARIABLES".
+  We create such a variable by placing the defining declaration OUTSIDE of ANY function. Furthermore,
+an external variable CAN OPTIONALLY be declared INSIDE a function that USES it by the 'extern'
+keyword (for documentation purposes). If a PARTICULAR external variable is DEFINED in a source code file
+and is USED in ANOTHER source code file, declaring the variable in the SECOND file with 'extern' is
+MANDATORY.
+- Unlike the case of automatic variables, we can use ONLY constant expressions to initialize FILE SCOPE
+variables. For example:
+   # int x = 10;              // OK, 10 is constant
+   # int y = 3+20;            // ok, a CONSTANT expression
+   # size_t z = sizeof(int);  // ok, a CONSTANT expression
+   # int x2 = 2*x;            // INVALID, 'x' is a VARIABLE
+   # int vla[x];              // INVALID, array's size is NOT constant
+(As long as the type is NOT a VLA, a "SIZEOF" expression is CONSIDERED a CONSTANT expression).
+
+- The C99 and C11 standards REQUIRE compilers to RECOGNIZE the first 63 characters for LOCAL identifiers
+and the first 31 characters for EXTERNAL identifiers (the PREVIOUS requirement was to recognize the first
+31 characters for local identifiers and the first 6 characters for external identifiers).
+
+- We use the terms:
+   a) "DEFINING DECLARATION" when a declaration causes storage to be SET ASIDE for the variable.
+   It constitutes a DEFINITION of the variable.
+   b) "REFERENCING DECLARATION" when a declaration merely TELLS the COMPILER to USE the variable that
+   has been PREVIOUSLY CREATED, so it is NOT a definition.
+
+- The keyword 'extern' INDICATES that a declaration is NOT a definition, because it INSTRUCTS the
+COMPILER to look ELSEWHERE. 
+
+- An external variable can be initialized ONLY ONCE, and that MUST occur when the variable is DEFINED.
+
+- Static variables with INTERNAL linkage behave pretty much EXACTLY the same way static variables with
+EXTERNAL linkage do, but with ONE exception: they CAN'T be used by code in OTHER translation units.
+
+#######################################################################################################
+- Complex C programs often use several separate files of source code. Sometimes these files MIGHT need
+to SHARE an EXTERNAL variable. The C way to do this is to have a DEFINING DECLARATION in ONE file and
+REFERENCING DECLARATIONS in the OTHER files. That is, ALL BUT ONE declaration (the DEFINING DECLARATION)
+should use the 'extern' keyword, and ONLY the DEFINING DECLARATION should be used to INITIALIZE the
+variable. 
+  However, an EXTERNAL VARIABLE defined in ONE file is NOT available to a SECOND file UNLESS it is ALSO
+DECLARED (by using 'extern') in the SECOND file. An EXTERNAL DECLARATION by itself ONLY makes a variable
+POTENTIALLY AVAILABLE to other files.
+
+#######################################################################################################
+- Functions, too, have storage classes. A function can be:
+   a) External (the DEFAULT) - can be accessed by functions in OTHER files.
+   b) Static - can be used ONLY WITHIN the DEFINING FILE.
+   c) Inlined (C99 feature).
+
+- One reason to use the 'static' storage class is to create functions that are PRIVATE to a PARTICULAR
+module, thereby AVOIDING the POSSIBILITY of NAME CONFLICTS.
+
+- The USUAL practice is to use the 'extern' keyword when DECLARING functions DEFINED in OTHER FILES. This
+practice is MOSTLY a matter of CLARITY, because a FUNCTION DECLARATION is ASSUMED to be 'extern' UNLESS
+the keyword 'static' is used.
+
+#######################################################################################################
+- One of the GOLDEN RULES of PROTECTIVE PROGRAMMING is the "need to know" principle. We should keep the
+inner workings of EACH function as PRIVATE to that function AS POSSIBLE, sharing ONLY those variables
+that NEED to be shared. 
+  The other classes ARE useful, and they ARE available. However, BEFORE using one, we should ask
+ourselves whether it is NECESSARY.
+
+#######################################################################################################
+- If our C implementation gives us access to some changing quantity, such as the SYSTEM CLOCK, we can use
+that value to initialize the SEED value (for the rand() function). For instance, ANSI C has a "time()"
+function that RETURNS the SYSTEM TIME. The TIME UNITS are SYSTEM DEPENDENT, but what MATTERS here is that
+the RETURN VALUE is an ARITHMETIC TYPE and that its value CHANGES with time. The EXACT type is SYSTEM
+DEPENDENT and is given the label "time_t", but we can use a TYPE CAST:
+   # include<time.h>
+   # srand((unsigned int)time(0));
+- In general, "time()" takes an ARGUMENT that is the ADDRESS of a type "time_t" OBJECT. In that case,
+the TIME VALUE is ALSO stored at that ADDRESS. However, we can pass the NULL POINTER (0) as an ARGUMENT,
+in which case the value is supplied ONLY through the RETURN VALUE mechanism.
+
+- Enclosing the header file name in double quotation marks instead of in angle brackets INSTRUCTS the
+COMPILER to look LOCALLY for the file INSTEAD of in the standard locations the compiler uses for the
+standard header files. Of course, the meaning of "look locally" DEPENDS on the IMPLEMENTATION.
+
+#######################################################################################################
+- Because "malloc()" returns the address of the FIRST BYTE of the memory block it allocates and because
+"char" represents a byte, "malloc()" has TRADITIONALLY been defined as pointer-to-char. However, since
+the ANSI C standard, C uses a new type: pointer-to-void. This type is intended to be a "GENERIC POINTER".
+
+- Normally, the return value of "malloc()" is TYPECAST to the PROPER VALUE. Under ANSI C, we should
+STILL typecast for CLARITY, but ASSIGNING a pointer-to-void value to a pointer of ANOTHER type is NOT
+considered a TYPE CLASH.
+
+- The TYPECAST to the PROPER VALUE is OPTIONAL in C, but REQUIRED in C++, so using the typecast makes it
+SIMPLER to MOVE a program from C to C++.
+
+- We have THREE ways of CREATING an ARRAY:
+   a) Declare an array using CONSTANT EXPRESSIONS for the ARRAY DIMENSIONS and use the ARRAY NAME to
+   ACCESS elements. Such an array can be created using either STATIC or AUTOMATIC memory.
+   b) Declare a VLA using VARIABLE EXPRESSIONS for the ARRAY DIMENSIONS and use the ARRAY NAME to
+   ACCESS elements (recall this is a C99 feature). This feature is available ONLY for AUTOMATIC memory.
+   c) Declare a POINTER, call "malloc()", ASSIGN the RETURN VALUE to the POINTER, and use the POINTER
+   to ACCESS elements. The pointer can be either STATIC or AUTOMATIC.
+- We can use the 'b)' and 'c)' methods to create a DYNAMIC ARRAY (i.e. one that's allocated while the
+program runs and for which we can choose a size while the program runs).
+
+- The "free()" function takes as its arguments an ADDRESS returned earlier by "malloc()" and FREES UP
+the MEMORY that had been ALLOCATED. Thus, the DURATION of ALLOCATED memory is from when "malloc()" is
+called to allocate the memory UNTIL "free()" is called to free up the memory so that it can be REUSED.
+
+- It is POSSIBLE that "malloc()" can FAIL to PROCURE the DESIRED AMOUNT of MEMORY. In that case, the
+function RETURNS the NULL POINTER.
+
+- Because SOME operating systems will FREE the ALLOCATED memory AUTOMATICALLY when a program finishes,
+while OTHERS MAY NOT, it is GOOD PRACTICE to USE "free()" everytime INSTEAD of relying on the operating
+system to clean up for us.
+
+- There is some OVERLAP in FUNCTIONALITY between VLAs and the use of "malloc()".  One difference is that
+the VLA is AUTOMATIC STORAGE. One CONSEQUENCE of AUTOMATIC STORAGE is that the MEMORY SPACE used by the
+VLA is FREED AUTOMATICALLY when the execution LEAVES the DEFINING BLOCK. Therefore we DON'T have to
+worry about using "free()". On the other hand, the array created using "malloc()" NEEDN'T have its 
+access LIMITED to ONE FUNCTION. 
+  However, VLAs are MORE CONVENIENT for MULTIDIMENSIONAL ARRAYS. We can create a TWO-DIMENSIONAL array
+using "malloc()", but the SYNTAX is AWKWARD.
+
+- We can think of a program as DIVIDING its AVAILABLE MEMORY into THREE separate sections:
+   1) static variables with external linkage, internal linkage, and no linkage;
+   2) automatic variables
+   3) dynamically allocated memory.
+
+- With dynamically allocated memory, memory PERSISTENCE is CONTROLLED by the PROGRAMMER, NOT by a SET
+of RIGID RULES, so a memory block can be created in one function and disposed of in another function.
+Because of this, the section of memory used for dynamic memory allocation can end up FRAGMENTED (i.e.
+UNUSED chunks could be INTERSPERSED among ACTIVE blocks of memory). Also, using dynamic memory tends
+to be a SLOWER PROCESS than using STACK MEMORY.
+
+- Typically, a program uses DIFFERENT regions of memory for static objects, automatic objects, and 
+dynamically allocated objects.
+
+#######################################################################################################
+- C90 added two properties: CONSTANCY and VOLATILITY. These properties are DECLARED with the KEYWORDS
+'const' and 'volatile', which create "QUALIFIED TYPES". 
+  The C99 standard added a THIRD qualifier, 'restrict', designed to facilitate COMPILER OPTIMIZATIONS.
+  The C11 standard added a FOURTH qualifier, '_Atomic', which is part of an OPTIONAL library, managed
+by "stdatomic.h", to support CONCURRENT programming.
+
+- C99 granted type qualifiers a NEW property - IDEMPOTENCE. This means we can use the SAME qualifier
+MORE THAN ONCE in a declaration, and the superfluos ones are ignored:
+    # const const const int n = 6;   // same as const int n = 6;
+
+- Using GLOBAL VARIABLES is considered a RISKY approach, because it EXPOSES DATA to being MISTAKENLY
+ALTERED by ANY part of a program. That risk DISAPPEARS if the DATA is CONSTANT, so it is PERFECTLY
+REASONABLE to use GLOBAL VARIABLES with the "CONST" qualifier. 
+  When SHARING "const" data ACROSS FILES, there are TWO strategies we can use:
+    1) Follow the usual rules for external variables - use DEFINING DECLARATIONS in ONE file and
+    REFERENCE DECLARATIONS (using the keyword 'extern') in the OTHER files.
+    2) Place the constants in an "include" file.  In this case, we MUST take the ADDITIONAL STEP of
+    using the STATIC EXTERNAL STORAGE class (otherwise, each translation unit would have a DEFINING
+    DECLARATION of the SAME identifier, which is NOT SUPPORTED by the C standard). By making EACH
+    identifier STATIC EXTERNAL, we actually give EACH translation unit a SEPARATE COPY of the data
+    (however, because the data is constant and identical, that's NOT a problem). 
+    The ADVANTAGE is that all files have to SIMPLY INCLUDE the SAME header file. The DISADVANTAGE is
+    that the DATA is DUPLICATED (this could lead to INEFFICIENT storage when using enormous arrays).
+
+- The "VOLATILE" qualifier tells the COMPILER that a VARIABLE can have its value ALTERED by AGENCIES
+OTHER than the PROGRAM (it's typically used for HARDWARE ADDRESSES and for DATA SHARED with OTHER
+programs or THREADS running SIMULTANEOUSLY).
+  The REASON the ANSI committee felt it NECESSARY to make 'volatile' a KEYWORD is that it FACILITATES
+COMPILER OPTIMIZATION. Suppose we have code like this:
+    # val1 = x;
+    # /* some code NOT using x */
+    # val2 = x;
+  A SMART (optimizing) COMPILER might notice that we use 'x' twice WITHOUT changing its value. It would
+TEMPORARILY store the 'x' value in a REGISTER. Then, when 'x' is NEEDED for val2, it can SAVE TIME by
+READING the VALUE from a REGISTER instead of from the ORIGINAL MEMORY location. This procedure is called
+"CACHING". Ordinarily, CACHING is GOOD OPTIMIZATION, but NOT if 'x' is CHANGED between the two statements
+by some OTHER AGENCY. If there were NO 'volatile' keyword, a COMPILER would have NO WAY of knowing
+whether this MIGHT happen. Therefore, to be SAFE, the compiler COULDN'T cache. That was the pre-ANSI
+situation. Now, however, if the 'volatile' keyword is NOT USED in the DECLARATION, the COMPILER can
+ASSUME that a value HASN'T changed BETWEEN uses, and it can then ATTEMPT to OPTIMIZE the CODE.
+  A value can be BOTH 'const' AND 'volatile'. For example, the HARDWARE CLOCK setting normally SHOULD NOT
+be change by the program, making it 'const', but it is CHANGED by an AGENCY OTHER than the program,
+making it 'volatile'. We just use BOTH QUALIFIERS in the DECLARATION:
+    # volatile const int loc;
+    # const volatile int *ploc;
+
+- The 'restrict' keyword ENCHANCES computation support by giving the compiler PERMISSION to OPTIMIZE
+certain kind of CODE. It can be applied ONLY to pointers, and it INDICATES that a POINTER is the SOLE
+INITIAL MEANS of ACCESSING a DATA OBJECT. Consider the following:
+    # int ar[10];
+    # int * restrict restar = (int*) malloc(10*sizeof(int));
+    # int *par = ar;
+  Here, the pointer "restar" is the SOLE INITIAL MEANS of ACCESS to the memory ALLOCATED by "malloc()".
+Therefore it can be QUALIFIED with the keyword 'restrict'. The pointer "par", however, is NEITHER
+the initial NOR the sole means of access to the data in the "ar" array, so it CANNOT be qualified as
+'restrict'. Now consider the following:
+    # for(int n=0; n<10; ++n){
+    #    par[n] += 5;
+    #    restar[n] += 5;
+    #    ar[n] *= 2;
+    #    par[n] += 3;
+    #    restar[n] += 3;
+    # }
+  Knowing that "restar" is RESTRICTED, the COMPILER can REPLACE the TWO statements involving "restar"
+with a SINGLE statement having the SAME EFFECT:
+    # restar[n] += 8;    /* OK replacement */
+  However, it could be a COMPUTATIONAL ERROR to CONDENSE the TWO statements involg "par" into ONE:
+    # par[n] += 8;       /* gives the WRONG answer */
+  The reason it gives the WRONG answer is that the loop uses "ar" to CHANGE the value of the data BETWEEN
+the two time "par" accesses the same data.
+  Without the 'restrict' keyword, the COMPILER has to ASSUME the WORST CASE; namely, that some OTHER
+IDENTIFIER might have CHANGED the DATA in BETWEEN two uses of a pointer. With the 'restrict' keyword
+used, the COMPILER is FREE TOO LOOK for COMPUTATIONAL SHORTCUTS.
+  We can use the 'restrict' keyword as a QUALIFIER for FUNCTION PARAMETERS that are POINTERS. This means
+that the COMPILER can ASSUME that NO OTHER IDENTIFIERS modify the pointed-to data within the body of
+the function and that the compiler can try OPTIMIZATIONS it MIGHT NOT OTHERWISE use.
+  This keyword has TWO audiences: 
+    1) The COMPILER, because it tells the compiler it is free to make CERTAIN ASSUMPTIONS concerning
+    OPTIMIZATION. 
+    2) The USER, because it tells the user to use ONLY ARGUMENTS that SATISFY the 'restrict' REQUIREMENTS.
+  In GENERAL, the compiler CAN'T check whether we OBEY this restriction, but we FLOUT it at our OWN RISK.
+
+- Concurrent programming DIVIDES program EXECUTION into THREADS that may be executed in PARALLEL. C11
+provides, as an OPTION and NOT a REQUIREMENT, management methods set up by the OPTIONAL HEADER FILES
+"stdatomic.h" and "threads.h". One aspect is the concept of an ATOMIC TYPE for which access is CONTROLLED
+by VARIOUS MACRO FUNCTIONS. While a THREAD performs an ATOMIC OPERATION on an OBJECT of ATOMIC TYPE, 
+OTHER threads WON'T access that object. For example:
+    # int hogs;
+    # hogs = 12;
+  Could be replaced by the following:
+    # _Atomic int hogs;        // hogs an atomic variable
+    # atomic_store(&hogs, 12); // macro from stdatomic.h
+
+- C99 ALLOWS us to place the TYPE QUALIFIERS and the STORAGE CLASS QUALIFIER 'static' INSIDE the INITIAL
+BRACKETS of a FORMAL PARAMETER in a FUNCTION PROTOTYPE and FUNCTION HEADER. In the case of the TYPE
+QUALIFIERS, this provides an ALTERNATIVE SYNTAX for an EXISTING capability. For example:
+    # void function(int * const a1, int * restrict a2, int n);   // OLDER style
+    # void function (int a1[const], int a2[restrict], int n);    // C99 syntax
+  Basically, the new rule ALLOW us to use the TYPE QUALIFIERS with EITHER pointer OR array notation in
+declaring function parameters.
+  The case for 'static' is DIFFERENT because it introduces a NEW and UNRELATED use for this keyword.
+Instead of INDICATING the scope OR linkage of a static storage variable, the NEW use is to TELL the
+compiler HOW a FORMAL PARAMETERS will be USED. For example, consider this prototype:
+    # double stick(double ar[static 20]);
+  This use of 'static' indicates that the ACTUAL ARGUMENT in a FUNCTION CALL will be a POINTER to the
+first element of an ARRAY having AT LEAST 20 elements. The purpose of this is to ENABLE the COMPILER to
+USE that INFORMATION to OPTIMIZE its coding of the function.
+   As with 'restrict', the keyword 'static' has TWO audiences: 
+    1) The COMPILER, because it tells the compiler it is free to make CERTAIN ASSUMPTIONS concerning
+    OPTIMIZATION.
+    2) The USER, because it tells the user to use ONLY ARGUMENTS that SATISFY the 'static' REQUIREMENTS.
+
+#######################################################################################################
+
+Review answers:
+
+1. The automatic storage class, the register storage class, and the static with no linkage storage class.
+
+2. The static with no linakg storage class, the static with internal linkage storage class and the
+static with external linkage storage class.
+
+3. The static storage class with external linkage can be used across several files, while the static
+storage class with INTERNAL linkage is restricted to just one file.
+
+4. Block scope variables have NO linkage.
+
+5. The 'extern' keyword is used for making a referring declaration to a variable defined elsewhere 
+or for documentation purposes.
+
+6. The "malloc()" function does NOT set all the bits in the allocated block of memory to zero, while the
+"calloc()" function does.
+
+8. It will print:
+  color in main() is 'B'
+  color in first() is 'R'
+  color in main() is 'B'
+  color in second() is 'G'
+  color in main() is 'G'
+
+9.
+  a. The "static int plink" declaration tells us that the programmer's intent is to use this variable
+  as an external variable (global), but ONLY in the current file, so that other files CAN'T access it.
+  The "int value_ct(const int arr[], int value, int n)" declaration tells us that the programmer's intent
+  is to use "arr" as a READ-ONLY array (the function probably compares how many elements in "arr" are
+  equal to "value").
+  b. That replacement won't enchance the protection of values in the calling program, because they are
+  already COPIES of the original values.

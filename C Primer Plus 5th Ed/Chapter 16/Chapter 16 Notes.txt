@@ -1,0 +1,490 @@
+- The C standard goes BEYOND describing JUST the C language. It also describes how the C preprocessor
+should perform, establishes WHICH functions form the standard C library, and details HOW these functions
+work.
+
+- The preprocessor looks at our program BEFORE it is compiled (hence the term). Following our preprocessor
+directives, the preprocessor REPLACES the SYMBOLIC ABBREVIATIONS in our program with the DIRECTIONS they
+represent. The preprocessor can include other files at our request, and it can select which code the
+compiler sees. The preprocessor DOES NOT know about C.
+
+- Before jumping into preprocessing, the COMPILER has to put a program through some TRANSLATION PHASES:
+   1) The compiler starts its work by MAPPING characters appearing in the source code to the SOURCE
+   CHARACTER SET. This takes care of multibyte characters and trigraphs.
+   2) The compiler LOCATES each instance of a backslash followed by a newline character ([enter]) and
+   DELETES them, converting TWO or MORE physical lines to a SINGLE LOGICAL LINE. This is useful as a
+   preparation for preprocessing, because preprocessing expressions are REQUIRED to be ONE LOGICAL LINE
+   long.
+   3) The compiler BREAKS the text into a SEQUENCE of PREPROCESSING TOKENS and SEQUENCES of WHITESPACE and
+   COMMENTS. Also, an implementation MAY choose to REPLACE each sequence of whitespace characters (other
+   than a newline) with a SINGLE SPACE.
+- Finally, the program is READY for the PREPROCESSING PHASE, and the preprocessor looks for potential
+preprocessor directives, indicated by a '#' symbol.
+
+#########################################################################################################
+- Each '#define' LOGICAL LINE has THREE PARTS:
+   1) The '#define' directive itself.
+   2) Our chosen abbreviation, known as a "MACRO". Some macros represent VALUES; they are called
+   "OBJECT-LIKE MACROS" (C also has "FUNCTION-LIKE MACROS"). The naming rules for object-like macros are
+   the same as for variables.
+   3) The "REPLACEMENT LIST" or "BODY" (the remainder of the line). When the preprocessor finds an example
+   of one of our macros WITHIN our program, it ALMOST ALWAYS replaces it with the body (excepting the case
+   where our macro is enclosed within double quotation marks). This process of going from a MACRO to a
+   FINAL REPLACEMENT is called "MACRO EXPANSION".
+
+- The mnemonic value, easy alterability, and portability - these features all make symbolic/manifest
+constants worthwile.
+
+- Technically, the BODY of a macro is considered to be a string of TOKENS rather than a string of
+characters. C preprocessor tokens are the separate "words" in the body of a macro definition. They are
+separated from one another by WHITESPACE. That is, the TOKEN INTERPRETATION views the spaces as SEPARATORS
+between the tokens of the body (however, SOME C compilers have viewed macro bodies as strings rather than
+as tokens). 
+- Incidentally, the C compiler takes a MORE COMPLEX view of tokens than the preprocessor does. The compiler
+UNDERSTANDS the RULES of C and doesn't necessarily require spaces to separate tokens. For example, the C
+compiler would view 2*2 as THREE TOKENS, because it recognizes that each '2' is a constant and that '*' is
+an operator.
+
+- Suppose we define "LIMIT" to be 20, and then LATER in the SAME FILE we define it AGAIN as 25. This
+process is called "REDEFINING A CONSTANT". Implementations DIFFER on redefinition policy. Some consider it
+an error unless the new definition is the same as the old, while others ALLOW redefinition. The ANSI 
+standard takes the FIRST VIEW. Because of this, if we want to redefine a macro, we should use the '#undef'
+directive. However, a better practice (and easier) is to use the 'const' keyword and scope rules to
+accomplish this end (of redefining constants).
+
+#########################################################################################################
+- By using ARGUMENTS, we can create "FUNCTION-LIKE MACROS" that LOOK and ACT much like functions. A macro
+with arguments looks VERY SIMILAR to a function, because the arguments are enclosed within PARANTHESES.
+Function-like macro definitions have ONE or MORE arguments in parantheses, and these ARGUMENTS then APPEAR
+in the RECPLACEMENT PORTION.
+
+- The ARGUMENT in the macro definition is REPLACED by the SYMBOL used in the MACRO CALL in the program.
+However, a MACRO ARGUMENT does NOT work exactly like a function argument. A function call PASSES THE VALUE
+of the ARGUMENT to the FUNCTION while the program is RUNNING. A macro call PASSES THE ARGUMENT TOKEN to the
+program before COMPILATION. It's a DIFFERENT process at a DIFFERENT time. Because of this, we should use
+as MANY PARANTHESES AS NECESSARY to ENSURE that operations and associations are done in the RIGHT ORDER.
+
+- In general, DON'T use increment or decrement operators with macros. Most of the time, evaluating MACRO
+expressions containing these operators results in what the standard calls UNDEFINED BEHAVIOUR. For example:
+    a) #define SQUARE(x) ((x)*(x))  vs  b)double square(double x){return x*x;}  
+  1) The MACRO CALL of SQUARE(++x) will be replaced by the preprocessor with the expression ((++x)*(++x)).
+  2) The FUNCTION CALL of square(++x) will first EVALUATE the expression "++x" and then PASS the evaluated
+  argument to the function, resulting in the CORRECT ANSWER.
+
+- C enables us to create STRINGS from MACRO ARGUMENTS with the '#' operator. Within the REPLACEMENT PART
+of a FUNCTION-LIKE MACRO, the '#' symbol becomes a PREPROCESSING OPERATOR that converts TOKENS into
+STRINGS. For example, say that x is a MACRO PARAMETER, and then #x is that parameter name CONVERTED to the
+string "x". This process is called "STRINGIZING".
+
+- Like the '#' operator, the '##' operator can be used in the REPLACEMENT SECTION of a FUNCTION-LIKE MACRO.
+Additionally, it can be used in the replacement section of an OBECT-LIKE MACRO. The '##' operator COMBINES
+two tokens into a single token.
+
+- The "stdvar.h" header file PROVIDES tools for creating user-defined functions with a VARIABLE number of
+arguments. And C99/C11 does the SAME THING for MACROS. Although NOT USED in the standard, the word
+"VARIADIC" has come into currency to label this facility.  The idea is that the FINAL ARGUMENT in an 
+ARGUMENT LIST for a MACRO DEFITION can be ellipses (i.e. "..."). If so, the PREDEFINED macro '__VA_ARGS__'
+can be used in the REPLACEMENT PART to INDICATE what will be SUBSTITUTED for the ellipses.
+
+#########################################################################################################
+- Macros are somewhat TRICKIER to use than regular functions because they can have ODD side effects if we
+are UNWARY. Some compilers LIMIT the macro definition to ONE LINE, and it is PROBABLY BEST to observe that
+limit, EVEN if our compiler does not.
+
+- The macro-vs-function choice represents a TRADE-OFF between TIME and SPACE. A macro produces INLINE code,
+while a function shifts the program control to where the function is and then returns to the calling
+program. C99 provides an alternative - INLINE FUNCTIONS.
+
+- Macros have an ADVANTAGE in that they DO NOT WORRY about VARIABLE TYPES (because they do NOT deal with
+ACTUAL values). Therefore, a macro function can be used EQUALLY WELL with 'int' or 'float'.
+
+- Here are some points to note:
+    a) Remember that there are NO SPACES in the macro name, but that spaces CAN appear in the REPLACEMENT
+    STRING. ANSI C permits spaces in the ARGUMENT LIST.
+
+    b) Use parentheses around EACH argument and around the DEFINITION as a WHOLE. This ENSURES that the
+    ENCLOSED TERMS are GROUPED PROPERLY in an expression.
+
+    c) Use CAPITAL LETTERS for MACRO FUNCTION NAMES. This convention is not as widespread as that of using
+    capital letters for MACRO CONSTANTS. However, one GOOD REASON for using CAPITALS is to REMIND ourselves
+    to be ALERT to POSSIBLE macro side effects.
+
+    d) If we intend to use a macro instead of a function PRIMARILY to speed up a program, first try to
+    determine WHETHER it is LIKELY to make a SIGNIFICANT DIFFERENCE. A macro that is used ONCE in a program
+    probably WON'T make any noticeable improvement in running time, while a macro inside a NESTED LOOP is
+    a MUCH BETTER candidate for speed improvements.
+
+#########################################################################################################
+- When the preprocessor spots an '#include' directive, it looks for the following filename and includes the
+contents of that file within the current file. The '#include' directive in our source code file is REPLACED
+with the TEXT from the INCLUDED FILE. The '#include' directive comes in TWO VARIATIES:
+    1) Angle brackets form [#include <stdio.h>] which tell the preprocessor to look for the file in ONE or
+    MORE STANDARD SYSTEM DIRECTORIES.
+    2) Double quotation marks [#include "mystf.h"] which tell the preprocessor to FIRST LOOK in our CURRENT
+    directory (or some other directory that we have specified in the filename) and THEN look in the
+    STANDARD places.
+
+- In general, the method used to name files is SYSTEM DEPENDENT, but the use of ANGLE BRACKETS and DOUBLE
+QUOTATION MARKS is NOT.
+
+- The most COMMONS forms of HEADER CONTENTS include the following:
+    - Manifest constants - A typical "stdio.h" file, for instance, defines EOF, NULL, and BUFSIZ (the size
+                           of the standard I/O buffer);
+    - Macro functions - For example, "getchar()" is usually defined as "getc(stdin)", and "getc()" is
+                        usually defined as a rather complex macro.
+    - Function declarations - The "string.h" header, for example, contains function declarations for the
+                              family of string functions. Under ANSI C and later, the declarations are 
+                              in FUNCTION PROTOTYPE form.
+    - Structure template definitions - The standard I/O functions make use of a 'FILE' structure containing
+                                       information about a file and its associated buffer. The "stdio.h"
+                                       file holds the declaration for this structure.
+    - Type definitions - Typically, "stdio.h" uses a '#define' or a 'typedef' to make 'FILE' represent
+                         a POINTER-to-STRUCTURE. Similarly, the 'size_t' and 'time_t' types are defined
+                         in header files.
+
+#########################################################################################################
+- The '#undef' directive "undefines" a given '#define'. Even if an identifier is NOT defined in the first
+place, it is STILL VALID to UNDEFINE it. If we want to use a particular name and we are UNSURE whether it
+has been used previously, we can UNDEFINE IT to be on the SAFE SIDE.
+
+- When the preprocessor encounters an identifier in a preprocessor directive, it considers it to be either
+DEFINED or UNDEFINED. Here, "defined" means defined BY the PREPROCESSOR. If the identifier is a MACRO NAME
+created by a PRIOR '#define' directive in the SAME FILE and it HASN'T been TURNED OFF by an '#undef'
+directive, it is DEFINED. If the identifier is NOT a MACRO, it's NOT defined as far as the preprocessor is
+concerned.
+
+- A DEFINED MACRO can be an object-like macro, including an empty macro, or a function-like macro.
+
+- The SCOPE of a '#define' macro EXTENDS from the POINT it is DECLARED in a file, until it is the subject
+of an '#undef' directive OR until the end of the file, WHICHEVER comes first. Note that the position of
+the '#define' in a file will DEPEND on the position of an '#include' directive IF the macro is brought in
+via a header file.
+
+- We can use other directives to set up CONDITIONAL COMPILATIONS. That is, we can use them to tell the
+compiler to ACCEPT or IGNORE blocks of information or code according to conditions at the TIME OF
+COMPILATION. These directives are: '#ifdef', '#else', '#endif', '#ifndef', '#if' and '#elif'.
+- We can use these directive, for example, to help in program debugging. Another possibility is using
+'#ifdef' to select among ALTERNATIVE chunks of codes suited for DIFFERENT C implementations.
+
+- The '#ifndef' directive is often used to define a constant if it is NOT ALREADY defined. Typically, this
+idiom is used to PREVENT multiple definitions of the same macro when we include several header files, each
+of which may contain a definition. In this case, the definition in the FIRST header file included BECOMES
+the ACTIVE definition and SUBSEQUENT definitions in OTHER header files are IGNORED.
+
+- It is also COMMONLY USED to PREVENT multiple inclusions of a file, preventing all sorts of declarations
+conflicts. One problem is to MAKE SURE the IDENTIFIER we are using HASN'T been defined ELSEWHERE. Vendors
+typically solve this by using the filename as the identifier, replacing periods with an underscore, and
+using an underscore (or, perhaps, two underscores) as a prefix and a suffix. However, we should AVOID using
+the underscore as a PREFIX because the STANDARD says such usage is RESERVED.
+
+- The '#if' directive is more like the regular C if. It is followed by a CONSTANT INTEGER EXPRESSION that
+is considered TRUE if nonzero, and we can use C's relational and logical operators with it.
+- We can use the '#elif' directive to EXTEND an if-else sequence.
+- Newer implementations offer a SECOND WAY to TEST whether a name is defined. For example, instead of using
+"#ifdef VAX" we can use this form: "#if defined(VAX)". Here, "defined" is a PREPROCESSOR OPERATOR that
+returns 1 if its argument is '#defined" and 0 otherwise. The advantage of this newer form is that it can
+be used with '#elif'.
+
+- One use for these CONDITIONAL COMPILATION FEATURES is to make a program more PORTABLE. By changing a few
+key definitions at the beginning of a file, we can set up DIFFERENT VALUES and include DIFFERENT FILES for
+DIFFERENT SYSTEMS.
+
+- The C standard specifies several PREDEFINED MACROS (they are ALWAYS considered DEFINED and CANNOT be
+undefined):
+    Macro                  Meaning
+    __DATE__          =>   A character string literal in the "Mmm dd yyyy" representing the date of 
+                           preprocessing, as in Nov 23 2013
+    __FILE__          =>   A character string literal representing the name of the current source code file
+    __LINE__          =>   An integer constant representing the line number in the current source code file
+    __STDC__          =>   Set to 1 to indicate the implementation CONFORMS to the C standard
+    __STDC_HOSTED__   =>   Set to 1 for a HOSTED ENVIRONMENT; 0 otherwise
+    __STDC__VERSION__ =>   For C99, set to 199901L, for C11, set to 201112L
+    __TIME__          =>   The time of translation in the form "hh:mm:ss"
+
+- The C99 standard provides for one called "__func__". It EXPANDS to a string representing the NAME of the
+FUNCTION containing the identifier. For this reason, the identifier HAS to have FUNCTION SCOPE, whereas
+macro esentially have FILE SCOPE. Therefore, "__func__" is a C language predefined identifier rather than
+a predefined macro.
+
+- The '#line' directive lets you RESET the LINE NUMBERING and the FILENAME as reported by the "__LINE__"
+and "__FILE__" macros. We can use it like this:
+      #line 10 "cool.c"  // reset line number to 10, file name to cool.c
+
+- The '#error' directive causes the preprocessor to ISSUE an ERROR MESSAGE that includes any text in the
+directive. If possible, the compilation process SHOULD HALT. We could use the directive like this:
+      #if __STDC_VERSION__ != 201112L
+      #error Not C11
+      #endif
+#########################################################################################################
+
+- C11 adds a new sort of expression, called "GENERIC SELECTION EXPRESSION", that can be used to select a
+VALUE on the BASIS of the TYPE of an EXPRESSION. It is NOT a preprocessor statement, but its usual use is
+as part of a '#define' macro definition that has some aspects of generic programming.
+
+- A generic selection expression looks like this:
+    # _Generic(x, int: 0, float: 1, double: 2, default: 3)  // '_Generic' is a new C11 keyword
+
+- A generic selection statement is much like a 'switch' statement, except that the TYPE of an expression
+rather than the VALUE of an expression is MATCHED to a LABEL.
+
+- When EVALUATING a GSE, the program DOES NOT evaluate the FIRST TERM; it ONLY determines its TYPE and the
+only expression it DOES evaluate is the one with the MATCHING LABEL.
+
+- We can use '_Generic' to DEFINE MACROS that ACT like type-independent ("generic") functions.
+
+#########################################################################################################
+- A function call has overhead, i.e it takes execution time to set up the call, pass arguments, jump to the
+function code, and return. C99, borrowing from C++, added added "INLINE FUNCTIONS". The C99 and C11
+standards say that: "Making a function an INLINE function suggests that CALLS to the function be AS FAST
+as possible. The extent to which such suggestions are effective is IMPLEMENTATION-DEFINED". That is,
+making a function an inline function MAY cause the compiler to REPLACE the function call with INLINE CODE
+and/or perform some other sorts of optimizations, OR it may have NO EFFECT.
+
+- There are DIFFERENT WAYS to create INLINE function definitions. The STANDARD says that a function with
+INTERNAL LINKAGE can be made inline and that the definition for the inline function MUST be in the SAME
+FILE in which the function is USED. So a simple approach is to use the 'inline' function specifier along
+with the 'static' storage-class specifier.
+
+- Because an inline function DOESN'T have a SEPARATE block of code set aside for it, we CAN'T take its
+address (actually, we CAN take the addres, but then the COMPILER will GENERATE a NON-INLINE function).
+Also, an inline function MAY NOT show up in a debugger.
+
+- An inline function should be SHORT. For a long function, the time consumed in CALLING the function is
+SHORT compared to the time spent EXECUTING the body of the function.
+
+- For the compiler to make INLINE OPTIMIZATIONS, it has to KNOW the CONTENTS of the function definition.
+This means the inline FUNCTION DEFINITION has to be in the SAME FILE as the FUNCTION CALL. For this reason,
+an inline function ORDINARILY has INTERNAL LINKAGE. 
+
+- C, unlike C++, allows a MIXTURE of inline definitions with external definitions. If we omit 'static'
+from an 'inline' definition, the 'inline' definition is considered as an ALTERNATIVE that could be used
+INSTEAD of the external definition.
+
+#########################################################################################################
+- When C99 added the 'inline' keyword, that keyword became the SOLE EXAMPLE of a FUNCTION SPECIFIER. C11
+adds a SECOND function specifier, '_Noreturn', to indicate a function that, upon COMPLETION, does NOT
+return to the calling function. The "exit()" function is an EXAMPLE of a '_Noreturn' function.
+
+- The purpose of '_Noreturn' is to INFORM the USER and the COMPILER that a particular function WON'T return
+control to the calling program. Informing the user HELPS to PREVENT misuse of the function, and INFORMING
+the COMPILER may ENABLE it to make some code OPTIMIZATIONS.
+
+#########################################################################################################
+- The basic floating-point MATH functions take type 'double' arguments and return a type 'double' value.
+We can pass them type 'float' or type 'long double' arguments, and the functions STILL WORK, because the
+arguments are CONVERTED to type 'double'. That's convenient, but NOT NECESSARILY OPTIMAL. If double
+precision ISN'T needed, computations might be FASTER if done using SINGLE PRECISION 'float' values. And
+type 'long double' value will LOSE PRECISION when passed to a type 'double' parameter. To deal with these
+POTENTIAL PROBLEMS, the C standard PROVIDES type 'float' and type 'long double' VERSIONS of the STANDARD
+FUNCTIONS, using an 'f' or an 'l' suffix on the FUNCTION NAME (i.e. "sqrtf()" and "sqrtl()").
+
+- The C11 addition of the GSE lets us define a GENERIC MACRO that CHOOSES the MOST APPROPRIATE version of
+a math function BASED on the ARGUMENT TYPE.
+
+- The C99 standard provides a "tgmath.h" header file that defines TYPE-GENERIC macros SIMILAR in effect to
+those defined with _Generic. If a "math.h" function is defined for EACH of the three types 'float',
+'double', and 'long double', the "tgmath.h" file creates a type-generic macro with the SAME NAME as the
+'double' version. 
+
+- If we want to, say, invoke the "sqrt()" FUNCTION instead of the "sqrt()" MACRO EVEN THOUGH "tgmath.h"
+is included, we can ENCLOSE the FUNCTION NAME in PARENTHESES:
+    # #include<tgmath.h>
+    # ...
+    # float x = 44.0;
+    # double y;
+    # y = sqrt(x);   // invoke MACRO, hence sqrtf(x)
+    # y = (sqrt)(x); // invoke FUNCTION sqrt()
+
+- This works because a function-like macro name HAS to be FOLLOWED by an OPENING PARENTHESIS, which using
+enclosing parentheses CIRCUMVENTS. Otherwise, aside from order of operations, parentheses DON'T affect
+enclosed expressions, so enclosing a function name in parentheses STILL RESULTS IN a FUNCTION CALL. 
+Because of C's strange rules about function pointer, we can ALSO use (*sqrt)() to INVOKE the "sqrt()"
+function.
+
+- What C11 adds with '_Generic' expressions is a SIMPLE WAY to IMPLEMENT the MACROS of "tgmath.h" WITHOUT
+resorting to mechanisms OUTSIDE the C standard.
+
+#########################################################################################################
+- The "exit()" function is invoked AUTOMATICALLY upon return from "main()". The ANSI standard has added
+a COUPLE nice FEATURES to the function. The MOST IMPORTANT addition is that we can SPECIFY particular
+functions to be CALLED when "exit()" executes. The "atexit()" function PROVIDES this feature by REGISTERING
+the functions to be called on exit; the "atexit()" function takes a FUNCTION POINTER as its argument.
+
+- ANSI GUARANTEES that we can place AT LEAST 32 functions on the list. Each function is ADDED with a
+SEPARATE call to "atexit()". When the "exit()" function is FINALLY called, it EXECUTES these functions,
+with the LAST FUNCTION added being EXECUTED FIRST.
+
+- The functions registered by "atexit()" should be type 'void' functions taking NO arguments. Typically,
+they would perform housekeeping tasks, such as updating a program-monitoring file or resetting
+environmental variables.
+
+- After "exit()" executes the functions SPECIFIED by "atexit()", it does some TIDYING on its OWN. It 
+FLUSHES all output streams, CLOSES all open streams, and CLOSES temporary files created by calls to the
+standard I/O function "tmpfile()". Then "exit()" returns control to the HOST ENVIRONMENT and, if possible,
+reports a TERMINATION STATUS to the environment.
+
+#########################################################################################################
+- C and C++ treat pointer-to-void DIFFERENTLY. In BOTH languages, we can ASSIGN a pointer of ANY type to
+type 'void*'. But C++ REQUIRES a TYPE CAST when ASSIGNING a 'void*' pointer to a pointer-of-another-type,
+whereas C DOESN'T have that requirement. Because the type cast version WORKS in BOTH languages, it makes
+sense to use it. Then, if we CONVERT the program to C++, we WON'T have to remember to change that part.
+
+#########################################################################################################
+- The assert library, supported by the "assert.h" header file, is a small one DESIGNED to HELP with
+DEBUGGING programs. It consists of a MACRO named "assert()". It takes as its argument an
+INTEGER EXPRESSION. If the expression evaluates to false (nonzero), the "assert()" macro WRITES an ERROR
+MESSAGE to the STDERR and CALLS the "abort()" function, which TERMINATES the PROGRAM. The IDEA is to
+IDENTIFY CRITICAL LOCATIONS in a program where CERTAIN CONDITIONS should be TRUE and to use the "assert()"
+statement to terminate the program if one of the specified conditions is NOT true. Typically, the argument
+is a RELATIONAL or LOGICAL expression.
+
+- The "assert()" approach has SEVERAL ADVANTAGES. It identifies the FILE automatically. It identifies the
+LINE NUMBER where the problem occurs automatically. Finally, there's a MECHANISM for TURNING the "assert()"
+macro ON and OFF without changing the code. If we think we've ELIMINATED the PROGRAM BUGS, we should place
+the macro definition "#define NDEBUG" BEFORE the location where "assert.h" is included and then RECOMPILE
+the program, and the COMPILER will DEACTIVATE all "assert()" statements in the file.
+
+- Because the "assert()" expression is a RUN-TIME CHECK, the C11 standard adds a NEW feature, the
+'_Static_assert' declaration, that does a COMPILE-TIME CHECK. So, "assert()" can cause a program to ABORT,
+while "_Static_assert()" can cause a program NOT TO COMPILE. The later takes TWO arguments:
+   1) A constant integer expression.
+   2) A string.
+
+- If the first expression evaluates to 0 (or _False) the COMPILER displays the string and DOES NOT COMPILE
+the program.
+
+- In terms of syntax, _Static_assert is TREATED as a DECLARATION STATEMENT. 
+
+- The REQUIREMENT that the first argument to _Static_assert be an INTEGER CONSTANT EXPRESSION guarantees
+that it can be evaluated during COMPILATION. An "assert()" could be also used with constant expressions,
+but that would alert us to an error only AFTER we compiled and ran the program, which is MORE INEFFICIENT.
+
+- The "assert.h" header makes "static_assert" an ALIAS for the C keyword '_Static_assert'. That's to make
+C more COMPATIBLE with C++, which uses "static_assert" as its keyword for this feature.
+
+#########################################################################################################
+- Because we CAN'T assign one array to another WITHOUT using loops (the one exception is when we are using
+"strcpy()" and "strncpy()" functions for character arrays), the C library provides the "memcpy()" and
+"memmove()" functions in order to offer us almost the SAME convenience for other kinds of arrays. The
+prototypes are:
+   void *memcpy(void * restrict s1, const void * restrict s2, size_t n);
+   void *memmove(void *s1, const void *s2, size_t n);
+
+- Both of these functions copy 'n' bytes from the location pointed to by s2 to the location pointed to by
+s1, and BOTH return the value of s1. The difference is that "memcpy()" is FREE to ASSUME that there is NO
+OVERLAP between the two memory ranges, while "memmove()" DOESN'T make that assumption, so copying takes
+place as if all the bytes are FIRST COPIED to a TEMPORARY BUFFER before being copied to the final
+destination.
+
+- If we are using "memcpy()" when there are OVERLAPPING RANGES, the behaviour is UNDEFINED. 
+
+#########################################################################################################
+- The "stdarg.h" header file provides facilities for defining variadic functions. They are similar to
+variadic macros, but the usage is a bit more involved. We have to do the following:
+   1) Provide a FUNCTION PROTOTYPE using an ELLIPSIS.
+   2) Create a 'va_list' type VARIABLE in the FUNCTION DEFINITION.
+   3) Use a MACRO to INITIALIZER the VARIABLE to an ARGUMENT LIST.
+   4) Use a MACRO to ACCESS the ARGUMENT LIST.
+   5) Use a MACRO to CLEAN UP.
+
+1) The prototype should have a parameter list with AT LEAST one parameter FOLLOWED by an ELLIPSIS (the
+ellipsis has to be the FINAL/LAST ARGUMENT). The rightmost parameter (the one JUST BEFORE the ellipses)
+plays a SPECIAL ROLE; the STANDARD uses the term 'parmN' as a name to use in discussion.  The actual
+argument PASSED to THIS parameter ('parmN') will be the NUMBER OF ARGUMENTS represented by the ELLIPSES
+SECTION.
+
+2) The 'va_list' type represents a DATA OBJECT used to HOLD the PARAMETERS corresponding to the ELLIPSIS
+PART of the PARAMETER LIST.
+
+3) The "va_start()" macro is used to COPY the ARGUMENT LIST to the 'va_list' variable. The macro has TWO
+arguments:
+    a) The 'va_list' variable.
+    b) The 'parmN' parameter.
+
+4) Gaining ACCESS the CONTENTS of the ARGUMENT LIST involes using the "va_arg()" macro. It takes TWO args:
+    a) The 'va_list' variable.
+    b) a TYPE NAME (e.g. 'double', 'int');
+
+- The first time it's called, it returns the FIRST ITEM in the list; the NEXT time it's called, it returns
+the NEXT item, and so on. The TYPE ARGUMENT specifies the TYPE OF VALUE returned. However, the argument
+type REALLY has to MATCH the SPECIFICATION; the AUTOMATIC CONVERSION that works for assignment DOESN'T
+take place here (because the type argument indicates the number of bytes to extract).
+
+5) We CLEAN UP by using the "va_end()" macro. It MAY, for example, free memory dynamically allocated to
+hold the arguments. This macro takes a 'va_list' variable as its argument. After we CLEAN UP a 'va_list'
+variable, it MAY NOT be usable UNLESS we use "va_start()" again to REINITIALIZE it.
+
+- Because "va_arg()" DOESN'T provide a way to BACK UP to PREVIOUS arguments, it MAY be USEFUL to PRESERVE
+a COPY of the 'va_list' type variable. C99 has added a macro for that purpose. It's called "va_copy()" and
+its TWO arguments are BOTH type 'va_list' variables, copying the SECOND argument to the FIRST.
+
+#########################################################################################################
+
+Review answers:
+
+1. 
+  a. dist = 5280 * miles;
+  b. plort = 4 * FEET + FEET = 4 * 4 + 4  // probably undesired macro side effect
+  c. The '#define' directive isn't syntactically correct.
+  d. y = y + 5;
+     berg = berg + 5 * lob;
+     est = berg + 5 / y + 5;
+     nilp = lob * -berg + 5;
+
+2. #define NEW(x) ((x)+5)
+
+3. #define MIN(x,y) ((x)<(y)? (x) : (y))
+
+4. #define EVEN_GT(X,Y) ((!((x)%2) && (X)>(Y))? 1 : 0)
+
+5. #define PRINT2(X,Y) printf(#X " is " %d and " #Y " is %d\n", X, Y)
+
+6. 
+  a. #define VAL 25
+  b. #define SPACE ' '
+  c. #define PS() putchar(' ')
+  d. #define BIG(X) ((X)+3)
+  e. #define SUMSQ(X,Y) (((X)*(X))+((Y)*(Y)))
+
+7. #define INFO_INT(X) printf("name: " #X "; value: %d; address: %p\n", X, &X)
+
+8. #define JSKIP
+   ...
+   #ifndef JSKIP
+
+   #endif
+
+9. #ifdef PR_DATE
+      printf("The date of preprocessing is %s at %s.\n", __DATE__, __TIME__);
+   #endif
+
+10. The "inline static double square(double)" function has the 'inline' function-specifier that REQUESTS
+the compiller to make the CALL to the function as fast as possible, and the 'static' storage-class
+specifier, which makes the function have internal linkage.
+    The "double square(double)" is, by default, an external definition (i.e the function has external
+linkage). Because it is missing the 'inline' keyword, the function call ALWAYS has an overhead.
+    The "inline double square(double)" works pretty much like the first function, except that it has
+external linkage.
+
+11. #define IS_BOOL(X) _Generic((X), _Bool: "boolean", default: "not boolean")
+
+12. - It should be "char *argv[]".
+    - It does not include the "math.h" header file which contains the declaration of the "sqrt()" function.
+    - It doesn't check the number of command-line arguments passed.
+    - It doesn't check if "argv[1]" is indeed a number or not.
+    - It doesn't convert "argv[1]" to a floating-point value.
+
+13. 
+  a. qsort(scores, 1000, sizeof(int), comp);
+  b. int comp(const void *p1, const void *p2){
+        const int *a1 = (const int*) p1;
+        const int *a2 = (const int*) p2;
+        if(*a1<*a2)
+           return -1;
+        else if(*a1==*a2)
+           return 0;
+        else
+           return 1;
+     } 
+
+14. memcpy(data1, data2, 100*sizeof(double));
+    memcpy(data1, data2+(sizeof(data2)/sizeof(data2[0])-100), 100*sizeof(double));

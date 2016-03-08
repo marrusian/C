@@ -1,0 +1,233 @@
+- C was created as a tool for working programmers, so its main goal is to be a useful language, in
+contrast, for example, to Pascal, which was created to provide a basis for teaching good
+programming principles, or BASIC, which was developed to resemble English so that it could be
+learned easily by students unfamiliar with computers.
+
+- A few of C's many virtues are:
+   - Powerful control structures;
+   - Fast;
+   - Compact code - small programs;
+   - Portable.
+
+- C is a modern language incorporating the control features desirable by the theory and practice of
+CS. Its design makes it natural for top-down planning, structured programmind, and modular design.
+The result is a more reliable, understandable program.
+
+- C is an EFFICIENT language. C programs tend to be compact and to run quickly. In fact, C exhibits
+some of the fine control usually associated with an assembly language. If we choose, we can
+fine-tune our programs for maximum speed or most efficient use of memory.
+
+- C is a PORTABLE language. C compilers are available for many computer architectures, running from
+8-bit microprocessors to supercomputers. However, the portions of a program written specifically
+to acces particular hardware devices, or special features of an OS, are typically NOT portable.
+Because of C's close ties with Unix, Unix systems typically come with a C compiler as part of the
+package.
+
+- C is POWERFUL and FLEXIBLE. For example, most of the Unix OS was written in C. Many compilers and
+interpreters for other languages - such as FORTRAN, Perl, Python, Pascal, LISP, Logo and BASIC -
+have been written in C. As a result, whenever we use any such language on a Unix machine,
+ultimately a C program has done the work of producing the final executable program.
+
+- C is oriented to fulfill the NEEDS of programmers. It gives us access to hardware, and it enables
+us to manipulate individual bits in memory. Its rich selection of operators allows us to express
+ourselves succintly. This flexibility is both an advantage AND a danger. The advantage is that many
+tasks are much simpler in C. The danger is that with C we can make mistakes that are impossible in
+some languages. C gives us more freedom, but it also puts more responsibility on us. "The price
+of liberty is eternal vigilange".
+More so, most C implementations have a LARGE library of useful C functions.
+
+- C is a DOMINANT language in the minicomputer world of Unix systems. Many software houses turned
+to C++ for LARGE programming projects. However, C++ is nearly a SUPERSET of C, meaning that any C
+program is, or nearly is, a VALID C++ program too. By learning C, we also learn much of C++.
+Despite the popularity of other languages, C remains a CORE SKILL in the software business,
+typically ranking in the top 10 of desired skills. In particular, C is popular for programming
+embedded systems, such as cameras, DVD players, automobiles' microprocessors etc. It also plays
+a STRONG ROLE in the development of Linux.
+
+##############################################################################################
+- The high-level instructions are incomprehensible gibberish for a computer. This is where the 
+COMPILERS enter the picture. The COMPILER is a program that translates the HLL program into the
+detailed set of machine language instructions the computer requires. We can do the high-level
+thinking; the compiler takes care of the tedious details.
+
+- The compiler approach has another benefit. In general, each computer design has its own unique
+machine language. Therefore, with the right compiler(s), we can convert the same HLL program to a
+variety of different machine-language programs.
+
+- In short, HLLs - such as C, Java, and Pascal - describe actions in a more abstract form and
+aren't tied to a particular CPU or instruction set. Also, HLLs are easier to learn and much easier
+to program in than are machine languages.
+
+##############################################################################################
+- At first, there was no official standard for C. Instead, the first edition of "The C Programming
+Language" by K&R(1978) became the accepted standard, usually referred to as "K&R C" or "Classic C".
+More than most languages, C depends on its library, so there is a need for a library standard too.
+In the absence of any official standard, the library supplied with the Unix implementation became
+a de facto standard.
+
+- The First ANSI/ISO C Standard -
+- As C evolved and became more widely used,the C community realized it needed a more comprehensive,
+up-to-date, and rigurous standard. To meet this need, the ANSI establed a committee in 1983 to
+develop a new standard, which was adopted formally in 1989. This standard (ANSI C) defined BOTH the
+language AND a standard C library. The ISO adopted a C standard (ISO C) in 1990. "ISO C" and
+"ANSI C" are essentially the same standard. The final version of the ANSI/ISO standard is often
+referred to as C89/C90.
+
+- The committee had several guiding principles. Perhaps the most interesting is : "Keep the spirit
+of C". Those were:
+   - Trust the programmer.
+   - Don't prevent the programmer from doing what needs to be done.
+   - Keep the language small and simple.
+   - Provide only one way to do an operation.
+   - Make it fast, even if it's not guaranteed to be portable (i.e. an implementation should define
+ a particular operation in terms of what works BEST for the target computer instead of trying to
+ impose an abstract, uniform definition).
+
+- The C99 Standard -
+- In 1994, a joint ANSI/ISO committe, known as the C9X committee, began revising the standard, an
+effort that resulted in the C99 standard. The intent was NOT to add new features to the language
+except as needed to meet the new goals. Those goals were:
+  1) Support international programming by, for example, providing ways to deal with international
+    character sets.
+  2) "Codify existing practice to address evident deficiencies". Thus, when meeting the need of
+    moving C to 64-bit processors, the committee based the additions to the standard on the
+    experiencies of those who dealt with this problem in real life.
+  3) Improve the suitability of C for doing critical numeric calculations for scientific and
+    engineering projects.
+
+- The remaining plans for change were more conservative in nature - for example, minimizing 
+incompatibilities with C90 and with C++ and keeping the language conceptually simple. In the
+committee's words : "... the committee is content to let C++ be the BIG and AMBITIOUS language".
+
+- C99 changes preserve the ESSENTIAL nature of C, and C remains a lean, clean, efficient language.
+
+- The C11 Standard -
+- In 2007, the Standard Committee committed to the next revision, C1X, which became realized
+as C11. The committee raised some new guiding principles. One was that the "trust the programmer" goal
+should be tempered somewhat in the face of contemporary concerns of programming security and safety.
+Some features of C99 became optional for C11. The standard was being revised not because it was
+broken but because there was a need to track new technologies. One xample of this is the addition
+of optional support for concurrent programming in response to the trend of using multiple processors
+in computers.
+
+##############################################################################################
+- The act of writing a C program is broken down into seven steps. Note that this is an idealization.
+In practice, particularly for larger projects, we would go back and forth, using what we learned at
+a later step to refine an earlier step :
+   1) Define the program objectives.
+     2) Design the program.
+       3) Write the code.
+         4) Compile.
+           5) Run the program.
+             6) Test and debug the program.
+               7) Maintain and modify the program.
+
+- Step 1): Naturally, we should start with a CLEAR idea of what we want the program to do. We should
+think in terms of the information our program needs, the feats of calculation and manipulation the
+program needs to do, and the information the program should report back to us. At this level of
+planning, we should be thinking in general terms.
+
+- Step 2): After we have the CONCEPTUAL picture of what our program has to do, we should decide HOW
+the program will go about it, like:
+  - What should the user interface be like?
+  - How should the program be organized?
+  - Who will the target user be?
+  - How much time do we have to complete the program?
+
+- We also need to decide how to represent the data in the program and, possibly, in auxiliary files,
+as well as WHICH METHODS to use to process the data. Choosing a GOOD way to represent the information
+can often make DESIGNING the program and PROCESSING the data MUCH easier.
+
+- Step 3): Now that we have a CLEAR DESIGN for our program, we can begin to IMPLEMENT it by writing
+the code (i.e. translating the program design into the C language). A "source code file" contains the
+C rendition of our program design.
+
+- As part of this step, we should DOCUMENT our work. The simplest way is to use C's comment facility
+to incorporate explanations into our source code.
+
+- Step 4): A COMPILER is a program whose job is to CONVERT source code into executable code.Executable
+code is code in the native language (or MACHINE language) of our computer. This language consists of 
+detailed instructions expressed in a numeric code. A C compiler translates C into a particular
+machine language. C compilers also incorporate code from C libraries into the final program; the 
+libraries contain a fund of standard routines, such as printf() and scanf() (More accurately, a
+program called a LINKER brings in the library routines, but the compiler runs the linker on most 
+systems). 
+
+- The compiler also checks that our program is VALID C. If the compiler finds errors, it reports them
+to us and doesn't produce an executable file.
+
+- Step 7): When we create a program of ourselves or someone else, the program could see extensive use.
+If it does, we'll probably find reasons to make changes in it, like:
+   - There's a minor bug showing up.
+   - There's a better way to do something in the program.
+   - Add a clever new feature.
+   - Adapt the program so that it runs on a different computer system.
+- All this tasks are GREATLY simplified if we document the program clearly and if we follow sound
+design practices.
+
+- Programming is not usually as linear as the process just described. Sometimes we have to go back
+and forth between stepts. For instance, when we're writing code, we might find that our plan was
+impractical. We may see a better way of doing things or, after we see how a program runs, we might
+feel motivated to change the design. Documenting our work helps us move back and forth between levels.
+
+- As our programs grow longer and more complex, mental visualizations begin to fail and errors get 
+harder to find. The larger and more complex the job is, the MORE PLANNING it requires.
+
+- The MORAL is that we should develop the HABIT OF PLANNING before coding. Use the ancient but
+honorable pen-and-pencil technology to jot down the objectives of your program and to outline the
+design. If we do so, we'll eventually reap substantial dividends in time saved and satisfaction
+gained.
+
+##############################################################################################
+- The compiler converts our source code to an intermediate code, and the linker combines this with
+other code to produce the executable file. C uses this two-part approach to facilitate the
+MODULARIZATION of programs, so we can compile individual modules SEPARATELY and then use the linker to
+combine the compiled modules later. That way, if we need to change one module, we don't have to
+recompile the other ones. Also, the linker combines our program with precompiled library code.
+
+- There are several choices for the form of the intermediate files. The most prevalent is to convert
+the SOURCE CODE to MACHINE LANGUAGE code, placing the result in an OBJECT CODE FILE, or OBJECT FILE
+for short. Although the object file contains machine language code, it's not ready to run. The object
+file contains only the translation of our source code. There are two elements missing:
+  1) The STARTUP CODE, which is code that acts as an interface between our program and the OS.
+  2) The code for library routines (called FUNCTIONS) that are part of the standard C library. The
+  object file does not contain the code for library routines; it merely contains instructions saying
+  to USE the routines. The actual code is stored in another file, called a LIBRARY. A library file
+  contains object code for many functions.
+  
+- The role of the LINKER is to bring together these three elements - object code, standard startup
+code, and the library code - and put them together into a single file, called the EXECUTABLE file.
+For library code, the linker extracts ONLY the code needed for the functions we use from the library.
+
+##############################################################################################
+- C is a powerful, concise programming language. It's popular because it offers useful programming
+tools, good control over hardware, and because C programs are easier than most to transport from one
+system to another.
+
+##############################################################################################
+
+Review Answers:
+
+1. Portability means that you can run the same program on various different computer machines
+without any modifications.
+
+2. A source code file contains the rendition of our program design, written in whatever language we
+choose to. An object code file contains only the native/machine language code equivalent of the source
+code. An executable file contains, besides the machine language code, the start-up code that acts as
+an interface between our program and the OS, and the library code needed for the functions we use from
+the library.
+
+3. The seven major steps in programming are:
+  1) Define the program objectives.
+  2) Design the program.
+  3) Write the program.
+  4) Compile.
+  5) Run the program.
+  7) Test and debug the program.
+  8) Maintain and modify the program.
+
+4. A compiler translates the source code file written in a specific compiled language into its
+corresponding machine language code equivalent that can be directly understood by the computer system.
+
+5. A linker combines the object code file(s) with the additional necessary files, such as the start-up
+code and the library code, to produce an executable program.

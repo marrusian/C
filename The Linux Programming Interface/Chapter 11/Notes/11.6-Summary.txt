@@ -1,0 +1,13 @@
+- SUSv3 specifies LIMITS that an implementation MAY ENFORCE and SYSTEM OPTIONS that an implementation MAY
+SUPPORT.
+
+- Often, it is DESIRABLE NOT to HARD-CODE ASSUMPTIONS about system limits and options into a program, since
+these MAY VARY across implementations and also on a single implementation, EITHER at run time or across file
+systems. Therefore, SUSv3 specifies METHODS by which an implementation can ADVERTISE the limits and options
+it supports. For most limits, SUSv3 specifies a MINIMUM VALUE that ALL IMPLEMENTATIONS MUST SUPPORT.
+Additionally, each implementation can ADVERTISE its implementation-specific limits and options at COMPILE TIME
+(via a constant definition in <limits.h> or <unistd.h>) and/or RUN TIME(via a call to "sysconf()",
+"pathconf()" or "fpathconf()"). These TECHNIQUES may SIMILARLY be used to FIND OUT which SUSv3 options an
+implementation supports. In some cases, it may NOT BE POSSIBLE to determine a particular limit using EITHER
+of these methods. For such INDETERMINATE LIMITS, we must RESORT to AD-HOC TECHNIQUES to determine the limit
+to which an application should adhere.

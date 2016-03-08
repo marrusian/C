@@ -1,0 +1,15 @@
+##########################################################################################################
+- A LIBRARY FUNCTION is simply one of the multitude of functions that constitutes the standard C library
+(for brevity, we'll often just write "function" rather than "library function"). The purposes of these
+functions are VERY DIVERSE, including such tasks as opening a file, converting time to a human-readable
+format, and comparing two character strings.
+
+- Many library functions DON'T MAKE ANY USE of system call (e.g., the string-manipulation functions). On the
+other hand, SOME library functions are LAYERED on TOP of SYSTEM CALLS. For example, the "fopen()" library
+function uses the "open()" system call to ACTUALLY OPEN a FILE. Often, library functions are DESIGNED to
+PROVIDE a more CALLER-FRIENDLY INTERFACE than the underlying system call. For example, the "printf()" function
+provides OUTPUT FORMATTING and DATA BUFFERING, whereas the "write()" system call JUST OUTPUTS a BLOCK OF
+BYTES. Similarly, the "malloc()" and "free()" functions perform VARIOUS BOOKKEEPING TASKS that make them a
+MUCH EASIER WAY to ALLOCATE and FREE MEMORY than the underlying "brk()" system call.
+
+##########################################################################################################

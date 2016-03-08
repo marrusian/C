@@ -1,0 +1,50 @@
+##########################################################################################################
+- The "read()" system call reads data from the open file referred to by the descriptor "fd".
+
+- Prototype and dependencies:
+     #include <unistd.h>
+
+     ssize_t read(int fd, void *buffer, size_t count);
+                             Returns number of bytes read, 0 on EOF, or -1 on error
+
+- The "count" argument specifies the MAXIMUM number of bytes to read. The "buffer" argument SUPPLIES the
+ADDRESS of the MEMORY BUFFER into which the INPUT DATA is to be PLACED. This buffer must be AT LEAST "count"
+bytes long.
+
+- A call to "read()" may read LESS than the REQUESTED number of bytes. For a REGULAR FILE, the PROBABLE
+REASON for this is that we were close to the EOF.
+
+- When "read()" is applied to OTHER TYPES of files - such as pipes, FIFOs, sockets, or terminals - there are
+also VARIOUS CIRCUMSTANCES where it may read FEWER BYTES THAN REQUESTED. For example, by default, a "read()"
+from a TERMINAL reads characters ONLY UP to the next NEWLINE ('\n') character.
+
+- Using "read()" to input a series of characters from, say, a TERMINAL, we MIGHT EXPECT the following code
+to work:
+       #define MAX_READ 20
+       char buffer[MAX_READ];
+
+       if(read(STDIN_FILENO, buffer, MAX_READ) == -1)
+          errExit("Read");
+       printf("The input data was : %s\n", buffer);
+
+- The OUTPUT from this piece of code is LIKELY to be STRANGE, since it wil PROBABLY INCLUDE characters in
+ADDITION to the string ACTUALLY ENTERED. This is because "read()" DOESN'T PLACE a terminating null byte at the
+end of the string that "printf()" is being asked to print. This must be so, since "read()" can be used to read
+ANY SEQUENCE OF BYTES from a file. In some cases, this input MIGHT be text, but in OTHER CASES, the input
+might be BINARY INTEGERS or C structures in BINARY FORM. There is NO WAY for "read()" to tell the difference,
+and so it CAN'T attent to the C convention of null terminating character strings. If a TERMINATING NULL BYTE
+is REQUIRED at the END of the INPUT BUFFER, we must PUT it there EXPLICITLY:
+        char buffer[MAX_READ + 1];
+        ssize_t numRead; 
+
+        numRead = read(STDIN_FILENO, buffer, MAX_READ);
+        if(numRead == -1)
+           errExit("Read");
+
+        buffer[numRead] = '\0';
+        printf("The input data was: %s\n", buffer);
+
+- Because the terminating null byte REQUIRES a BYTE OF MEMORY, the SIZE of "buffer" must be AT LEAST ONE
+GREATER than the LARGEST STRING we EXPECT to READ.
+
+##########################################################################################################

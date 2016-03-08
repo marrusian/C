@@ -1,0 +1,18 @@
+##########################################################################################################
+- In order to perform I/O on a REGULAR FILE, we MUST FIRST OBTAIN a FILE DESCRIPTOR using "open()". I/O is
+then performed using "read()" and "write()". After performing ALL I/O, we should FREE the FILE DESCRIPTOR and
+its ASSOCIATED RESOURCES using "close()". These system calls can be used to perform I/O on ALL TYPES of FILES.
+
+- The fact that ALL FILE TYPES and DEVICE DRIVERS implement the SAME I/O INTERFACE allows for UNIVERSALITY
+of I/O, meaning that a program can typically be used with ANY TYPE of file WITHOUT REQUIRING code that is
+SPECIFIC to the FILE TYPE.
+
+- For EACH open file, the kernel MAINTAINS a FILE OFFSET, which DETERMINES the LOCATION at which the NEXT READ
+or WRITE will OCCUR. The file offset is IMPLICITLY UPDATED by reads and writes. Using "lseek()", we can
+EXPLICITLY REPOSITION the file offset to ANY LOCATION within the file or past the end of the file. Writing
+data at a position BEYOND EOF creates a HOLE in the file. Reads from a FILE HOLE return BYTES containing
+ZEROES.
+
+- The "ioctl()" system call is a CATCHALL for DEVICE and FILE OPERATIONS that DON'T FIT into the standard
+file I/O model.
+##########################################################################################################

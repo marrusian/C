@@ -1,0 +1,32 @@
+##########################################################################################################
+- The "truncate()" and "ftruncate()" system calls SET the SIZE of a FILE to the value specified by "length".
+
+- Prototypes and dependencies:
+       #include <unistd.h>
+ 
+       int truncate(const char *pathname, off_t length);
+       int ftruncate(int fd, off_t length);
+                                            Both return 0 on success, or -1 on error
+
+- If the file is LONGER than "length", the EXCESS DATA is LOST. If the file is CURRENTLY SHORTER than "length",
+it is EXTENDED by PADDING with either:
+         a) A SEQUENCE of NULL BYTES;
+         b) A hole.
+
+- The DIFFERENCE between the two system calls LIES in HOW the file is SPECIFIED. With "truncate()", the file,
+which must be ACCESSIBLE and WRITABLE, is specified as a PATHNAME STRING. If "pathname" is a SYMBOLIC LINK, it
+is DEREFERENCED. The "ftruncate()" system call takes a DESCRIPTOR for a file that HAS BEEN OPENED for WRITING.
+It DOESN'T CHANGE the FILE OFFSET of the file.
+
+- If the "length" argument to "ftruncate()" EXCEEDS the current FILE SIZE, SUSv3 allows TWO possible behaviors:
+         a) The file is EXTENDED (as on Linux);
+         or
+         b) The system call RETURNS an ERROR.
+
+- XSI-conformant systems MUST ADOPT the FORMER BEHAVIOUR (a). SUSv3 REQUIRES that "truncate()" ALWAYS EXTEND
+the file if "length" is GREATER than the current FILE SIZE.
+
+         Note: The "truncate()" system call is UNIQUE in being the ONLY system call that can change the contents
+              of a file WITHOUT first obtaining a DESCRIPTOR for the file via "open()" (or by some other means).
+
+##########################################################################################################

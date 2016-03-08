@@ -1,0 +1,33 @@
+##########################################################################################################
+- An OBJECT LIBRARY is a file containing the COMPILED OBJECT CODE for a (usually logically related) set of
+functions that may be called from application programs. Placing code for a set of functions in a SINGLE
+OBJECT LIBRARY eases the tasks of program creation and maintenance. Modern UNIX systems provide TWO TYPES
+of object libraries: STATIC LIBRARIES and SHARED LIBRARIES.
+
+- A STATIC LIBRARY (sometimes also known as an ARCHIVE) is essentially a STRUCTURED BUNDLE of COMPILED
+OBJECT MODULES. To use functions from a static library, we SPECIFY that library in the LINK COMMAND used
+to BUILD a program. After RESOLVING the various function REFERENCES from the main program to the modules
+in the static library, the linker EXTRACTS COPIES of the REQUIRED OBJECT MODULES from the library and
+COPIES these into the RESULTING EXECUTABLE FILE. We say that such a program is STATICALLY LINKED.
+- The fact that EACH statically linked program includes its OWN COPY of the object modules required from
+the library creates a NUMBER OF DISADVANTAGES. One is that the DUPLICATION OF OBJECT CODE in DIFFERENT
+executable files WASTES disk space. A corresponding WASTE OF MEMORY occurs when statically linked programs
+using the SAME LIBRARY FUNCTION are EXECUTED at the SAME TIME; each program requires its own copy of the
+function to RESIDE in memory. Additionally, if a library function REQUIRES MODIFICATION, then, after
+RECOMPILING that function and ADDING IT to the static library, ALL APPLICATIONS that NEED to use the 
+updated function MUST be RELINKED against the library.
+
+- SHARED LIBRARIES were designed to address the problems with static libraries.
+- If a program is linked against a shared library, then, INSTEAD of COPYING OBJECT MODULES from the library
+into the executable, the LINKER just WRITES A RECORD into the EXECUTABLE to INDICATE that at RUN TIME the
+executable NEEDS to use that shared library. When the executable is LOADED INTO MEMORY at RUN TIME, a
+program called DYNAMIC LINKER ensures that the shared libraries REQUIRED by the EXECUTABLE are FOUND and
+LOADED INTO MEMORY, and PEFORMS RUN-TIME LINKING to resolve the function calls in the executable to the
+corresponding DEFINITIONS in the shared libraries. At run time, ONLY A SINGLE COPY of the code of the
+shared library NEEDS to be RESIDENT in memory; all running programs can USE THAT COPY.
+- The fact that a shared library contains the SOLE COMPILED VERSION of a function SAVES disk space. It also
+GREATLY EASES the job of ensuring that programs employ the NEWEST VERSION of a function. Simply REBUILDING
+the shared library with the NEW function definition causes EXISTING PROGRAMS to AUTOMATICALLY use the
+NEW DEFINITION when they are next executed.
+
+##########################################################################################################

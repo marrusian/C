@@ -1,0 +1,30 @@
+##########################################################################################################
+- The "close()" system call CLOSES an OPEN FILE DESCRIPTOR, FREEING it for SUBSEQUENT REUSE by the process.
+When a process TERMINATES, ALL of its open FILE DESCRIPTORS are AUTOMATICALLY CLOSED.
+
+- Prototype and dependencies:
+     #include <unistd.h>
+
+     int close(int fd);
+                        Returns 0 on success, or -1 on error
+
+- It is usually GOOD PRACTICE to close UNNEEDED file descriptors EXPLICITLY, since this makes our code MORE
+READABLE and RELIABLE in the face of subsequent modifications. Furthermore, file descriptors are a CONSUMABLE
+RESOURCE, so FAILURE to CLOSE a FILE DESCRIPTOR could RESULT in a process RUNNING OUT of DESCRIPTORS. This is
+a PARTICULARY IMPORTANT issue when writing LONG-LIVED PROGRAMS that deal with MULTIPLE FILES, such as SHELLS
+or NETWORK SERVERS.
+
+- Just like every other system call, a call to "close()" should be bracketed with ERROR-CHECKING CODE, such
+as the following:
+     if(close(fd) == -1)
+        errExit("Close");
+
+- This CATCHES ERRORS such as ATTEMPTING to CLOSE an UNOPENED file descriptor or CLOSE the SAME file
+descriptor TWICE, and catches error conditions that a specific file system may diagnose during a close
+operation.
+
+     Note: NFS (Network File System) provides an example of an error that is SPECIFIC to a file system. If an
+          NFS commit failure occurs, meaning that the data DID NOT REACH the REMOTE DISK, then this error is
+          PROPAGATED to the application as a FAILURE in the "close()" call.
+
+##########################################################################################################

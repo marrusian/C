@@ -1,0 +1,111 @@
+- A FUNCTION is a self-contained unit of program code designed to accomplish a particular task. Syntax
+rules define the structure of a function and how it can be used.
+
+- Thinking of functions in an abstract manner helps us concentrate on the program's overall design rather
+than the details. We should think CAREFULLY what a function SHOULD do and HOW it relates to the program as
+a whole before worrying about writing the code.
+
+- Typically, a prototype specifies BOTH the TYPE of value a function RETURNS and the TYPES of ARGUMENTS
+it EXPECTS. Collectively, this information is called the "SIGNATURE" of the function.
+
+- A function prototype can be placed before "main()" or it can go inside "main()". Either way is fine.
+
+- The ANSI C function definition form REQUIRES that EACH variable be PRECEDED by its TYPE. That is, unlike
+the case with regular declarations, we can't use a list of variables of the same type. For example:
+   # void dibs(int x, y, z)         // INVALID function header
+   # void dibs(int x, int y, int z) // VALID function header
+
+- ANSI C also RECOGNIZES the pre-ANSI C function definition form, but characterizes it as OBSOLESCENT:
+   # void show_n_char(ch, num)
+   # char ch;
+   # int num;
+- This form DOES enable us to use comma-separated lists of variable name if the variables are of the same
+type, like this:
+   # void dibs(x,y,z)
+   # int x,y,z;       // VALID
+- However, the INTENT of the STANDARD is to PHASE OUT the pre-ANSI C form, so we should use the MODERN
+(i.e. ANSI C) form for new programs.
+
+- The prototype INDICATES the number and types of arguments by using a comma-separated list of the types.
+We can OMIT variable names in the prototype:
+   # void show_n_char(char, int);
+- Using variable names in a prototype DOESN'T actually create variables.
+
+- ANSI C also RECOGNIZES the OLDER FORM of DECLARING a FUNCTION, which is WITHOUT an argument list:
+  # void show_n_char();
+
+- The ACTUAL ARGUMENT is an EXPRESSION that appears in the parantheses of a FUNCTION CALL. The FORMAL
+PARAMETER is a VARIABLE declared in the HEADER of a FUNCTION DEFINITION. When a function is CALLED, the
+variables declared as formal parameters are CREATED and INITIALIZED to the values obtained by EVALUATING
+the ACTUAL ARGUMENTS.
+
+- A program designed to TEST functions is sometimes called a "DRIVER". If the test succeeds, the function
+can then be used in a more noteworthy program.
+
+- The traditional, pre-ANSI C scheme for declaring functions was DEFICIENT in that it declared a
+function's return type but NOT its arguments. Therefore, if we would use that function with the WRONG
+NUMBER or TYPE of arguments, the compiler DOESN'T catch the error. This can create problems, because:
+  a) The calling function places its arguments on the STACK, and the called function READS those arguments
+  off the stack. These two processes are NOT coordinated with one another.
+  b) The calling function DECIDES which TYPE to pass BASED on the ACTUAL ARGUMENTS in the CALL, and the
+  called function READS values BASED on the TYPES of its FORMAL PARAMETERS. 
+
+- The ANSI C standard's solution to the problem of mismatched arguments is to PERMIT the function
+declaration to DECLARE the VARIABLE TYPES, too. The result is a FUNCTION PROTOTYPE - a declaration that
+states the return type, the number of arguments, and the types of those arguments (i.e. its SIGNATURE).
+With this information at hand, the compiler can CHECK to see wheter the function call MATCHES the
+prototype.
+
+- If we give a prototype like this:
+   # void print_name();
+- An ANSI C compiler will ASSUME that we have decided to FOREGO function prototyping, and it will NOT
+check arguments. To indicate that a function REALLY has NO argument, we MUST use the VOID keyword:
+   # void print_name(void);
+- ANSI C interprets the preceding expression to mean that "print_name()" takes NO arguments. It then
+checks to see that we DO NOT, in fact, USE arguments when calling this function.
+
+- ANSI C allows PARTIAL PROTOTYPING. For example, the "printf()" function takes a STRING as its first
+argument, but the remaining arguments are fixed in NEITHER type NOR number. Such functions are called
+VARIADIC functions. We could use this prototype for "printf()":
+   # int printf(const char*, ...);
+- This prototype says the first argument is a STRING, and that there MAY be further arguments of an 
+unspecified nature.
+
+- The C library PROVIDES a STANDARD way for DEFINING a function with a VARIABLE number of parameters
+through the "stdarg.h" header file.
+
+- In the simplest form of recursion, the recursive call is at the END of the function, just BEFORE the
+RETURN statement. This is called "TAIL RECURSION", or "END RECURSION", because the recursive call comes
+at the END. Tail recursion is the SIMPLEST form because it acts like a LOOP.
+
+- Tail recursion is the SIMPLEST form of recursion to UNDERSTAND, and recursion is WORTH understanding
+because in SOME cases, there is NO simple LOOP alternative.
+
+- It's GOOD programming practice to place function prototypes and defined constants in a HEADER FILE.
+########################################################################################################
+
+Review Answers:
+
+1. An actual argument is an expression in the function call. A formal parameter is a variable declared
+in the header of a function definition. When the function is called, the formal parameters are created
+and initialized to the values obtained by evaluating the actual arguments.
+
+2. 
+  a) void donut(int);
+  b) int gear(int, int);
+  c) int guess(void);
+  d) void stuff_it(double, double*)
+
+3. 
+  a) char n_to_char(int);
+  b) int digits(double, int);
+  c) double* which(double*, double*)
+  d) int random(void);
+
+4. int isum(int a, int b) {return a+b;}
+
+5. double dsum(double a, double b) {return a+b;}
+
+6. void alter(int *a, int *b){a=a+b; b=(a-b)-b;}
+
+8. int imax(int a, int b, int c){return a>b? (a>c? a : c) : (b>c? b : c);}

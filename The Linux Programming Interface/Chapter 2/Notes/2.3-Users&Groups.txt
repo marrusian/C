@@ -1,0 +1,29 @@
+##########################################################################################################
+- Each user on the system is UNIQUELY IDENTIFIED, and users may belong to groups.
+
+- Every user of the system has a UNIQUE LOGIN NAME (username) and a corresponding numeric USER ID (UID).
+For each user, these are defined by a line in the system PASSWORD FILE ("/etc/passwd"), which includes
+the following ADDITIONAL INFORMATION:
+   a) Group ID: the numeric group ID of the FIRST of the groups of which the user is a member.
+   b) Home directory: the initial directory into which the user is placed after logging in.
+   c) Login shell: the name of the program to be exercuted to interpret user commands.
+
+- The password record may ALSO include the user's password, in ENCRYPTED FORM. However, for SECURITY
+REASONS, the password is often stored in a separate SHADOW PASSWORD file ("/etc/shadow"), which is readable
+ONLY by PRIVILEGED USERS.
+
+- For administrative purposes (in particular, for CONTROLLING access to files and other system resources)
+it is USEFUL to ORGANIZE users into GROUPS. In EARLY UNIX implementations, a user could be a member of only
+ONE group. Each group is IDENTIFIED by a single line in the system GROUP FILE ("/etc/group"), which
+includes the following INFORMATION:
+   a) Group name: the UNIQUE name of the group.
+   b) Group ID (GID): the numeric ID associated with this group.
+   c) User list: a comma-separated list of LOGIN NAMES of users who are MEMBERS of this groups.
+
+- One user, known as the SUPERUSER, has SPECIAL PRIVILEGES within the system. The superuser account has
+UID 0, and normally has the login name ROOT. On typical UNIX systems, the superuser BYPASSES all permission
+checks in the system (thus, for example, it can access ANY FILE in the system, and can send signals to ANY
+USER PROCESS). The SYSTEM ADMINISTRATOR uses the SUPERUSER ACCOUNT to perform various ADMINISTRATIVE TASKS
+on the system.
+
+##########################################################################################################

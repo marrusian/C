@@ -1,0 +1,208 @@
+- C uses the term 'MODIFIABLE LVALUE' to label those entities to which you can assign values.
+
+- 'DATA OBJECT' is a general term for a region of data storage that can be used to hold values. The C
+standard uses just the term 'OBJECT' for this concept.
+
+- C uses the term 'LVALUE' to mean any name or expression that identifies a particular data object. Object
+refers to the actual data storage, but an lvalue is a label used to identify, or locate, that storage.
+
+- In the early days of C, saying something was an lvalue meant two things:
+   a) It specified an object, hence referred to an address in memory.
+   b) It could be used on the left side of an assignment operator, hence the "l" in lvalue.
+But then C added the 'const' modifier, so at this point the standard continued to use lvalue for any
+expression identifying an object.
+
+- C added the term 'MODIFIABLE LVALUE' to identify an object whose value can be changed. However, the
+current standard suggests that 'OBJECT LOCATOR VALUE' might be a better term.
+
+- The term 'RVALUE' refers to quantities that can be assigned to modifiable lvalues, but which are NOT
+themselves lvalues. Rvalues can be constants, variables, or any other expression that yields a value,
+such as a function call. The current standard uses 'VALUE OF AN EXPRESSION' instead of 'rvalue'.
+
+######################################################################################################
+- Each operator is assigned a PRECEDENCE level. Operators with higher precedence are executed first.
+If two operators have the same precedence, they are executed according to the order in which they occur
+in the statement (i.e from left to right). Many people like to represent the order of evaluation with a
+type of diagram called an 'EXPRESSION TREE' (See page 154).
+
+- Precedence dictates the order of evaluation when two operators SHARE an operand. However, it doesn't
+dictate which evaluation occurs first between subexpressions with the same precedence level. C leaves this
+choice to the implementation.
+
+- The C Operators are as follows (High to Low precedence):
+      Operators                     Associativity
+1. '++'(postfix)                         L-R
+   '--'(postfix)                         L-R
+   '()'(function call)                   L-R
+   '[]'(subscript)                       L-R
+   '{}'(compound literal)                L-R
+   '.'(member selection)                 L-R
+   '->'(indirect member selection)       L-R
+
+2. '++'(prefix)                          R-L
+   '--'(prefix)                          R-L
+   '-', '+', '~', '!'                    R-L
+   '*'(dereference)                      R-L
+   '&'(address-of)                       R-L
+   'sizeof'                              R-L
+   _Alignof                              R-L
+   (type)(type cast)                     R-L
+
+3. '*', '%'                              L-R
+
+4. '+', '-' (both binary)                L-R
+
+5. '<<', '>>'                            L-R
+
+6. '<', '>', '<=', '>='                  L-R
+
+7. '==', '!='                            L-R
+
+8. '&'                                   L-R
+
+9. '^'                                   L-R
+
+10. '|'                                  L-R
+
+11. '&&'                                 L-R
+
+12. '||'                                 L-R
+
+13. '?:'(conditional expression)         R-L
+
+14. '=', '*=', '/=', '+=',               R-L
+    '-=', '=<<', '=>>', '&=',            R-L
+    '|=', '^='                           R-L
+
+15. ','(comma operator)                  L-R
+
+- The "sizeof" operator returns the size, in bytes, of its operand (recall that a C byte is defined as
+the size used by the 'char' type). "sizeof" returns a value of type 'size_t', which is an unsigned integer
+type, but NOT a brand-new type. Thus, when we use the 'size_t' type, the compiler will substitute the
+standard type that works for our system.
+
+- C99 supplies "%zd" as a "printf()" specifier for displaying a 'size_t' value.
+
+- With C99's rule of "truncate toward zero" for integer division, we get a NEGATIVE modulus value if
+the first operand is negative, and we get a POSITIVE modulus otherwise.
+
+- In C, the compiler can choose which arguments in a function to evaluate first. This freedom increases
+compiler efficiency, but can cause trouble if we use an increment operator on a function argument.
+
+- We can easily avoid undefined orders of evaluation:
+  - Don't use increment/decrement operators on a variable that is part of more than one argument
+  of a function.
+  - Don't use increment/decrement operators on a variable that appears more than once in an
+  expression.
+
+######################################################################################################
+
+- An EXPRESSION consists of a combination of operators and operands. The simplest expression is a LONE 
+operand, and we can build in complexity from there. Some expressions are combinations of smaller
+expressions, called SUBEXPRESSIONS.
+
+- An important property of C is that EVERY C EXPRESSION HAS A VALUE. To find the value, we perform the
+operations in the order dictated by operator precedence.
+
+- STATEMENTS are the primary building blocks of a program. A PROGRAM is a series of statements with some
+necessary punctuation. A statement is a COMPLETE instruction to the computer. In C, statements are
+indicated by a semicolon at the end.
+
+- C considers ANY expression to be a statement IF we append a semicolon (these are called EXPRESSION
+STATEMENTS).
+
+- Although every statement IS a complete instruction, NOT all complete instructions are statements.
+Because of this, a semicolon is needed to identify instructions that TRULY are statements.
+
+- A 'SIDE EFFECT' is the MODIFICATION of a data object or file. It is called like that because, from the
+standpoint of C, the main intent is EVALUATING EXPRESSIONS. The increment/decrement operators, like
+the assignment operator, have side effects and are used primarily because of their side effects. 
+Similarly, when we call the "printf()" function, the fact that it displays information is a SIDE EFFECT.
+
+- A 'SEQUENCE POINT' is a point in program execution at which all side effects are evaluated BEFORE going
+to the next step. In C, the semicolon in a statement MARKS a sequence point. Also, the end of ANY FULL
+EXPRESSION is a sequence point. A 'FULL EXPRESSION' is one that's NOT a subexpression of a larger
+expression.
+
+- A 'COMPOUND STATEMENT' is two or more statements grouped together by enclosing them in braces; it is
+also caled a 'BLOCK'.
+
+######################################################################################################
+- The basic rules of type conversions are:
+   1. When appearing in an expression, 'char' and 'short', both signed and unsigned, are AUTOMATICALLY
+   converted to 'int' or, if necessary, to 'unsigned int' (for example, if 'short' is the same size as
+   'int', 'unsigned short' is larger than 'int'; in that case, 'unsigned short' is converted to
+   'unsigned int'.). Under K&R C, but NOT under current C, 'float' is AUTOMATICALLY converted to 'double'.
+    Because they are conversion to LARGER types, they are called 'PROMOTIONS'.
+   2. In ANY operation involving two types, both values are converted to the HIGHER ranking of the two
+   types.
+   3. The RANKING of types, from highest to lowest, is 'long double', 'double', 'float', 'unsigned long
+   long', 'long long', 'unsigned long', 'long', 'unsigned int', and 'int'. One possible EXCEPTION is when
+   'long' and 'int' are the same size, in which case 'unsigned int' OUTRANKS 'long'.
+   4. In an assignment statement, the FINAL result of the calculations is converted to the type of the
+   variable being ASSIGNED a value. This process cand result in PROMOTION, or DEMOTION.
+   5. When passed as FUNCTION ARGUMENTS, 'char' and 'short' are converted to 'int', and 'float' is
+   converted to 'double'. This automatic promotion is OVERRIDDEN by FUNCTION PROTOTYPING.
+
+- The rules for when the assigned value DOESN'T FIT into the destination type are:
+   1. When the destination is some form of unsigned integer and the assigned value is an integer, the
+   extra bits that make the value too big are IGNORED.
+   2. If the destination type is a signed integer and the assigned value is an integer, the result is
+   IMPLEMENTATION-DEPENDENT.
+   3. If the destination type is an integer and the assigned value is a floating-point, the behavior is
+   UNDEFINED.
+
+######################################################################################################
+- Declaring an argument creates a variable called the 'FORMAL ARGUMENT' or the 'FORMAL PARAMETER'. The
+VALUE passed by a function call is called the 'ACTUAL ARGUMENT' or the 'ACTUAL PARAMETER'.
+
+- The C99 standard decided to use the term 'ARGUMENT' for actual argument or actual parameter and the
+term 'PARAMETER' for formal parameter or formal argument. With this convention, we can say that parameters
+are variables and that arguments are VALUES provided by a function call and assigned to the corresponding
+parameters.
+
+- A 'PROTOTYPE' is a FUNCTION DECLARATION that describes a function's return value and its arguments.
+
+######################################################################################################
+
+Review Answers:
+
+1. 
+  a) x = 30;
+  b) x = 27;
+  c) y = x = 1;
+  d) x = 3; y = 9;
+
+2.
+  a) x = 6;
+  b) x = 52;
+  c) x = 0;
+  d) x = 13;
+
+3.
+  a) 37.5;
+  b) 1.5;
+  c) 35;
+  d) 37; 
+  e) 37.5;
+  f) 35.0;
+
+6.
+  L1: %s! C is cool!
+  L2: %s! C is cool!
+  L3: 11
+  L4: 11
+  L5: 12
+  L6: 11
+
+7. SOS:4 4.00
+
+8.    1    2    3    4    5    6    7    8    9   10
+
+10. 
+  a) 1   2
+  b) 101 
+     102
+     103
+     104
+  c) stuvw  

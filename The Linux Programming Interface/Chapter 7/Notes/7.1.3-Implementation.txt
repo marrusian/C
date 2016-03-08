@@ -1,0 +1,43 @@
+#############################################################################################################
+- The IMPLEMENTATION of "malloc()" is STRAIGHT FORWARD. It first SCANS the list of memory blocks PREVIOUSLY
+RELEASED by "free()" in order to FIND one whose SIZE is >= to its REQUIREMENTS (DIFFERENT strategies may be
+employed for this scan, DEPENDING on the IMPLEMENTATION; for example: first-fit, next-fit, or best-fit).
+If the block is EXACTLY the RIGHT SIZE, then it is RETURNED to the CALLER. If it is LARGER, then it is SPLIT,
+so that a BLOCK of the CORRECT SIZE is RETURNED to the CALLER and a SMALLER FREE BLOCK is LEFT on the FREE
+LIST.
+
+- If NO BLOCK on the FREE LIST is LARGE ENOUGH, then "malloc()" calls "sbrk()" to ALLOCATE MORE MEMORY.
+To REDUCE the number of CALLS to "sbrk()", RATHER than ALLOCATING EXACTLY the number of bytes REQUIRED,
+"malloc()" INCREASES the PROGRAM BREAK in LARGER UNITS (some MULTIPLE of the VIRTUAL MEMORY PAGE SIZE),
+PUTTING the EXCESS MEMORY onto the FREE LIST.
+
+- Looking at the implementation of "free()", things start to become more interesting. When "free()" PLACES
+a BLOCK OF MEMORY onto the FREE LIST, it KNOWS the SIZE of that BLOCK via a TRICK: when "malloc()" ALLOCATES
+the BLOCK, it ALLOCATES EXTRA BYTES to HOLD an INTEGER containing the SIZE of the BLOCK. This INTEGER is
+LOCATED at the BEGINNING of the BLOCK; the ADDRESS actually RETURNED to the caller POINTS to the LOCATION
+just PAST THIS LENGTH VALUE.
+
+- When a BLOCK is PLACED on the (doubly linked) FREE LIST, "free()" USES the BYTES on the BLOCK ITSELF in
+order to ADD the BLOCK to the LIST. As blocks are deallocated and reallocated over time, the blocks of the
+free list will become INTERMINGLED with blocks of allocated, in-use memory.
+
+- To AVOID memory allocation errors/bugs, we should observe the following rules:
+        a) After we ALLOCATE a BLOCK OF MEMORY, we should be CAREFUL to NOT TOUCH any BYTES OUTSIDE the RANGE
+           of that BLOCK. This could occur, for example, as a result of faulty pointer arithmetic or
+           off-by-one errors in loops updating the contents of a block.
+
+        b) It is an ERROR to FREE the SAME PIECE of ALLOCATED MEMORY more than once. With "glibc" on Linux,
+           we often get a SEGMENTATION VIOLATION (SIGSEGV signal). This is good, because it ALERTS us that we
+           have made a PROGRAMMING ERROR. However, more generally, FREEING the SAME memory TWICE leads to
+           UNPREDICTABLE BEHAVIOUR.
+
+        c) We should NEVER call "free()" with a POINTER VALUE that WASN'T OBTAINED by a CALL to one of the
+           functions in the "malloc" PACKAGE.
+
+        d) If we are writing a LONG-RUNNING PROGRAM (e.g., a shell or a network daemon process) that
+           REPEATEDLY ALLOCATES MEMORY for various purposes, then we should ENSURE that we DEALLOCATE ANY
+           MEMORY after we have FINISHED using it. Failure to do so means that the HEAP will STEADILY GROW
+           until we reach the LIMITS of AVAILABLE VIRTUAL MEMORY, at which point FURTHER ATTEMPTS to ALLOCATE
+           MEMORY will FAIL. Such a condition is known as a MEMORY LEAK.
+
+#############################################################################################################

@@ -1,0 +1,54 @@
+int semget(key_t key, int nsems, int semflags)
+
+int semctl(int semid, int semnum, int cmd, /* union semun arg */)
+
+// cmd: GETVAL, SETVAL (arg.val), GETALL (arg.array), SETALL (arg.array)
+// cmd: GETPID, GETNCNT, GETZCNT
+
+union semun{
+	int					val;
+	struct semid_ds		*buf;
+	unsigned short		*array;
+};
+
+struct semid_ds{
+	struct ipc_perm sem_perm;
+	time_t			sem_ctime;
+	time_t			sem_otime;
+	unsigned long	sem_nsems;
+};
+
+int semop(int semid, struct sembuf *sops, int nsops);
+
+struct sembuf{
+	unsigned short sem_num;
+	short		   sem_op;
+	short          sem_flg; // IPC_NOWAIT, SEM_UNDO;
+};
+
+------------------------------------------------------------------------------------------------------
+int msgget(key_t key, int msgflg);
+
+int msgctl(int msgid, int cmd, struct msqid_ds *buf);
+
+// cmd: IPC_RMID, IPC_STAT, IPC_SET;
+
+int msgsnd(int msgid, const void *msgp, size_t msgsz, int msgflg);
+
+// msgflg: IPC_NOWAIT
+
+ssize_t msgrcv(int msgid, void *msgp, size_t msgsz, long mstyp, int msgflg);
+
+// msgflg: IPC_NOWAIT, MSG_NOERROR;
+
+------------------------------------------------------------------------------------------------------
+
+int shmget(key_t key, size_t bytes, int shmflg);
+
+void *shmat(int shmid, const void *shmaddr, int shmflg);
+
+// shmflg: SHM_RDONLY;
+
+int shmdt(const void *shmaddr);
+
+int shmctl(int shmid, int cmd, struct shmid_ds *buf);

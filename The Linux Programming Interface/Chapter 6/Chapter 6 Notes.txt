@@ -1,0 +1,455 @@
+- A PROCESS is an INSTANCE of an EXECUTING PROGRAM. 
+
+- A PROGRAM is a file containing a RANGE OF INFORMATION that DESCRIBES how to CONSTRUCT a PROCESS at RUN TIME.
+This information includes the following:
+   a) Binary format identification: Each program file includes METAINFORMATION describing the FORMAT of the
+                                   EXECUTABLE FILE. This ENABLES the kernel to INTERPRET the remaining
+                                   information in the file. Historically, two WIDELY USED formats for UNIX
+                                   executable files were the original "a.out" ("ASSEMBLER OUTPUT") format and
+                                   the later, more sophisticated COFF (Common Object File Format). Nowadays,
+                                   most UNIX implementations (including Linux) employ the Executable and
+                                   Linkable Format (ELF), which PROVIDES a number of ADVANTAGES over the OLDER
+                                   FORMATS.
+
+   b) Machine-language instructions: These ENCODE the ALGORITHM of the program.
+  
+   c) Program entry-point address: This IDENTIFIES the LOCATION of the INSTRUCTION at which EXECUTION of the
+                                  program should COMMENCE.
+
+   d) Data: The program file contains VALUES used to INITIALIZE VARIABLES and also LITERAL CONSTANTS used by
+           the program (e.g., strings).
+
+   e) Symbol and relocation tables: These describe the LOCATIONS and NAMES of FUNCTIONS and VARIABLES within
+                                   the program. These tables are used for a variety of purposes, including
+                                   DEBUGGING and RUN-TIME SYMBOL RESOLUTION (dynamic linking).
+
+   f) Shared-library and dynamic-linking information: The program file includes FIELDS listing the SHARED
+                                                     LIBRARIES that the program NEEDS to use at RUN TIME and
+                                                     the PATHNAME of the DYNAMIC LINKER that should be used
+                                                     to LOAD these libraries.
+
+   g) Other information: The program file contains VARIOUS OTHER INFORMATION that DESCRIBES how to CONSTRUCT
+                        a PROCESS.
+
+- One PROGRAM may be used to construct MANY PROCESSES, or, put conversely, MANY PROCESSES may be running the
+SAME PROGRAM.
+
+- We can RECAST the DEFINITION of a PROCESS:
+  Definition: A PROCESS is an ABSTRACT ENTITY, DEFINED by the KERNEL, to which SYSTEM RESOURCES are ALLOCATED
+             in order to EXECUTE a PROGRAM.
+
+- From the kernel POV, a PROCESS consists of USER-SPACE MEMORY containing PROGRAM CODE and VARIABLES used by
+that code, and a RANGE of KERNEL DATA STRUCTURES that MAINTAIN information about the STATE of the PROCESS.
+The information RECORDED in the kernel data structures includes:
+     - Various IDs ASSOCIATED to the PROCESS;
+     - Virtual memory tables;
+     - The table of OPEN FILE DESCRIPTORS;
+     - Information relating to SIGNAL DELIVERY and HANDLING.
+     - Process RESOURCE USAGES and LIMITS;
+     - The CURRENT WORKING DIRECTORY;
+
+############################################################################################################
+- Each process has a process ID (PID), a POSITIVE INTEGER that UNIQUELY IDENTIFIES the PROCESS on the system.
+
+- The PID is USEFUL if we NEED to BUILD an IDENTIFIER that is UNIQUE to a PROCESS. A COMMON EXAMPLE of this is
+the use of the PID as PART of a PROCESS-UNIQUE FILENAME.
+
+- The "getpid()" system call returns the PID of the CALLING PROCESS:
+       DEP: #include <unistd.h>        PROT: pid_t getpid(void);
+           RET: ALWAYS SUCCESSFULLY returns PID of caller
+
+- With the EXCEPTION of a FEW SYSTEM PROCESSES such as "init" (PID 1), there is NO FIXED RELATIONSHIP between
+a PROGRAM and the PID of the process that is created to run that program.
+
+- The Linux kernel LIMITS PIDs to being <= 32,767. When a NEW PROCESS is CREATED, it is ASSIGNED the NEXT
+SEQUENTIALLY AVAILABLE PID. Each time the LIMIT of 32,767 is REACHED, the kernel RESETS its PID COUNTER so
+that PIDs are assigned STARTING from LOW INTEGER VALUES.
+
+         Note:  Once it has reached 32,767, the PID COUNTER is RESET to 300, rather than 1. This is done
+              because MANY low-numbered PIDs are in PERMANENT USE by SYSTEM PROCESSES and DAEMONS, and thus
+              TIME would be WASTED searching for an UNUSED PID in this range.
+                In Linux 2.4 and earlier, the PID limit of 32,767 is DEFINED by the KERNEL CONSTANT "PID_MAX".
+              With Linux 2.6, things CHANGED. While the DEFAULT UPPER LIMIT for PIDs REMAINS 32,767, this
+              LIMIT is ADJUSTABLE via the value in the Linux-specific "/proc/sys/kernel/pid_max" file (which
+              is ONE GREATER than the MAXIMUM PID). On 32-bit platforms, the MAXIMUM VALUE for this file is
+              32,768, but on 64-bit platforms, it CAN be ADJUSTED to ANY VALUE UP TO 2^22 (~4 million), making
+              it possible to accommodate VERY LARGE NUMBERS of PROCESSES.
+
+- Each process has a PARENT - the PROCESS that CREATED it. A process can find out its PPID using the
+"getppid()" system call:
+       DEP: #include <unistd.h>        PROT: pid_t getppid(void);      
+           RET: ALWAYS SUCCESSFULLY returns PPID of caller 
+
+- In effect, the PPID ATTRIBUTE of EACH PROCESS represents the TREE-LIKE RELATIONSHIP of ALL PROCESSES on the
+SYSTEM. The PARENT of each process has ITS OWN PARENT, and so on, going ALL THE WAY BACK to process 1, "init",
+the ANCESTOR of ALL PROCESSES (This "family tree" can be viewed using the pstree(1) command).
+
+- If a CHILD process becomes ORPHANED because its "birth" parent TERMINATES, then the CHILD is ADOPTED by
+the "init" process, and subsequent calls to "getppid()" in the child RETURN 1.
+
+- The PARENT of ANY PROCESS can be FOUND by looking at the "Ppid" field provided in the Linux specific
+"/proc/PID/status" file.
+
+############################################################################################################
+- The MEMORY allocated to each process is COMPOSED of a NUMBER OF PARTS, usually referred to as "SEGMENTS"
+(or "SECTIONS"). These SEGMENTS are as follows:
+     a) The TEXT SEGMENT - contains the MACHINE-LANGUAGE INSTRUCTIONS of the program run by the process. The
+                           TEXT SEGMENT is MADE READ-ONLY so that a process DOESN'T ACCIDENTALLY modify its
+                           own instructions via a bad pointer value. Since MANY PROCESSES may be running the
+                           SAME PROGRAM, the TEXT SEGMENT is made SHARABLE so that a SINGLE COPY of the
+                           PROGRAM CODE can be MAPPED into the VIRTUAL ADDRESS SPACE of ALL of the processes.
+
+     b) The INITIALIZED DATA SEGMENT - contains GLOBAL and STATIC variables that are EXPLICITLY INITIALIZED.
+                                       The VALUES of these variables are READ from the EXECUTABLE FILE when
+                                       the PROGRAM is LOADED into MEMORY.
+ 
+     c) The UNINITIALIZED DATA SEGMENT - contains GLOBAL and STATIC variables that are NOT EXPLICITLY
+                                         INITIALIZED. Before starting the program, the system INIALIZES ALL
+                                         MEMORY in this segment to 0 (for HISTORICAL REASONS, this is often
+                                         called the BSS segment, a name derived from an old assembler mnemonic
+                                         for "block started by symbol"). The MAIN REASON for placing global
+                                         and static variables that are INITIALIZED into a SEPARATE SEGMENT
+                                         from those that are UNINITIALIZED is that, when a progam is STORED
+                                         ON DISK, it is NOT NECESSARY to ALLOCATE SPACE for the UNINITIALIZED
+                                         DATA. Instead, the executable MERELY NEEDS to RECORD the LOCATION and
+                                         SIZE required for the UNINITIALIZED DATA SEGMENT, and this SPACE is
+                                         ALLOCATED by the PROGRAM LOADER at RUN TIME.
+
+     d) The STACK - a DYNAMICALLY growing and shrinking segment containing STACK FRAMES. One stack frame is
+                    ALLOCATED for EACH currently CALLED FUNCTION. A frame STORES the FUNCTION'S LOCAL
+                    VARIABLES (so-called AUTOMATIC variables), ARGUMENTS, and RETURN VALUE.
+
+     e) The HEAP - an AREA from which MEMORY (for variables) can be DYNAMICALLY ALLOCATED at RUN TIME.
+                   The TOP END of the HEAP is called the "PROGRAM BREAK".
+
+
+- Less commonly used, but MORE DESCRIPTIVE labels for the initialized and uninitialized data segments are
+"USER-INITIALIZED DATA SEGMENT" and "ZERO-INITIALIZED DATA SEGMENT".
+
+- The "size(1)" command displays the SIZE of the TEXT, INITIALIZED DATA, and UNINITIALIZED DATA (bss) SEGMENTS
+of a BINARY EXECUTABLE.
+
+          Note: The term "SEGMENT" should NOT BE CONFUSED with the HARDWARE SEGMENTATION used on some hardware
+               architectures such as x86-32. Rather, segments are LOGICAL DIVISIONS of a process's VIRTUAL
+               MEMORY on UNIX systems. Sometimes, the term "SECTION" is used INSTEAD of "SEGMENT".
+
+          Note: An "APPLICATION BINARY INTERFACE" (ABI) is a SET OF RULES specifying HOW a BINARY EXEUTABLE
+               should EXCHANGE INFORMATION with some service (e.g., the kernel or a library) at RUN TIME.
+               Among other things, an ABI specifies WHICH REGISTERS and STACK LOCATIONS are used to EXCHANGE
+               this information, and WHAT MEANING is ATTACHED to the EXCHANGED VALUES. Once compiled for a
+               PARTICULAR ABI, a BINARY EXECUTABLE should be ABLE to RUN on ANY SYSTEM presenting the SAME
+               ABI. This CONTRASTS with a STANDARDIZED API (such as SUSv3), which guarantees portability ONLY
+               for applications COMPILED from SOURCE CODE.
+
+- Although NOT SPECIFIED in SUSv3, the C PROGRAM ENVIRONMENT on most UNIX implementations (including Linux)
+provides THREE GLOBAL SYMBOLS: 'etext', 'edata,' and 'end'. These symbols can be used from WITHIN a program
+to OBTAIN the ADDRESSES of the NEXT BYTE PAST, respectively, THE END of:
+        - The PROGRAM TEXT;
+        - The INITIALIZED DATA SEGMENT;
+        - The UNINITIALIZED DATA SEGMENT.
+
+- To MAKE USE of these symbols, we must EXPLICITLY DECLARE them, as follows:
+        # extern char etext, edata, end; //  For example, &etext gives the address of the next byte PAST THE
+                                         // END of program text / start of initialized data 
+
+############################################################################################################
+- Like most MODERN KERNELS, Linux employs a TECHNIQUE known as "VIRTUAL MEMORY MANAGEMENT". The AIM of this
+technique is to MAKE EFFICIENT USE of BOTH The CPU and RAM (physical memory) by EXPLOITING a PROPERTY that
+is TYPICAL of most programs: LOCALITY OF REFERENCE. Most programs demonstrate TWO KINDS of LOCALITY:
+      a) SPATIAL LOCALITY - the TENDENCY of a program to REFERENCE MEMORY ADDRESSES that are NEAR THOSE that
+                            were RECENTLY ACCESSED (because of sequential processing of instructions, and,
+                            sometimes, sequential processing of data structures).
+
+      b) TEMPORAL LOCALITY - the TENDENCY of a program to ACCESS the SAME MEMORY ADDRESSES in the NEAR FUTURE
+                             that it ACCESSED in the RECENT PAST (because of LOOPS).
+
+- The UPSHOT of LOCALITY OF REFERENCE is that it is POSSIBLE to EXECUTE a PROGRAM while maintaining ONLY PART
+of its ADDRESS SPACE in RAM.
+
+- A VIRTUAL MEMORY scheme SPLITS the MEMORY used by each program into SMALL, FIXED-SIZE UNITS called "PAGES".
+Correspondingly, RAM is DIVIDED into a SERIES of "PAGE FRAMES" of the SAME SIZE. At any one time, only SOME
+of the PAGES of a program NEED to be RESIDENT in PHYSICAL MEMORY PAGE FRAMES; these pages FORM the so-called
+"RESIDENT SET". Copies of the UNUSED PAGES of a program are MAINTAINED in the "SWAP AREA" (a RESERVED area
+of DISK SPACE used to SUPPLEMENT the computer's RAM) and LOADED into PHYSICAL MEMORY as REQUIRED. When a
+process REFERENCES a PAGE that is NOT CURRENTLY RESIDENT in PHYSICAL MEMORY, a "PAGE FAULT" occurs, at which
+point the kernel SUSPENDS EXECUTION of the process while the page is LOADED from DISK into MEMORY.
+
+          Note:  On x86-32, pages are 4096 bytes in size. Some other Linux implementations use LARGER page
+               sizes. For example, Alpha uses a PAGE SIZE of 8192 bytes, and IA-64 has VARIABLE PAGE SIZE,
+               with the USUAL DEFAULT being 16,384 bytes. A program can DETERMINE the SYSTEM VIRTUAL MEMORY
+               PAGE SIZE using the call "sysconf(_SC_PAGESIZE)".
+
+- In order to SUPPORT this ORGANIZATION, the kernel MAINTAINS a "PAGE TABLE" for each process. This page table
+DESCRIBES the LOCATION of EACH PAGE in the process's "VIRTUAL ADDRESS SPACE" (the set of ALL virtual memory
+pages AVAILABLE to the process). Each ENTRY in the page table EITHER:
+        a) Indicates the LOCATION of a VIRTUAL PAGE in RAM.
+        b) Indicates that it CURRENTLY RESIDES on DISK.
+
+- Not all address ranges in the process's virtual address space require page-table entries. Typically, LARGE
+RANGES of the POTENTIAL virtual address space are UNUSED, so that it ISN'T NECESSARY to MAINTAIN corresponding
+page-table entries. If a process TRIES to ACCESS an ADDRESS for which there is NO corresponding PAGE-TABLE
+ENTRY, it RECEIVES a 'SIGSEGV' SIGNAL.
+
+- A process's RANGE of VALID VIRTUAL ADDRESSES can CHANGE over its lifetime, as the kernel ALLOCATES and
+DEALLOCATES PAGES (and PAGE-TABLE ENTRIES) for the process. This can happen in the following circumstances:
+       - As the STACK GROWS downward BEYOND limits PREVIOUSLY reached;
+       - When MEMORY is ALLOCATED or DEALLOCATED on the HEAP, by RAISING the PROGRAM BREAK using "brk()",
+         "sbrk()", or the "malloc" family of functions;
+       - When System V shared memory regions are ATTACHED using "shmat()" and DETACHED using "shmdt()";
+       - When MEMORY MAPPINGS are CREATED using "mmap()" and UNMAPPED using "munmap()".
+
+          Note:  The IMPLEMENTATION of VIRTUAL MEMORY requires HARDWARE SUPPORT in the FORM of a "PAGED MEMORY
+               MANAGEMENT UNIT" (PMMU). The PMMU TRANSLATES each VIRTUAL MEMORY ADDRESS REFERENCE into the
+               corresponding PHYSICAL MEMORY ADDRESS and ADVISES the KERNEL of a PAGE FAULT when a particular
+               virtual memory address corresponds to a PAGE that is NOT RESIDENT in RAM.
+
+- Virtual memory management SEPARATES the VIRTUAL ADDRESS SPACE of a process FROM the PHYSICAL ADDRESS SPACE
+of RAM. This provides MANY advantages:
+       a) Processes are ISOLATED from one another and from the kernel, so that one process CAN'T READ
+          or MODIFY the MEMORY of ANOTHER PROCESS or KERNEL. This is ACCOMPLISHED by having the PAGE-TABLE
+          ENTRIES for each process POINT to DISTINCT SETS of PHYSICAL RANGES in RAM (or in the SWAP AREA).
+
+       b) Where appropriate, TWO OR MORE processes can SHARE MEMORY. The KERNEL makes this POSSIBLE by having
+          PAGE-TABLE ENTRIES in DIFFERENT processes REFER to the SAME PAGES of RAM. Memory sharing occurs in
+          TWO COMMON circumstances:
+               - Multiple processes EXECUTING the SAME PROGRAM can SHARE a SINGLE (read-only) COPY of the
+                 PROGRAM CODE. This TYPE of SHARING is performed IMPLICITLY when MULTIPLE programs EXECUTE the
+                 SAME PROGRAM FILE (or LOAD the SAME SHARED LIBRARY).
+               
+               - Processes can use the "shmget()", and "mmap()" system calls to EXPLICITLY request SHARING of
+                 MEMORY REGIONS with OTHER processes. This is done for the PURPOSE of IPC.
+
+       c) The IMPLEMENTATION of MEMORY PROTECTION SCHEMES is FACILITATED; that is, PAGE-TABLE ENTRIES can be
+          MARKED to INDICATE that the CONTENTS of the CORRESPONDING PAGE are READABLE, WRITABLE, EXECUTABLE,
+          or SOME COMBINATION of these PROTECTIONS. Where MULTIPLE processes SHARE PAGES of RAM, it is
+          POSSIBLE to SPECIFY that EACH process has DIFFERENT PROTECTIONS on the memory (for example, one
+          process might have read-only access to a page, while another has read-write access).
+
+       d) Programmers, and tools such as the COMPILER and LINKER, DON'T NEED to be CONCERNED with the
+          PHYSICAL LAYOUT of the PROGRAM in RAM.
+
+       e) Because ONLY PART of a program NEEDS to RESIDE in MEMORY, the program LOADS and RUNS FASTER.
+          Furthermore, the MEMORY FOOTPRINT (i.e. virtual size) of a process can EXCEED the CAPACITY of RAM.
+
+      !g) Since each process uses LESS RAM, MORE processes can SIMULTANEOUSLY be HELD in RAM. This typically
+          LEADS to BETTER CPU UTILIZATION, since it INCREASES the LIKELIHOOD that, at any moment in time,
+          there is AT LEAST ONE PROCESS that the CPU can EXECUTE.
+
+############################################################################################################
+- The STACK GROWS and SHRINKS LINEARLY as functions are CALLED and RETURN. For Linux on the x86-32
+architecture (and on most other Linux and UNIX implementations), the stack RESIDES at the HIGH END OF MEMORY
+and GROWS DOWNWARD (toward the heap). A SPECIAL-PURPOSE REGISTER, the "STACK POINTER", TRACKS the CURRENT TOP
+of the stack. Each time a function is CALLED, an ADDITIONAL FRAME is ALLOCATED on the STACK, and this FRAME
+is REMOVED when the function RETURNS.
+
+            Note:  Even though the stack GROWS DOWNWARD, we still call the GROWING END of the STACK the "TOP".
+                 The ACTUAL DIRECTION of STACK GROWTH is a (HARDWARE) IMPLEMENTATION DETAIL. One Linux
+                 implementation, the "HP PA-RISC", does use an UPWARDLY GROWING stack.
+                   In VIRTUAL MEMORY terms, the STACK SEGMENT increases in size as STACK FRAMES are ALLOCATED,
+                 but on MOST IMPLEMENTATIONS, it WON'T DECREASE in size AFTER these FRAMES are DEALLOCATED
+                 (the MEMORY is SIMPLY REUSED when NEW STACK FRAMES are ALLOCATED).
+
+- Sometimes, the term "USER STACK" is used to DISTINGUISH the stack we describe here from the "KERNEL STACK".
+The KERNEL STACK is a PER-PROCESS MEMORY REGION maintained in KERNEL MEMORY that is used as the STACK for
+EXECUTION of the FUNCTIONS called INTERNALLY during the EXECUTION of a SYSTEM CALL (the kernel CAN'T EMPLOY
+the USER STACK for this purpose SINCE it RESIDES in UNPROTECTED USER MEMORY).
+
+- Each (user) STACK FRAME contains the following information:
+       - Function arguments and local variables;
+       - Call linkage information: 
+
+- Since functions can call one another, there may be MULTIPLE FRAMES on the STACK (if a function calls itself
+RECURSIVELY, there will be MULTIPLE FRAMES on the STACK for that function).
+
+############################################################################################################
+- Every C program MUST HAVE a function called "main()", which is the POINT where EXECUTION of the program
+STARTS. When the PROGRAM is EXECUTED, the COMMAND-LINE ARGUMENTS (the separate words parsed by the shell) are
+made AVAILABLE via TWO ARGUMENTS to the function "main()":
+         - int argc: indicates HOW MANY command-line arguments there are;
+         - char *argv[]: is an ARRAY OF POINTERS to the command-line arguments, each of which is a
+                         NULL-TERMINATED CHARACTER STRING.
+
+- The FIRST of these strings, in argv[0], is (CONVENTIONALLY) the NAME of the PROGRAM ITSELF. The LIST of
+POINTERS in "argv" is TERMINATED by a NULL POINTER (i.e., argv[argc] is NULL).
+
+- One LIMITATION of the argc/argv mechanism is that these VARIABLES are ONLY AVAILABLE as ARGUMENTS to main().
+To PORTABLY MAKE the command-line arguments AVAILABLE in OTHER functions, we must EITHER:
+            1) PASS "argv" as an ARGUMENT to those functions;
+            2) SET a GLOBAL VARIABLE pointing to "argv".
+
+- There are a COUPLE of NONPORTABLE METHODS of ACCESSING part or all of this information from ANYWHERE in a 
+program:
+        a) The command-line arguments of ANY PROCESS can be READ via the Linux-specific "/proc/PID/cmdline"
+          file, with EACH ARGUMENT being TERMINATED by a NULL BYTE (a PROGRAM can ACCESS its OWN command-line
+          arguments via "/proc/self/cmdline").
+       
+        b) The GNU C library provides TWO GLOBAL VARIABLES that may be USED ANYWHERE in a program in ORDER to
+          OBTAIN the NAME used to INVOKE the program (i.e., argv[0]):
+               - "program_invocation_name" - provides the COMPLETE PATHNAME used to INVOKE the program.
+               - "program_invocation_short_name" - provides a VERSION of this NAME, with any DIRECTORY prefix
+                                                   STRIPPED OFF (i.e., the BASENAME COMPONENT of the PATHNAME)
+           DECLARATIONS for these TWO VARIABLES can be OBTAINED from <errno.h> by DEFINING the FEATURE TEST
+           MACRO "_GNU_SOURCE". 
+
+- As shown, the "argv" and "environ" arrays, as well as the STRINGS they INITIALLY POINT to, RESIDE in a
+SINGLE CONTIGUOUS AREA of MEMORY just ABOVE the PROCESS STACK. There is an UPPER LIMIT on the TOTAL NUMBER of
+BYTES that can be STORED in this area. SUSv3 prescribes the use of the "ARG_MAX" constant (defined in
+<limits.h>) OR the CALL "sysconf(_SC_ARG_MAX)" to DETERMINE this LIMIT. SUSv3 REQUIRES "ARG_MAX" to be AT
+LEAST "_POSIX_ARG_MAX(4096)" bytes. Most UNIX implementations ALLOW a CONSIDERABLY HIGHER LIMIT than this.
+SUSv3 leaves it UNSPECIFIED whether an IMPLEMENTATION counts OVERHEAD bytes (for terminating null bytes,
+alignment bytes, and the "argv" and "environ" arrays of pointers) AGAINST the "ARG_MAX" limit.
+
+           Note:  On Linux, "ARG_MAX" was HISTORICALLY FIXED at 32 pages (i.e., 131.072 bytes on Linux/x86-32)
+                and INCLUDED the SPACE for OVERHEAD bytes. Starting with kernel 2.6.23, the LIMIT on the
+                TOTAL SPACE used for "argv" and "environ" can be CONTROLLED via the "RLIMIT_STACK" RESOURCE
+                LIMIT, and a MUCH LARGER LIMIT is PERMITTED for "argv" and "environ". The LIMIT is CALCULATED
+                as ONE-QUARTER (1/4) of the soft "RLIMIT_STACK" resource limit that was in force AT THE TIME
+                of the "execve()" call.
+
+- Many programs PARSE command-line options using the "getopt()" library functions.
+
+############################################################################################################
+- Each process has an ASSOCIATED ARRAY of STRINGS called the "ENVIRONMENT LIST", or simply the "ENVIRONMENT".
+Each of these strings is a DEFINITION of the form "name=value". Thus, the environment REPRESENTS a SET of
+NAME-VALUE PAIRS that can be USED to HOLD ARBITRARY INFORMATION. The NAMES in the LIST are REFERRED to as
+"ENVIRONMENT VARIABLES".
+
+- When a NEW PROCESS is CREATED, it INHERITS a COPY of its PARENT'S ENVIRONMENT. This is a PRIMITIVE but
+FREQUENTLY USED form of IPC - the environment PROVIDES a way to TRANSFER information from a PARENT PROCESS to
+its CHILD(REN). Since the CHILD gets a COPY of its parent's environment at the time it is created, this
+TRANSFER of information is ONE-WAY and ONCE-ONLY. After the CHILD PROCESS has been CREATED, either process
+MAY CHANGE its OWN ENVIRONMENT, and these CHANGES are NOT SEEN by the OTHER processes. 
+
+- A COMMON USE of ENVIRONMENT VARIABLES is in the SHELL. By PLACING VALUES in its OWN ENVIRONMENT, the SHELL
+can ENSURE that these VALUES are PASSED to the PROCESSES that it CREATES to EXECUTE USER COMMANDS.
+For example, the environment variable "SHELL" is SET to be the PATHNAME of the SHELL program ITSELF. Many
+programs INTERPRET this VARIABLE as the NAME of the SHELL that SHOULD be EXECUTED if the program NEEDS to
+EXECUTE a SHELL.
+
+- Some LIBRARY FUNCTIONS allow their BEHAVIOUR to be MODIFIED by SETTING ENVIRONMENT VARIABLES. This ALLOWS
+the USER to CONTROL the BEHAVIOUR of an APPLICATION using the function WITHOUT NEEDING to CHANGE the CODE of
+the APPLICATION or RELINK it against the corresponding library. An EXAMPLE of this TECHNIQUE is PROVIDED by
+the "getopt()" function, whose BEHAVIOUR can be MODIFIED by SETTING the "POSIXLY_CORRECT" environment
+variable.
+
+- The "EXPORT" ("SETENV" in the C shell) command PERMANENTLY ADDS a VALUE to the SHELL'S ENVIRONMENT, and this
+environment is then INHERITED by ALL child processes that the shell creates. At ANY POINT, an ENVIRONMENT
+VARIABLE can be REMOVED with the "UNSET" ("UNSETENV" in the C shell) command.
+
+           Note:  The "env" command RUNS a PROGRAM using a MODIFIED COPY of the shell's ENVIRONMENT LIST.
+                The ENVIRONMENT LIST can be MODIFIED to BOTH ADD and REMOVE DEFINITIONS from the list copied
+                from the shell.
+
+- The "PRINTENV" command DISPLAYS the CURRENT ENVIRONMENT LIST. From its output, we can see that the
+ENVIRONMENT LIST is NOT SORTED; the ORDER of the STRINGS in the list is SIMPLY the ARRANGEMENT that is MOST
+CONVENIENT for the IMPLEMENTATION. In general, this is NOT A PROBLEM, since we NORMALLY WANT to ACCESS
+INDIVIDUAL variables in the environment, RATHER than some ORDERED SEQUENCE of them.
+
+- The ENVIRONMENT LIST of ANY PROCESS can be EXAMINED via the Linux-specific "/proc/PID/environ" file, with
+each "NAME=value" pair being TERMINATED by a NULL BYTE.
+
+---------------------------------------------------------------------------------------------------------
+- Within a C program, the ENVIRONMENT LIST can be ACCESSED using the GLOBAL VARIABLE "char **environ" (the C
+RUN-TIME STARTUP CODE defines this variable and assigns the location of the environment list to it). Like
+"argv", "environ" points to a NULL-TERMINATED LIST of POINTERS to NULL-TERMINATED STRINGS. 
+
+- An ALTERNATIVE METHOD of ACCESSING the ENVIRONMENT LIST is to DECLARE a THIRD ARGUMENT to the "main()"
+function:
+         # int main(int argc, char *argv[], char *envp[])
+
+- This argument can then be TREATED in the SAME WAY as "environ", with the DIFFERENCE that ITS SCOPE is LOCAL
+to "main()". Although this FEATURE is WIDELY IMPLEMENTED on UNIX systems, its use should be AVOIDED since,
+in addition to the SCOPE LIMITATION, it is NOT SPECIFIED in SUSv3.
+
+- The "getenv()" function RETRIEVES INDIVIDUAL VALUES from the PROCESS ENVIRONMENT:
+       DEP: #include <stdlib.h>        PROT: char *getenv(const char *name);
+           RET: Pointer to (value) string, or NULL if no such variable
+
+- We should NOTE the following PORTABILITY CONSIDERATIONS when using "getenv()":
+        a) SUSv3 STIPULATES that an APPLICATION should NOT MODIFY the STRING RETURNED by "getenv()". This is
+           because (in MOST IMPLEMENTATIONS) this STRING is ACTUALLY PART of the ENVIRONMENT (i.e., the
+           "value" part of the "name=value" string). If we NEED to CHANGE the VALUE of an ENVIRONMENT VARIABLE
+           then we CAN USE the "setenv()" or "putenv()" functions.
+
+        b) SUSv3 PERMITS an implementation of "getenv()" to RETURN its RESULT using a STATICALLY ALLOCATED
+           BUFFER that MAY be OVERWRITTEN by SUBSEQUENT CALLS to "getenv()", "setenv()", "putenv()", or
+           "unsetenv()". Although the "glibc" implementation of "getenv()" DOESN'T USE a STATIC BUFFER in this
+           way, a PORTABLE PROGRAM that NEEDS to PRESERVE the STRING RETURNED by a CALL to "getenv()" should
+           COPY IT to a DIFFERENT LOCATION before making a subsequent call to one of these functions.
+
+- Through the use of the "exec()" functions, the ENVIRONMENT is NOT JUST a FORM of INTERPROCESS COMMUNICATION,
+but ALSO a METHOD of INTERPROGRAM COMMUNICATION.
+
+- The "putenv()" function ADDS a NEW VARIABLE to the calling process's ENVIRONMENT or MODIFIES the VALUE of
+an EXISTING VARIABLE:
+       DEP: #include <stdlib.h>        PROT: int putenv(char *string);
+             RET: Returns 0 on success, or NONZERO on ERROR
+
+- The "string" argument is a POINTER to a STRING of the FORM "name=value". After the "putenv()" call, this
+STRING is PART OF the ENVIRONMENT. In other words, RATHER than DUPLICATING the STRING pointed to by "string",
+ONE of the ELEMENTS of "environ" will be SET to POINT to the SAME LOCATION as "string". Therefore, if we
+SUBSEQUENTLY MODIFY the BYTES pointed to by "string", that CHANGE will AFFECT the PROCESS ENVIRONMENT.
+For this reason, "string" SHOULD NOT BE an AUTOMATIC VARIABLE (i.e. a character array allocated on the stack),
+SINCE this MEMORY AREA may be OVERWRITTEN once the FUNCTION in which the variable is defined RETURNS.
+
+- The "glibc" implementation of "putenv()" PROVIDES a NONSTANDARD EXTENSION. If "string" DOESN'T CONTAIN
+an EQUAL SIGN (=), then the ENVIRONMENT VARIABLE identified by "string" is REMOVED from the ENVIRONMENT LIST.
+
+- The "setenv()" function is an ALTERNATIVE to "putenv()" for ADDING a VARIABLE to the ENVIRONMENT:
+       DEP: #include <stdlib.h>        PROT: int setenv(cosnt char *name, const char *value, int overwrite);
+                  RET: Returns 0 on success, or -1 on ERROR
+
+- The "setenv()" function CREATES a NEW ENVIRONMENT VARIABLE by ALLOCATING a MEMORY BUFFER for a STRING of the
+FORM "name=value", and COPYING the STRINGS pointed to by "name" and "value" INTO that BUFFER. Note that we
+DON'T NEED to (in fact, MUST NOT) SUPPLY an EQUAL SIGN at the END of "name" or the START of "value", because
+"setenv()" ADDS this CHARACTER when it adds the NEW DEFINITION to the ENVIRONMENT.
+
+- The "setenv()" funtion DOESN'T CHANGE the ENVIRONMENT if the VARIABLE identified by "name" ALREADY EXISTS
+and "overwrite" has the VALUE 0. If "overwrite" is NONZERO, the ENVIRONMENT is ALWAYS CHANGED.
+
+- The FACT that "setenv()" COPIES its ARGUMENTS means that, UNLIKE with "putenv()", we can SUBSEQUENTLY MODIFY
+the CONTENTS of the STRINGS pointed to by "name" and "value" WITHOUT AFFECTING the ENVIRONMENT. It ALSO MEANS
+that using AUTOMATIC VARIABLES as ARGUMENTS to "setenv()" DOESN'T CAUSE any PROBLEMS.
+
+- The "unsetenv()" function REMOVES the VARIABLE identified by "name" from the ENVIRONMENT:
+       DEP: #include <stdlib.h>        PROT: int unsetenv(const char *name);
+               RET: Returns 0 on success, or -1 on ERROR
+
+- As with "setenv()", "name" should NOT INCLUDE an EQUAL SIGN.
+
+- BOTH "setenv()" and "unsetenv()" DERIVE from BSD, and are LESS WIDESPREAD than "putenv()". Although NOT
+DEFINED in the ORIGINAL POSIX.1 STANDARD or in SUSv2, they are INCLUDED in SUSv3.
+
+                Note:  In versions of "glibc" BEFORE 2.2.2, "unsetenv()" was PROTOTYPED as RETURNING VOID.
+                     This is how "unsetenv()" was prototyped in the ORIGINAL BSD implementation, and SOME
+                     UNIX implementations STILL FOLLOW that BSD prototype.
+
+- On occasion, it is USEFUL to ERASE the ENTIRE ENVIRONMENT, and then REBUILD IT with SELECTED VALUES.
+For example, we MIGHT do this in ORDER to EXECUTE set-user-ID programs in a SECURE MANNER. We can ERASE the
+ENVIRONMENT by ASSIGNING "NULL" to "environ":
+             # environ = NULL;
+
+- This is EXACTLY the step performed by the "clearenv()" library function:
+       DEP: #define _BSD_SOURCE #include <stdlib.h>        PROT: int clearenv(void);
+                        RET: Returns 0 on success, or NONZERO on ERROR
+
+- In some circumstances, the use of "setenv()" and "clearenv()" can LEAD to MEMORY LEAKS in a program.
+We noted above that "setenv()" ALLOCATES a MEMORY BUFFER that is then MADE PART of the ENVIRONMENT. When we
+call "clearenv()", it DOESN'T FREE this BUFFER (it CAN'T, since it DOESN'T KNOW of the BUFFER'S EXISTENCE).
+A program that REPEATEDLY EMPLOYED these TWO FUNCTIONS would steadily LEAK MEMORY. In practice, this is
+UNLIKELY to be a PROBLEM, because a program typically calls "clearenv()" JUST ONCE on STARTUP, in ORDER to
+REMOVE ALL ENTRIES from the ENVIRONMENT that it INHERITED from its PREDECESSOR (i.e., the program that called
+"exec()" to start this program).
+
+                 Note:  Many UNIX implementations provide "clearenv()", but it is NOT SPECIFIED in SUSv3.
+                      SUSv3 SPECIFIES that if an application DIRECTLY MODIFIES "environ", as is done by
+                      "clearenv()", then the BEHAVIOUR of "setenv()", "unsetenv()", and "getenv()" is
+                      UNDEFINED (the RATIONALE behind this is that PREVENTING a CONFORMING APPLICATION from
+                      DIRECTLY MODIFYING the ENVIRONMENT allows the implementation FULL CONTROL over the
+                      DATA STRUCTURES that it uses to implement environment variables). The ONLY WAY that 
+                      SUSv3 PERMITS an application to CLEAR its ENVIRONMENT is to obtain a LIST of ALL
+                      ENVIRONMENT VARIABLES (by getting the names from "environ"), and then using "unsetenv()"
+                      to REMOVE EACH of these NAMES.
+
+############################################################################################################
+- 

@@ -1,0 +1,14 @@
+##########################################################################################################
+- Like several other UNIX implementations, Linux provides a "/proc" file system, which consists of a SET of
+DIRECTORIES and FILES MOUNTED under the "/proc" directory.
+
+- The "/proc" file system is a VIRTUAL FILE SYSTEM that provides an INTERFACE to KERNEL DATA STRUCTURES in a
+form that looks like files and directories on a file system. This provides an EASY MECHANISM for VIEWING and
+CHANGING various system attributes. In addition, a set of directories with names of the form "/proc/PID", where
+PID is a process ID, allows us to view information about EACH PROCESS running on the system.
+
+- The contents of the "/proc" files are GENERALLY in HUMAN-READABLE TEXT FORM and can be parsed by shell
+scripts. A program can simply OPEN and READ from, or WRITE to, the desired file. In most cases, a process must
+be PRIVILEGED to MODIFY THE CONTENTS of files in the "/proc" directory.
+
+##########################################################################################################

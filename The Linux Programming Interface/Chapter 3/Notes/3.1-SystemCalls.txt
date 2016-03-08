@@ -1,0 +1,68 @@
+##########################################################################################################
+- A SYSTEM CALL is a CONTROLLED ENTRY POINT into the KERNEL, allowing a process to REQUEST that the kernel
+perform some action on the process's behalf. The kernel makes a RANGE OF SERVICES accessible to programs via
+the SYSTEM CALL API. These services include, for example, creating a new process, performing I/O, and creating
+a pipe for IPC (The syscalls(2) man page lists the Linux system calls).
+
+- Before going into the DETAILS of how a system call works, we NOTE some GENERAL POINTS:
+   a) A system call changes the PROCESSOR STATE from USER MODE to KERNEL MODE, so that the CPU can ACCESS
+     protected kernel memory.
+   b) The SET of system calls is FIXED. Each system call is IDENTIFIED by a UNIQUE NUMBER (This numbering
+     scheme is NOT NORMALLY VISIBLE to programs, which IDENTIFY system calls by NAME).
+   c) Each system call may have a SET OF ARGUMENTS that specify INFORMATION to be TRANSFERRED from USER SPACE
+     (i.e., the process's virtual address space) to KERNEL SPACE and vice versa.
+
+- From a programming POV, invoking a system call looks MUCH LIKE calling a C function. However, BEHIND THE
+SCENES, many steps occur during the execution of a system call. To illustrate this, we consider the steps in
+the ORDER that they occur on a specific hardware implementation, the x86-32. The steps are as follows:
+   1) The application program MAKES a SYSTEM CALL by INVOKING a WRAPPER FUNCTION in the C library.
+   2) The WRAPPER FUNCTION must make ALL of the system call ARGUMENTS AVAILABLE to the system call
+     TRAP-HANDLING ROUTINE. These arguments are PASSED to the WRAPPER via the STACK, but the KERNEL EXPECTS
+     them in SPECIFIC REGISTERS. The WRAPPER function COPIES the ARGUMENTS to these REGISTERS.
+   3) Since ALL system calls ENTER the kernel the SAME WAY, the kernel NEEDS some METHOD OF IDENTIFYING the
+     system call. To PERMIT this, the WRAPPER function COPIES the SYSTEM CALL NUMBER into a specific CPU
+     REGISTER (%eax).
+   4) The WRAPPER function EXECUTES a TRAP machine instruction (int 0x80), which CAUSES the PROCESSOR to
+     SWITCH from USER MODE to KERNEL MODE and EXECUTE CODE pointed to by location 0x80 of the system's TRAP
+     VECTOR. 
+        Note: More recent x86-32 architures implement the "SYSENTER" instruction, which provides a FASTER
+              METHOD of ENTERING KERNEL MODE than the conventional int 0x80 trap instruction. The use of
+              SYSENTER is supported in the 2.6 kernel and from glibc 2.3.2 onward.
+   5) In RESPONSE to the TRAP to LOCATION 0x80, the kernel INVOKES its "system_call()" routine (located in the
+     assembler file arch/x86/kernel/entry.S) to HANDLE the TRAP. This handler:
+        a) Saves register values onto the KERNEL STACK.
+        b) Checks the VALIDITY of the SYSTEM CALL NUMBER.
+        c) Invokes the APPROPRIATE system call service routine, which is FOUND by USING the SYSTEM CALL
+          NUMBER to INDEX a TABLE of ALL system call service routines (the KERNEL VARIABLE "sys_call_table").
+          If the system call service routine has ANY ARGUMENTS, it FIRST CHECKS their VALIDITY; for example,
+          it checks that the addresses point to VALID LOCATIONS in USER MEMORY. Then the service routine
+          PERFORMS the REQUIRED TASK, which may involve modifying values at addresses specified in the given
+          arguments and transferring data between user memory and kernel memory (e.g., in I/O operations).
+          Finally, the service routine RETURNS a RESULT STATUS to the "system_call()" routine.
+        d) Restores register values from the KERNEL STACK and PLACES the SYSTEM CALL RETURN VALUE on the
+          STACK.
+        e) Returns to the WRAPPER function, SIMULTANEOUSLY returning the PROCESSOR to USER MODE.
+   6) If the RETURN VALUE of the system call service routine INDICATED an ERROR, the WRAPPER function SETS
+     the GLOBAL VARIABLE "errno" using this value. The wrapper function then RETURNS to the CALLER, providing
+     an INTEGER return value INDICATING the SUCCESS or FAILURE of the system call.
+        Note:  On LINUX, system call service routines FOLLOW a CONVENTION of RETURNING a NONNEGATIVE value to
+             INDICATE SUCCESS. In case of an ERROR, the routine RETURNS a NEGATIVE NUMBER, which is the
+             NEGATED VALUE of one of the "errno" constants. When a NEGATIVE VALUE is RETURNED, the C library
+             WRAPPER function NEGATES it (to make it positive), COPIES the result into "errno", and RETURNS
+             -1 as the FUNCTION RESULT of the wrapper to INDICATE an ERROR to the CALLING PROGRAM.
+               This convention RELIES on the ASSUMPTION that system call service routines DON'T return
+             NEGATIVE values on SUCCESS. However, for a FEW of these routines, this assumption DOESN'T HOLD.
+             Normally, this ISN'T a problem, since the range of negated "errno" values DOESN'T OVERLAP with
+             valid return values. However, this convention DOES CAUSE a PROBLEM in ONE CASE: the F_GETOWN
+             operation of the "fcntl()" system call.
+
+- To illustrate, on Linux/x86-32, "execve()" is system call number 11 (__NR_execve). Thus, in the
+"sys_call_table" vector, entry 11 CONTAINS the ADDRESS of "sys_execve()", the SERVICE ROUTINE for this system
+call (On Linux, system call service routines typically have names of the form "sys_xyz()", where "xyz()" is
+the system call in question).
+
+- The information given above is MORE than we'll USUALLY need to know. However, it illustrates the IMPORTANT
+POINT that, even for a SIMPLE SYSTEM CALL, quite a bit of work must be done, and thus system calls have a
+SMALL but appreciable OVERHEAD.
+
+##########################################################################################################

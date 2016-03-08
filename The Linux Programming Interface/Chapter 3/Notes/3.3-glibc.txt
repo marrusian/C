@@ -1,0 +1,31 @@
+##########################################################################################################
+- There are DIFFERENT IMPLEMENTATIONS of the standard C library on the various UNIX implementations. The
+MOST COMMONLY USED implementation on Linux is the GNU C Library (abbreviated "glibc").
+
+- Sometimes, we NEED to DETERMINE the VERSION of "glibc" on a system. From the SHELL, we can do this by
+RUNNING the "glibc" shared library file AS THOUGH it were an EXECUTABLE PROGRAM. When we RUN the LIBRARY as
+an EXECUTABLE, it DISPLAYS various TEXT, including its VERSION NUMBER.
+- In some Linux distributions, the GNU C library resides at a different pathname. One way of DETERMINING the
+LOCATION of the LIBRARY is to run the "ldd" (list dynamic dependencies) program against an executable LINKED
+DINAMICALLY against "glibc" (most executables are linked in this manner). We can then INSPECT the RESULTING
+LIBRARY DEPENDENCY LIST to find the location of the "glibc" shared library:
+      $ ldd myprog
+
+- There are TWO MEANS by which an application program can DETERMINE the VERSION of the GNU C Library present
+on the system:
+   a) By TESTING CONSTANTS.
+   b) By CALLING a LIBRARY FUNCTION.
+
+- From version 2.0 onward, "glibc" defines TWO CONSTANTS ("__GLIBC__" and "__GLIBC_MINOR__"), that can be
+TESTED at COMPILE TIME (in #ifdef statements). On a system with "glibc 2.12" installed, these constants would
+have the values 2 and 12. However, these constants are of LIMITED USE in a program that is COMPILED on ONE
+SYSTEM, but RUN on ANOTHER SYSTEM with a DIFFERENT "glibc".
+- To HANDLE this POSSIBILITY, a program can CALL the "gnu_get_libc_version()" function to DETERMINE the
+VERSION of "glibc" available at RUN TIME. The "gnu_get_libc_version()" function RETURNS a POINTER to a STRING,
+such as "2.12".
+
+   Note: We can ALSO obtain VERSION INFORMATION by USING the "confstr()" function to RETRIEVE the VALUE of
+         the (glibc-specific) "_CS_GNU_LIBC_VERSION" configuration variable. This call RETURNS a STRING such
+         as "glibc 2.12"
+
+##########################################################################################################

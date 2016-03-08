@@ -1,0 +1,331 @@
+- If we DON'T initialize an array at all, its elements, like uninitialized ordinary variables, get
+GARBAGE VALUES, but if we PARTIALLY initialize an array, the remaining elements are SET to 0.
+
+- When we use EMPTY BRACKETS to initialize an array, the COMPILER counts the number of items in the list
+and makes the array that large.
+
+- A POTENTIAL DISADVANTAGE of automatic counting is that ERRORS in the NUMBER of elements could PASS
+UNNOTICED.
+
+- C99 aded a new capability: "DESIGNATED INITIALIZERS". This feature allows us to pick and choose which
+elements are initialized. For example:
+     # int arr[6] = {0,0,0,0,0,212};        // Traditional syntax
+     # int arr[6] = {[5]=212};              // Initialize arr[5] to 212; C99 syntax
+     # int arr2[6] = {[1]=101,102, [5]=55}; // arr2[1] = 101, arr2[2] = 102, arr[5] = 55; C99 syntax
+
+- There are a couple IMPORTANT features of designated initializers:
+  a) If the code follows a designated initializer with FURTHER values, these further values are used to
+  initialize the SUBSEQUENT elements.
+  b) If the code INITIALIZES a PARTICULAR element to a value MORE than ONCE, the LAST initialization is
+  the one that TAKES EFFECT.
+  c) If we DON'T SPECIFY the array SIZE, the COMPILER will MAKE the array BIG ENOUGH to ACCOMODATE the
+  initialization VALUES.
+
+- The compiler isn't required to check array bounds (however, some compilers will WARN us about the
+problem). Not checking bounds ALLOWS a C program to run FASTER. The compiler can't necessarily catch
+all index errors, because the value of the index might NOT be determined until AFTER the resulting program
+begins execution. Therefore, to be safe, the compiler WOULD HAVE to add EXTRA code to CHECK the value of
+EACH index during RUNTIME, and that would SLOW things down.
+
+- For specifying the SIZE of an array, until the C99 standard, we'd have had to use a CONSTANT INTEGER
+EXPRESSION (i.e. one formed from integer constants). A "sizeof" expression IS considered an integer
+constant, but (unlike the case in C++) a "CONST" value ISN'T. Also, the value of the expression MUST be
+GREATER than 0. For example:
+    # int n = 5;
+    # float a2[5*2+1];        // Valid
+    # float a3[sizeof(int)+1] // Valid
+    # float a4[-4]            // Invalid, size must be >0
+    # float a6[2.5]           // Invalid, size must be an INTEGER
+    # float a8[n]             // Not allowed BEFORE C99
+
+- As of C99, C does ALLOW the last declaration, but it creates a new breed of array, something called a
+"VARIABLE-LENGTH ARRAY" (or VLA, for short). However, C11 RETREATS from this bold initiative, making VLAs
+an OPTIONAL rather than mandatory language feature. VLAs have some RESTRICTIONS; for example, we CAN'T
+initialize a VLA in its declaration.
+
+- When incrementing/decrementing a pointer, C adds/substracts one STORAGE UNIT. For arrays, that means the
+address is increased/decreased to the address of the next/previous ELEMENT, NOT just the next/prev byte.
+
+- For a pointer-to-any other data object:
+   a) The VALUE of a POINTER is the ADDRESS of the OBJECT to which it POINTS. How the address is
+   represented internally is hardware dependent. Many computer systems, including PC's and Macintoshes,
+   are "BYTE ADDRESSABLE", meaning that EACH byte in memory is numbered SEQUENTIALLY. For these, the
+   address of a large object, such as a type "double" variable, typically is the address of the first byte
+   of the object.
+   b) Applying the '*' operator to a pointer yields the value STORED in the pointed-to object.
+   c) Incrementing/decrementing a pointer increases/decreases its value by the SIZE, in BYTES, of the
+   pointed-to type.
+- As a result of C's behaviour, we have the following equalities:
+   # dates+2 == &date[2]        // Same address
+   # *(dates+2) == dates[2]    // Same value
+- These relationships sum up the close connection between arrays and pointers. The C language standard
+describes array notation in terms of pointers. That is, it defines ar[n] to mean *(ar+n).
+
+- In the context of a function prototype or function definition header, and ONLY in that context, we can
+substitute "ar[]" for "*ar". The idea is that the first form REMINDS the reader that not only does "ar"
+points to an "int", but it points to an "int" that's an ELEMENT of an ARRAY. In consequence, the following
+prototypes are EQUIVALENT:
+   # int sum(int *ar, int n);
+   # int sum(int *, int);
+   # int sum(int ar[], int n);
+   # int sum(int [], int);
+
+- C GUARANTEES that when it ALLOCATES space for an ARRAY, a POINTER to the FIRST location AFTER the END
+of the array is a VALID pointer. However, it makes NO guarantees about the value stored at the
+"one past-the-end" location, so we should NOT attempt to ACCESS that location.
+
+- The following list describes the basic operations that can be performed WITH or ON pointer variables:
+
+   a) Assignment - note the address should be COMPATIBLE with the pointer type. That is, we can't assign
+                   the address of a double to a pointer-to-int, at least NOT without making an ill-advised
+                   type cast. C99/C11 ENFORCES this rule.
+   b) Dereferencing.
+   c) Taking a pointer address - like all variables, a pointer variable has an ADDRESS and a VALUE. The
+                                 '&' operator tells us where the pointer itself is stored.
+   d) Adding an integer to a pointer - the integer is multiplied by the number of bytes in the pointed-to
+                                       type, and the result is ADDED to the ORIGINAL address. The result 
+                                       of addition is UNDEFINED if it lies OUTSIDE of the array into which
+                                       the original pointer points, except that the address one
+                                       past-the-end element of the array is GUARANTEED to be VALID.
+   e) Incrementing a pointer.
+   f) Substracting an integer from a pointer - (same as to d), except the result is being substracted)
+   g) Decrementing a pointer.
+   h) Differencing - we can find the difference between two pointers. Normally, we do this for two
+                     pointers to elements that are in the same array to find out how FAR apart the
+                     elements are. The result is in the SAME UNIT as the TYPE SIZE. Substraction is
+                     GUARANTEED to be a VALID operation as long as BOTH pointers point into the SAME array
+                     (or possibly to a position one past-the-end). Applying this operation to pointers to
+                     two DIFFERENT arrays MIGHT produce a value or COULD LEAD to a runtime ERROR.
+
+   i) Comparisons - we can use the relational operators to compare the values of two pointers, provided
+                    the pointers are of the same type.
+
+- NEVER dereference an UNINITIALIZED pointer!!! Creating a pointer ONLY allocates memory to STORE the
+pointer ITSELF; it DOESN'T allocate memory to store data. 
+
+- The C standard says that an ATTEMPT to modify CONST data using a NON-CONST identifier results in
+UNDEFINED behaviour.
+
+- An address of an address or a pointer of a pointer is an example of "DOUBLE INDIRECTION".
+
+- We can declare a pointer variable that can point to a two-dimensional array like this:
+   # int (*pz)[2];  // pz points to an array of 2 ints
+
+- Because the '[]' operator has higher precedence than the '*' operator, the declaration:
+   # int *pax[2];   // pax is an array of two pointers-to-int
+applies the brackets first, making pax an ARRAY of two somethings. Next, the '*' operator is applied,
+making pax an ARRAY of TWO pointers-to-int.
+
+- We can represent INDIVIDUAL elements by using array notation or pointer notation with either an array
+name or a pointer:
+   # zippo[m][n] == *(*(zippo+m)+n);
+   # pz[m][n] == *(*(pz+m)+n);
+
+- The rules for assigning one pointer to another are TIGHTER than the rules for numeric types.
+For example, we can assign an "int" value to a "double" variable without using an explicit type
+conversion, but we CAN'T do the same for pointers to these two types. That is:
+   # int *pi = <address-to-int>
+   # double *pd = <address-to-double>
+   # pd = p1;      // COMPILE-TIME-ERROR
+
+- These restrictions extend to more complex types. Suppose we have the following declarations:
+   # int *pt;
+   # int (*pa)[3];
+   # int ar1[2][3];
+   # int ar2[3][2];
+   # int **p2;
+- Then we have the following:
+   # pt = &ar1[0][0];   // both pointer-to-int
+   # pt = ar1[0];       // both pointer-to-int
+   # pt = ar1;          // NOT valid, pt is pointer-to-int, while ar1 is pointer-to-int[3]
+   # pa = ar1;          // both pointer-to-int[3];
+   # pa = ar2;          // NOT valid, pa is pointer-to-int[3], while ar2 is pointer-to-int[2]
+   # p2 = &pt;          // both pointer-to-int* (i.e. pointer-to-pointer-to-int)
+   # p2 = ar2;          // NOT valid, p2 is pointer-to-int*, while ar2 is pointer-to-int[2]
+
+- C and C++ use "const" similarly, but NOT identically. One difference is that C++ ALLOWS using a "const"
+integer value to declare an array size and C is more RESTRICTIVE. Another is that C++ has STRICTER RULES
+about POINTER assignments. In C++ we are NOT allowed to assign a CONST pointer to a NON-CONST pointer.
+In C, however, we CAN make this assigment, but the behaviour is UNDEFINED.
+
+- IF (AND ONLY IF) "pt" is a FORMAL PARAMETER to a function, the following declarations are EQUIVALENT:
+    # void function(int (*pt)[4]);
+    # void function(int pt[][4]);
+- The empty brackets IDENTIFY "pt" as being a POINTER (just like in the one-dimensional case).
+
+- The following declaration will NOT work properly:
+    # int function(int ar[][]);  // INVALID declaration
+- That's because the compiler CONVERTS array notation to pointer notation. This means, for example, that
+ar[1] will become ar+1. For the compiler to EVALUATE this, it NEEDS to KNOW the SIZE of the OBJECT to
+which it POINTS. The declaration:
+    # int function(int ar[][4]); // valid declaration
+- says that "ar" points to an array of FOUR ints, so ar+1 means "add 4*sizeof(int) bytes to the address".
+With the empty-bracket version, the compiler would NOT know what to do.
+
+- One oddity about functions dealing with N-dimensional arrays is that the SIZES of the N-1 rest of the
+brackets are BUILT-IN to the function. If we really want to create a SINGLE function that will WORK with
+ANY N-dimensional array, we can, but it's AWKWARD to do. Furthermore, this technique DOESN'T mesh smoothly
+with FORTRAN subroutines, which DO allow one to SPECIFY the DIMENSIONS in a function call. C is being
+positioned to TAKE OVER from FORTRAN, so the ability to convert FORTRAN libraries with a minimum of fuss
+is USEFUL.
+
+- This need was the PRIMARY impulse for C99 introducing variable-length arrays(VLAs), which ALLOW us to
+use VARIABLES when dimensioning an array. For example:
+    # int quarters = 4;
+    # int regions  = 5;
+    # double sales[regions][quarters]; // a VLA
+
+- However, VLAs have some RESTRICTIONS:
+   a) They NEED to have the AUTOMATIC STORAGE class (i.e they're LOCAL to a function and DON'T use the
+   "static" or "extern" storage class modifiers).
+   b) They CAN'T be initialized in a declaration.
+
+- The term "variable" in "variable-length array" means that we can use a VARIABLE when SPECIFYING the
+array DIMENSIONS when FIRST CREATING the array. Once created, a VLA keeps the SAME size (i.e. we CAN'T
+modify the length of the array AFTER we create it).
+
+- To DECLARE a function with a TWO-dimensional VLA argument, we use:
+    # <type1> function(int rows, int cols, <type2> ar[rows][cols]);   // ar is a VLA
+- Because the "ar" declaration USES the "rows" and "cols" variables, they have to be declared BEFORE "ar"
+in the parameter list. That is, the following prototype is an ERROR:
+    # <type1> function(<type2> ar[rows][cols], int rows, int cols);   // INVALID order
+
+- The C99/C11 standard ALLOWS us to OMIT names from the prototype, but in that case, we NEED to REPLACE
+the OMITTED dimensions with ASTERISKS:
+    # <type1> function(int, int, int ar[*][*]);    // ar is a VLA, names omitted
+
+- A VLA declaration in a function DEFINITION parameter list DOESN'T actually create an array. Just as with
+the pre-C99 syntax, the VLA name REALLY is a POINTER.
+
+- VLAs also ALLOW for DYNAMIC memory allocation. This means we can SPECIFY the SIZE of the ARRAY while
+the program is RUNNING. Regular C arrays have STATIC memory allocation, meaning the SIZE of the ARRAY is
+DETERMINED at COMPILE time (because the array sizes, being constants, are KNOWN to the compiler).
+
+- CAUTION NOTE: While VLAs can be dangerous and have to be used carefully (they can easily corrupt the
+stack and, compared to the malloc()/free() pair, have NO mechanism for reporting errors for failed
+allocations), pointer-to-VLA types are EXTREMELY USEFUL (just like in the above formal parameter example).
+They extend even further, making it possible to have dynamically-allocated multi-dimensional arrays
+WITHOUT doing the dimension arithmetic MANUALLY. For example:
+    # size_t m, n;
+    # double (*ar)[n] = (double (*)[n]) malloc(m*sizeof(*ar));
+creates a m-by-n two-dimensional array addressable as ar[i][j].
+
+- Before C99, there was NO equivalent to an array constant, although we could pass an array. C99 changed
+that with the addition of "COMPOUND LITERALS" (literals are constants that AREN'T symbolic). The committee
+concluded that it would be convenient to have compound literals that could represent the contents of
+ARRAYS and of STRUCTURES.
+
+- Here's an example of a compound literal that creates a nameless array containing two "int" values:
+    # (int [2]){10, 20}      // an array literal
+
+- We can OMIT the size of a compound literal, just as we would initialize a named array, and the COMPILER
+will count how many elements are present:
+    # (int []){50, 20, 90}   // an array literal with 3 elements 
+
+- We can KEEP TRACK of their location by using a pointer. For example:
+    # int *pt1 = (int [2]){10, 20};
+
+- We can pass a compound literal as an ACTUAL ARGUMENT to a FUNCTION with a MATCHING formal
+PARAMETER. For example:
+    # int sum(const int ar[], int n);
+    # int total = sum((int []){4,4,4,5,5,5}, 6);
+
+- We can EXTEND the technique to two-dimensional arrays, and beyond. For example, here's how to create a
+two-dimensional array of "ints" and store the address:
+    # int (*pt2)[4] = (int [2][4]) { {1,2,3,-9}, {4,5,6,-8} };
+
+########################################################################################################
+
+Review answers:
+
+1. It will print:
+   8 8
+   4 4
+   0 0
+   2 2
+
+2. It has 4 elements.
+
+3. "ref" is the address of its first element (i.e. &ref[0]). "ref+1" is the address of its second element
+(i.e. &ref[1]). Incrementing ref is NOT a valid operation ("ref", the name of the array, is an rvalue,
+can't modify it).
+
+4. 
+   a. *ptr = 12
+      *(ptr+2) = 16
+   b. *ptr = 12
+      *(ptr+2) = 14
+
+5. 
+   a. **ptr = 12
+      **(ptr+1) = 16
+   b. **ptr = 12
+      **(ptr+1) = 14
+
+6. Suppose we have the following declaration: int grid[30][100];
+   a. &grid[22][56];
+   b. &grid[22][0] <=> grid[22];
+   c. &grid[0][0] <=> grid[0] <=> grid
+
+7. 
+   a. int digits[10];
+   b. float rates[6];
+   c. int mat[3][5];
+   d. char *psa[20];
+   e. char (*pstr)[20];
+
+8. 
+   a. int arr[6] = {1,2,4,8,16,32};
+   b. arr[2];
+   c. int diar[100] = {[99]=-1};
+   d. int diarr2[100] = {[5]=101, [10]=101,101,101,101};
+
+9. The index range is [0-9] <=> [0-10);
+
+10. Suppose we have these declarations:
+      float rootbeer[10], things[10][5], *pf, value=2.2;
+      int i=3;
+    Identify each of the following statements as valid or invalid:
+   a. rootbeer[2] = value;       // VALID
+   b. scanf("%f", &rootbeer);    // INVALID
+   c. rootbeer = value;          // INVALID
+   d. printf("%f", rootbeer);    // INVALID
+   e. things[4][4] = rootber[3]; // VALID
+   f. pf = value;                // INVALID
+   g. pf = rootbeer;             // VALID
+
+11. int rez[800][600];
+
+12. Suppose we have the following three array declarations:
+      double trots[20]; 
+      short  clops[10][30];
+      long   shots[5][10][15];
+
+   a. 1) void function(double trots[], int n) <=> void function(double *trots, int n);
+      2) void function(int n, double trots[n]);
+   Calls:
+      1) function(trots, sizeof(trots)/sizeof(trots[0]));
+      2) function(sizeof(trots)/sizeof(trots[0]), trots);
+
+   b. 1) void function(short clops[][30], int rows) <=> void function(short (*clops)[30], int rows);
+      2) void function(int rows, int cols, short clops[rows][cols]);
+   Calls:
+      1) function(clops, sizeof(clops)/sizeof(clops[0]));
+      2) function(sizeof(clops)/sizeof(clops[0]), sizeof(clops[0])/sizeof(clops[0][0]), clops);
+  
+   c.
+  1) void function(long shots[][10][15], int stacks) <=> void function(long (*shots)[10][15], int stacks);
+  2) void function(int stacks, int rows, int cols, long shots[stacks][rows][cols]);
+   Calls:
+      1) function(shots, sizeof(shots)/sizeof(shots[0]));
+      2) function(sizeof(shots)/sizeof(shots[0]),
+                  sizeof(shots[0])/sizeof(shots[0][0]),
+                  sizeof(shots[0][0])/sizeof(shots[0][0][0]),
+                  shots);
+
+13. Here are two function prototypes:
+      void show(const double ar[], int n);       // n is number of elems
+      void show2(const double ar2[][3], int n);  // n is number of rows
+
+   a. show(( double []) {8,3,9,2}, 4);
+   b. show2((double [][3]) { {8,3,9}, {5,4,1} }, 2);    

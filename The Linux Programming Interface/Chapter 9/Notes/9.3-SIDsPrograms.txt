@@ -1,0 +1,60 @@
+############################################################################################################
+- A set-user-ID program ALLOWS a PROCESS to GAIN PRIVILEGES it would NOT NORMALLY have, by SETTING the
+process's EFFECTIVE UID to the SAME VALUE as the UID (OWNER) of the EXECUTABLE FILE. A set-group-ID program
+performs the ANALOGOUS TASK for the process's EFFECTIVE GID (the TERMS "set-user-ID program" and
+"set-group-ID program" are SOMETIMES ABBREVIATED as "set-UID program" and "set-GID program").
+
+- Like any other file, an EXECUTABLE PROGRAM FILE has an ASSOCIATED UID and GID that DEFINE the OWNERSHIP of
+the file. In addition, an EXECUTABLE FILE has TWO SPECIAL PERMISSION BITS:
+       1) The set-UID bit;
+       2) The set-GID bit;
+(In fact, EVERY FILE has these TWO PERMISSION BITS, but it is their use with EXECUTABLE FILES that interests
+us here).
+
+- These PERMISSION BITS are SET using the "chmod" command. An UNPRIVILEGED USER can SET these BITS for FILES
+that they OWN. A PRIVILEGED USER (CAP_FOWNER) can SET these BITS for ANY FILE. 
+
+- It is POSSIBLE for a PROGRAM to have BOTH of these bits SET, although this is UNCOMMON. When "ls -l" is used
+to LIST the PERMISSIONS for a program that has the set-UID and set-GID permission bit SET, then the 'x' that
+is NORMALLY USED to INDICATE that EXECUTE PERMISSION is SET is REPLACED by an 's':
+        # ls -l prog
+        # -rwsr-sr-x     1   root       root       302585    Jun 26 15:05 prog
+
+- When a set-UID program is RUN (i.e., LOADED into a PROCESS'S MEMORY by an "exec()"), the KERNEL SETS the
+EFFECTIVE UID of the process to be the SAME as the UID of the EXECUTABLE FILE. Running a set-GID program has
+an ANALOGOUS EFFECT for the EFFECTIVE GID of the process. Changing the EFFECTIVE UID or GID in this way gives
+a process (in other words, the USER EXECUTING the PROGRAM) PRIVILEGES it would NOT NORMALLY have. For example,
+IF an EXECUTABLE FILE is OWNED by "root" (superuser) and has the set-UID permission bit ENABLED, then the
+process gains SUPERUSER PRIVILEGES when that program is run.
+
+- Set-UID and set-GID programs can ALSO be DESIGNED to CHANGE the EFFECTIVE IDs of a process to SOMETHING
+OTHER than "root". For example, to PROVIDE ACCES to a PROTECTED FILE (or OTHER SYSTEM RESOURCE), it MAY
+SUFFICE to CREATE a SPECIAL PURPOSE UID/GID that has the privileges REQUIRED to ACCESS the FILE, and CREATE a
+set-UID/set-GID program that CHANGES the EFFECTIVE UID/GID of a process to THAT ID. This PERMITS the program
+to ACCESS the file WITHOUT ALLOWING it ALL of the PRIVILEGES of the SUPERUSER.
+
+- Sometimes, we'll use the term set-UID-root to DISTINGUISH a set-UID program that is OWNED by "root" FROM one
+OWNED by ANOTHER USER, which MERELY GIVES a process the PRIVILEGES accorded to THAT USER.
+
+                 Note:  We have now started using the term "privileged" in TWO DIFFERENT SENSES. One is the
+                      sense DEFINED EARLIER: a process with an EFFECTIVE UID of 0, which has ALL of the
+                      PRIVILEGES accorded to "root". However, when we are talking about a set-UID program
+                      owned by a user OTHER THAN "root", we'll sometimes refer to a process as GAINING the
+                      PRIVILEGES accorded to the UID of the set-UID program. Which sense of the term
+                      "privileged" we mean in EACH CASE should be CLEAR from the CONTEXT.
+                        For reasons that we explain in Section 38.3, the set-UID and set-GID permission bits
+                      DON'T have ANY EFFECT for SHELL SCRIPTS on Linux.
+
+- Examples of COMMONLY USED set-UID programs on Linux include:
+     a) "passwd(1)"               - changes a user's password;
+     b) "mount(8) and "umount(8)" - mount and unmount file systems;
+     c) "su(1)"                   - allows a user to run a shell under a different user ID.
+
+- An EXAMPLE of a set-GID program is "wall(1)", which writes a message to ALL TERMINALS OWNED by the "tty"
+group (normally, EVERY TERMINAL is OWNED by THIS GROUP).
+
+- The set-UID/set-GID technique is a USEFUL and POWERFUL TOOL, but one that can result in SECURITY BREACHES
+in APPLICATIONS that are POORLY DESIGNED. In Chapter 38, we LIST a SET of GOOD PRACTICES that should be
+observed when writing set-UID and set-GID programs.
+
+############################################################################################################

@@ -1,0 +1,38 @@
+##########################################################################################################
+- SIGNALS are often described as "SOFTWARE INTERRUPTS". The arrival of a signal INFORMS a process that SOME
+EVENT or EXCEPTIONAL CONDITION has occured. There are VARIOUS TYPES of signals, each of which IDENTIFIES
+a DIFFERENT EVENT or CONDITION. Each SIGNAL TYPE is identified by a DIFFERENT INTEGER, defined with
+SYMBOLIC NAMES of the form SIGxxxx.
+
+- Signals are SENT to a process by:
+   a) The kernel;
+   b) Another process (with suitable permissions);
+   c) The process itself.
+
+- For example, the KERNEL may send a signal to a process when one of the following occurs:
+   a) the user typed the INTERRUPT CHARACTER (usually Control-C) on the keyboard;
+   b) one of the process's children has terminated;
+   c) a timer (alarm clock) set by the process has expired;
+   d) the process attempted to access an INVALID MEMORY ADDRESS.
+
+- Within the shell, the KILL command can be used to send a signal to a process. The "kill()" system call
+provides the SAME FACILITY within programs.
+
+- When a process RECEIVES a signal, it takes one of the following actions, DEPENDING on the signal:
+   a) it IGNORES the signal;
+   b) it is KILLED by the signal;
+   c) it is SUSPENDED until later being resumed by receipt of a SPECIAL-PURPOSE SIGNAL.
+
+- For most signal types, INSTEAD of accepting the DEFAULT SIGNAL ACTION, a program CAN CHOOSE to IGNORE the
+signal (useful if the default action for the signal is something other than being ignored), or to establish
+a SIGNAL HANDLER. A signal handler is a PROGRAMMER-DEFINED FUNCTION that is AUTOMATICALLY INVOKED when the
+signal is DELIVERED to the process. This function performs some action appropriate to the condition that
+generated the signal.
+
+- In the interval BETWEEN the time it is GENERATED and the time it is DELIVERED, a signal is said to be
+PENDING for a process. Normally, a PENDING SIGNAL is delivered as soon as the receiving process is NEXT
+SCHEDULED to run, or IMMEDIATELY if the process is ALREADY RUNNING. However, it is also possible to BLOCK
+a signal by ADDING IT to the process's SIGNAL MASK. If a signal is generated while it is blocked, it
+remains PENDING until it is LATER UNBLOCKED (i.e., REMOVE from the signal mask).
+
+##########################################################################################################

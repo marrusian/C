@@ -1,0 +1,33 @@
+##########################################################################################################
+- A "CLIENT-SERVER APPLICATION" is one that is broken into two component processes:
+   1) a CLIENT, which ASKS the server to CARRY OUT some SERVICE by sending it a REQUEST MESSAGE;
+   2) a SERVER, which EXAMINES the client's REQUEST, PERFORMS appropriate actions, and then sends a RESPONSE
+     MESSAGE back to the client.
+
+- Sometimes, the client and server may engage in an extended dialogue of requests and responses.
+
+- Typically, the client application interacts with a USER, while the server application PROVIDES ACCESS to some
+SHARED RESOURCE. Commonly, there are MULTIPLE INSTANCES of CLIENT PROCESSES communicating with one or a few
+instances of the server process.
+
+- The client and server may reside on the SAME HOST COMPUTER or on SEPARATE HOSTS connected via a NETWORK. To
+communicate with one another, the client and server use the IPC mechanisms.
+- Servers may implement a VARIETY OF SERVICES, such as:
+   a) providing access to a database or other shared information resource;
+   b) providing access to a remote file across a network;
+   c) encapsulating some business logic;
+   d) providing access to a shared hardware resource (e.g., a printer);
+   e) serving web pages.
+
+- Encapsulating a service within a single server is useful for a number of reasons, such as the following:
+   - EFFICIENCY: it may be CHEAPER to provide one instance of a resource (e.g., a printer) that is managed by
+                 a server than to provide the same resource locally on every computer.
+   - CONTROL, COORDINATION, and SECURITY: by holding a resource (especially an information resource) at a
+                                          SINGLE LOCATION, the server can coordinate access to the resource
+                                          (e.g., so that two clients don't simultaneously update the same piece
+                                          of information) or secure it so that it is made available to only
+                                          selected clients.
+   - Operation in a HETEROGENOUS ENVIRONMENT: in a NETWORK, the various clients, and the server, can be running
+                                              on different hardware and operating system platforms.
+
+##########################################################################################################

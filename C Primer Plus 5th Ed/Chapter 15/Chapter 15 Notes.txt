@@ -1,0 +1,164 @@
+- Both C AND C++ use the term "BYTE" to denote the SIZE used to hold a system's CHARACTER SET, so a
+C/C++ byte could be 8 bits, 9 bits, 16 bits, or some other value. However, the 8-bit byte is the byte
+used to describe memory chips and the byte used to describe data transfer rates.
+
+Clause 3.6 (C Standard): "BYTE - addressable unit of data storage large enough to hold any member of the
+basic character set of the execution environment".
+
+- C has TWO facilities that help us manipulate bits:
+    1) A set of 6 bitwise operators that act on bits.
+    2) The FIELD data form, which gives us access to bits within an 'int'.
+
+- C offers bitwise logical operators and shift operators. The four bitwise operators work on INTEGER-TYPE
+data (including 'char'). They are called "BITWISE" because they operate on each bit INDEPENDENTLY of the
+bit to the left or right.
+
+- The places vacated at the left end using the right-shift operator are:
+    a) Replaced by 0s, for UNSIGNED types. 
+    b) Machine dependent, for SIGNED types (i.e. they could be filled with 0s, or they may be filled 
+    with COPIES of the SIGN (leftmost) bit).
+
+- The shift operators can also be used to extract GROUPS OF BITS from LARGER units. Suppose, for example,
+we use an 'unsigned long' value to represent color values, with the low-order byte holding the red
+intensity, the next byte holding the green intensity, and the third byte holding the blue intensity.
+Supposed we want then to STORE the intensity of EACH COLOR in its OWN 'unsigned char' variable, we could
+do something like this:
+    # #define BYTE_MASK 0XFF
+    # unsigned long color = 0x002A162F;
+    # unsigned char blue, green, red;
+    # red = color&BYTE_MASK;
+    # green = (color>>8)&BYTE_MASK;
+    # blue = (color>>16)&BYTE_MASK;
+
+- A "BIT FIELD" is a set of neighboring BITS within a 'signed int' or 'unsigned int' (C99 and C11
+additionally allow type _Bool bit fields). A bit field is set up with a STRUCTURE DECLARATION that LABELS
+each field and DETERMINES its WIDTH (in BITS).
+
+- The BITS of a given field CANNOT EXCEED the number of BITS in the UNDERLYING TYPE. For instance, the 
+following is an error:
+    # struct {unsigned int f1 : 40;} stuff;
+
+- If the value ASSIGNED to a field EXCEEDS the number of BITS reserved, the value is TRUNCATED according
+to the usual truncation rules.
+
+- If the total number of bits declared EXCEEDS the size of the ALLOCATION UNIT, then the NEXT allocation
+unit is used. A single field is NOT ALLOWED to OVERLAP the BOUNDARY between TWO allocation units. The
+compiler AUTOMATICALLY shifts an OVERLAPPING FIELD DEFINITION so that the FIELD is ALIGNED with the
+allocation unit boundary. When this occurs, it LEAVES an UNNAMED HOLE in the first allocation unit.
+
+- We can "PAD" a field structure with UNNAMED HOLES by using UNNAMED FIELD WIDTHS. The special UNNAMED BIT
+FIELD of WIDTH 0 can be FORCED to BREAK UP PADDING. It specifies that the next BIT FIELD BEGINS at the
+BEGINNING of its ALLOCATION UNIT. For example:
+    # struct {
+    #   unsigned int field1 : 1;
+    #   unsigned int        : 2;
+    #   unsigned int field2 : 1;  // 2-bit gap between field1 and field2
+    #   unsigned int        : 0;
+    #   unsigned int field3 : 1;  // field3 is stored in the next int
+    # } stuff;
+
+- One important MACHINE DEPENDENCY is the ORDER in which FIELDS are PLACED into an 'int'. On some machines,
+the order is LEFT-to-RIGHT; on others, it is RIGHT-TO-LEFT. Also, machines differ in the LOCATION of
+BOUNDARIES between fields. For these reasons, bit fields tend NOT to be VERY PORTABLE. Typically, however,
+they are used for NONPORTABLE PURPOSES, such as putting data in the exact form used by a PARTICULAR
+HARDWARE DEVICE.
+
+- Bit fields and bitwise operators are two alternative approaches to the same type of programming problem.
+That is, often we could use EITHER approach. Typically, using bitwise operations is a bit more awkward
+sometimes. However, here's a word of CAUTION: the correspondence between BIT-FIELDS and BIT POSITIONS
+is IMPLEMENTATION DEPENDENT.
+
+- C11 introduced alignment features. They are more in the nature of BYTE fiddling than BIT fiddling, but
+they also represent C's capability to relate to HARDWARE matters.
+
+- Alignment, in this context, refers to HOW objects are POSITIONED in memory. For most programmers most of
+the time, alignment ISN'T a concern. But some situations MAY BENEFIT from ALIGNMENT CONTROL. For example,
+transferring data from one hardware location to another or invoking instructions that operate upon
+multiple data items simultaneously.
+
+- The '_Alingof' operator yields the ALIGNMENT REQUIREMENT of a TYPE. It's used by following the keyword
+'_Alignof' with the PARENTHESIZED TYPE:
+    # size_t f_align = _Alignof(float);
+
+- A value of, say, 4 for "f_align" means 'float' objects have an ALIGNMENT REQUIREMENT of 4. That means
+that 4 is the number of bytes between CONSECUTIVE ADDRESSES for storing values of that type. In general,
+ALIGNMENT VALUES should be a non-negative integer power of two. 
+
+- BIGGER ALIGNMENT values are termied "STRICTER" or "STRONGER" than smaller ones, while SMALLER ALIGNMENT
+values are termed "WEAKER".
+
+- We can use the '_Alignas' specifier to REQUEST a SPECIFIC ALIGNMENT for a VARIBLE or TYPE. But we
+SHOULD NOT request an alignment WEAKER than the FUNDAMENDAL ALIGNMENT for the TYPE. For instance, if the
+alignment requirement for 'float' is 4, DON'T ASK for an aligment value of 1 or 2. This specifier is
+used as PART OF A DECLARATION, and it's followed by PARENTHESES containing EITHER an ALIGNMENT VALUE or a
+TYPE:
+    # _Alignas(double) char c1;
+    # _Alignas(8) char c2;
+    # unsigned char _Alignas(long double) c_arr[sizeof(long double)];
+
+- Including the "stdalign.h" header file ALLOW us to use the "alignas" and "alignof" for '_Alignas' and
+'_Alignof'. This MATCHES the C++ keywords.
+
+- C11 also brings ALIGNMENT CAPABILITY for ALLOCATED MEMORY by adding a NEW MEMORY ALLOCATION function to
+the "stdlib.h" library. It has this prototype:
+    #void *aligned_alloc(size_t alignment, size_t size);
+
+- The first parameter specifies the ALIGNMENT REQUIRED, and the second parameter requests the NUMBER OF
+BYTES REQUIRED; it should be a MULTIPLE of the FIRST PARAMETER. As with the other memory allocation
+functions, use "free()" to release the memory.
+########################################################################################################
+
+Review Answers:
+
+1.
+ a. 3 - 0011
+ b. 13 - 1101
+ c. 59 - 111011
+ d. 119 - 1110111
+
+2.
+ a. 0001 0101 - D: 21, O: 025, H: 15
+ b. 0101 0101 - D: 85, O: 125, H: 55
+ c. 0100 1100 - D: 76, O: 114, H: 4C
+ d. 1001 1101 - D: 157,O: 235, H: 9D
+
+3. 0000 0011 => 1111 1100
+ a. ~3 = 252 or -124
+ b. 3&6 = 2
+ c. 3|6 = 7
+ d. 1|6 = 7
+ e. 3^6 = 5
+ f. 7>>1 = 3
+ g. 7<<2 = 28
+
+4. 
+ a. ~0 = 255
+ b. !0 = 1
+ c. 2&4 = 0
+ d. 2&&4 = 1
+ e. 2|4 = 6
+ f. 2||4 = 1
+ g. 5<<3 = 40
+
+5. ??
+
+6. The '<<' bitwise operator IS equivalent to multiplying by a power of 2. However, the BITWISE OR '|'
+operator is NOT equal to adding a multiple of 2. This is quite a particular example, and it only works
+because of the arithmetic properties of additivity.
+
+7. 
+ a. struct tb_drives{
+       _Bool flp_drives  : 2;
+       _Bool             : 1;
+       _Bool cdrom_drives: 2;
+       _Bool             : 1;
+       _Bool hdds        : 2;
+    };
+
+ b. struct kb_drives{
+       _Bool hdds        : 2;
+       _Bool             : 1;
+       _Bool cdrom_drives: 2;
+       _Bool             : 1;
+       _Bool flp_drives  : 2;
+    };

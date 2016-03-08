@@ -1,0 +1,18 @@
+##########################################################################################################
+- A PSEUDOTERMINAL is a PAIR of CONNECTED VIRTUAL DEVICES, known as the MASTER and SLAVE. This device pair
+provides an IPC channel allowing data to be TRANSFERRED in BOTH DIRECTIONS between the two devices.
+
+- The key point about a pseudoterminal is that the SLAVE DEVICE provides an INTERFACE that BEHAVES like a
+terminal, which makes it possible to connect a TERMINAL-ORIENTED PROGRAM to the slave device and then use
+ANOTHER PROGRAM connected to the MASTER DEVICE to DRIVE the terminal-oriented program. Output written by the
+driver program undergoes the usual input processing performed by the terminal driver (for example, in the
+DEFAULT MODE, a carriage return is MAPPED to a newline) and is then passed as input to the terminal-oriented
+program connected to the slave. Anything that the terminal-oriented program WRITES to the slave is PASSED
+(after performing ALL of the usual terminal output processing) as INPUT to the DRIVER PROGRAM. In other words,
+the DRIVER PROGRAM is PERFORMING the function normally performed by the USER at a CONVENTIONAL TERMINAL.
+
+- Pseudoterminals are used in a VARIETY OF APPLICATIONS, most notably in the IMPLEMENTATION of TERMINAL WINDOWS
+provided under an X Window System login and in applications providing network login services, such as TELNET
+and SSH.
+
+##########################################################################################################

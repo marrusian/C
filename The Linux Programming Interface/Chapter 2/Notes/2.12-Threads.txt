@@ -1,0 +1,17 @@
+##########################################################################################################
+- In modern UNIX implementations, each process can have MULTIPLE THREADS of execution. One way of
+ENVISAGING threads is as a SET OF PROCESSES that SHARE the SAME VIRTUAL MEMORY, as well as a RANGE of OTHER
+ATTRIBUTES. Each thread is executing the SAME PROGRAM CODE and SHARES the SAME DATA AREA AND HEAP. However,
+each thread has ITS OWN STACK containing local variables and function call linkage information.
+
+- Threads can COMMUNICATE with each other via the GLOBAL VARIABLES that they SHARE. The threading API provides
+CONDITION VARIABLES and MUTEXES, which are PRIMITIVES that ENABLE the threads of a process to COMMUNICATE and
+SYNCHRONIZE their actions, in particular, their use of shared variables. Threads can ALSO communicate with one
+another using the IPC and SYNCHRONIZATION MECHANISMS described earlier.
+
+- The PRIMARY ADVANTAGES of using threads are that they make it EASY to SHARE DATA (via global variables)
+between COOPERATING THREADS and that some ALGORITHMS TRANSPOSE MORE NATURALLY to a MULTITHREADED IMPLEMENTATION
+than to a MULTIPROCESS IMPLEMENTATION. Furthermore, a multithreaded application can transparently take
+advantage of the possibilities for PARALLEL PROCESSING on multiprocessor hardware.
+
+##########################################################################################################

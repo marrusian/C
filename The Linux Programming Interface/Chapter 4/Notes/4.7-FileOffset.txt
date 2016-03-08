@@ -1,0 +1,75 @@
+##########################################################################################################
+- For EACH open file, the kernel records a FILE OFFSET, sometimes also called the READ-WRITE OFFSET or
+POINTER. This is the LOCATION in the FILE at which the NEXT "read()" or "write()" will COMMENCE. The file
+offset is EXPRESSED as an ORDINAL BYTE POSITION relative to the START of the file. The FIRST BYTE of the FILE
+is at OFFSET 0.
+
+- The FILE OFFSET is SET to POINT to the START of the file when the file is OPENED and is AUTOMATICALLY
+ADJUSTED by EACH subsequent CALL to "read()" or "write()" so that it POINTS to the NEXT BYTE of the file
+AFTER THE BYTE(S) just READ or WRITTEN. Thus, successive "read()" and "write()" calls PROGRESS SEQUENTIALLY
+through a file.
+
+- The "lseek()" system call ADJUSTS the FILE OFFSET of the open file REFERRED to by the FILE DESCRIPTOR "fd",
+ACCORDING to the VALUES specified in "offset" and "whence".
+
+- Prototype and dependencies:
+     #include <unistd.h>
+
+     off_t lseek(int fd, off_t offset, int whence);
+                        Returns new file offset if successful, or -1 on error
+
+- The "offset" argument SPECIFIES a VALUE in BYTES (the 'off_t data type is a SIGNED INTEGER TYPE specified
+by SUSv3). The "whence" argument INDICATES the BASE POINT from which "offset" is to be INTERPRETED, and is one
+of the following values:
+   a) SEEK_SET - The file offset is set "offset" bytes from the BEGINNING of the file.
+   b) SEEK_CUR - The file offset is adjusted by "offset" bytes RELATIVE to the CURRENT FILE OFFSET.
+   c) SEEK_END - The file offset is set to the SIZE of the file PLUS "offset". In other words, "offset" is
+                 interpreted with RESPECT to the NEXT BYTE after the LAST BYTE of the file.
+
+      Note: In earlier UNIX implementations, the integers 0, 1 and 2 were used, rather than the SEEK_*
+           constants shown above. Older versions of BSD used different names for these values: L_SET, L_INCR,
+           and L_XTND.
+
+- If "whence" is 'SEEK_CUR' or 'SEEK_END', "offset" may be NEGATIVE or POSITIVE; for 'SEEK_SET', "offset"
+MUST be NONNEGATIVE.
+
+- Calling "lseek()" SIMPLY ADJUSTS the kernel's RECORD of the FILE OFFSET associated with a FILE DESCRIPTOR.
+It DOES NOT cause any physical device access.
+
+- We CAN'T APPLY "lseek()" to ALL TYPES of FILES. Applying "lseek()" to a pipe, FIFO, socket, or terminal is
+NOT PERMITTED; "lseek()" fails, with "errno" set to 'ESPIPE'. On the other hand, it is POSSIBLE to APPLY
+"lseek()" to DEVICES where it is SENSIBLE to do so. For example, it is POSSIBLE to SEEK to a SPECIFIED
+LOCATION on a DISK or TAPE DEVICE.
+
+      Note: The 'l' in the name "lseek()" derives from the fact that the "offset" argument and the return
+           value were BOTH ORIGINALLY typed as 'long'. Early UNIX implementations provided a "seek()" system
+           call, which types these values as 'int'.
+
+- If a program SEEKS PAST the EOF, a CALL to "read()" will RETURN 0, indicating EOF. Somewhat surprisingly,
+is is POSSIBLE to WRITE BYTES at an ARBITRARY point PAST the EOF.
+
+- The SPACE in BETWEEN the PREVIOUS EOF and the NEWLY WRITTEN BYTES is REFERRED to as a "FILE HOLE". From a
+programming POV, the BYTES in a HOLE do EXIST, and READING from the HOLE returns a buffer of bytes CONTAINING
+0 (NULL BYTES).
+
+- File holes DON'T, however, TAKE UP any DISK SPACE. The file system DOESN'T ALLOCATE any DISK BLOCKS for a
+HOLE until, at some LATER point, DATA is WRITTEN into it. The MAIN ADVANTAGE of file holes is that a SPARSELY
+POPULATED file CONSUMESS LESS disk space than would otherwise be required if the null bytes ACTUALLY NEEDED
+to be ALLOCATED in DISK BLOCKS. Core dump files are COMMON examples of files that contain large holes.
+
+      Note: The statement that files DON'T CONSUME disk space NEEDS to be QUALIFIED slightly. On MOST file
+           systems, FILE SPACE is ALLOCATED in UNITS OF BLOCKS. The SIZE of a block DEPENDS on the file
+           system, but is TYPICALLY something like 1024, 2048, or 4096 bytes. If the EDGE of a HOLE falls
+           WITHIN a block, RATHER than on a BLOCK BOUNDARY, then a COMPLETE BLOCK is ALLOCATED to STORE the
+           DATA in the OTHER PART of the block, and the part CORRESPONDING to the HOLE is FILLED with NULL
+           BYTES.
+
+- Most native UNIX file system SUPPORT the concept of file holes. On a file system that DOESN'T SUPPORT holes,
+EXPLICIT null bytes are WRITTEN to the file.
+
+- The EXISTENCE of HOLES means that a file's NOMINAL SIZE may be LARGER than the amount of DISK STORAGE it
+UTILIZES (in some cases, CONSIDERABLY LARGER). Writing bytes into the MIDDLE of the FILE HOLE will DECREASE
+the amount of FREE DISK SPACE as the kernel ALLOCATES BLOCKS to FILL the HOLE, even though the file's size
+DOESN'T CHANGE. Such a scenario in UNCOMMON, but nevertheless one to be AWARE OF.
+
+##########################################################################################################

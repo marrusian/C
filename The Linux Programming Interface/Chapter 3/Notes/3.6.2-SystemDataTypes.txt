@@ -1,0 +1,122 @@
+##########################################################################################################
+- Various implementation data types are represented using standard C types, for example, process IDs,
+user IDs, and file offsets. Although it WOULD be possible to use the C fundamental types such as 'int' and
+'long' to declare variables using such information, this REDUCES PORTABILITY across UNIX systems, for the
+following reasons:
+   a) The SIZES of these fundamental types VARY across UNIX implementations (e.g., a 'long' may be 4 bytes on
+     one system and 8 bytes on another), or sometimes even in DIFFERENT COMPILATION ENVIRONMENTS on the SAME
+     IMPLEMENTATION. Furthermore, DIFFERENT implementations may use DIFFERENT types to REPRESENT the SAME
+     INFORMATION. For example, a process ID might be an 'int' on one system, but a 'long' on another.
+
+   b) Even on a single UNIX implementation, the TYPES used to REPRESENT information may DIFFER between
+     releases of the implementation. Notable examples on Linux are user and group IDs. On Linux 2.2 and
+     earlier, these values were represented in 16 bits. On Linux 2.4 and later, they are 32-bit values.
+
+- To AVOID such PORTABILITY PROBLEMS, SUSv3 specifies various STANDARD SYSTEM DATA TYPES, and REQUIRES an
+implementation to DEFINE and USE these types APPROPRIATELY.
+- Each of these types is defined using the C 'typedef' feature. Most of the standard system data types have
+names ending in "_t". Many of them are DECLARED in the header file <sys/types.h>, although a few are defined
+in other header files.
+- An application should EMPLOY these type definitions to PORTABLY DECLARE the variables it uses. For example,
+the following declaration WOULD ALLOW an application to CORRECTLY REPRESENT process IDs on ANY
+SUSv3-conformant system:
+   pid_t mypid;
+
+- Selected system data types:
+    Data Type                  SUSv3 type requirement                Description
+    blkcnt_t                   signed integer                        File block count
+    blksize_t                  signed integer                        File block size
+    cc_t                       unsigned integer                      Terminal special character
+    clock_t                    integer or real-floating              System time in clock ticks
+    clockid_t                  an arithmetic type                    Clock identifier for POSIX.1b clock
+                                                                     and timer functions
+    comp_t                     not in SUSv3                          Compressed clock ticks
+    dev_t                      an arithmetic type                    Device number, consisting of major 
+                                                                     and minor numbers
+    DIR                        no type requirement                   Directory stream
+    fd_set                     structure type                        File descriptor set for select()
+    fsblkcnt_t                 unsigned integer                      File-system block count
+    fsfilcnt_t                 unsigned integer                      File count
+    gid_t                      integer                               Numeric group identifier
+    id_t                       integer                               A GENERIC type for holding identifiers;
+                                                                     large enough to hold AT LEAST pid_t,
+                                                                     uid_t, and gid_t
+    in_addr_t                  32-bit unsigned integer               IPv4 address
+    in_port_t                  16-bit unsigned integer               IP port number
+    ino_t                      unsigned integer                      File i-node number
+    key_t                      an arithmetic type                    System V IPC key
+    mode_t                     integer                               File permissions and type
+    mqd_t                      no type requirement, but              POSIX message queue descriptor
+                               shall not be an array type
+    msglen_t                   unsigned integer                      Number of bytes allowed in System V
+                                                                     message queue
+    msgqnum_t                  unsigned integer                      Counts of messages in System V
+                                                                     message queue
+    nfds_t                     unsigned integer                      Number of file descriptors for poll()
+    nlink_t                    integer                               Count of (hard) links to a file
+    off_t                      signed integer                        File offset or size
+    pid_t                      signed integer                        PID, PGID, or SID
+    ptrdiff_t                  signed integer                        Difference between two pointer values,
+                                                                     as a signed integer
+    rlim_t                     unsigned integer                      Resource limit
+    sa_family_t                unsigned integer                      Socket address family
+    shmatt_t                   unsigned integer                      Count of attached processes for a
+                                                                     System V shared memory segment
+    sig_atomic_t               integer                               Data type that can be atomically
+                                                                     accessed
+    siginfo_t                  structure type                        Information about the ORIGIN of a signal
+    sigset_t                   integer or structure type             Signal set
+    size_t                     unsigned integer                      Size of an object in bytes
+    socklen_t                  integer type >= 32 bits               Size of a socket address structure
+                                                                     in bytes
+    speed_t                    unsigned integer                      Terminal line speed
+    ssize_t                    signed integer                        Byte count or (negative) error indication
+    stack_t                    structure type                        Description of an alternate signal stack
+    suseconds_t                signed integer allowing               Microsecond time interval
+                               range [-1, 1000000]
+    tcflag_t                   unsigned integer                      Terminal mode flag bit mask
+    time_t                     integer or real_floating              Calendar time in seconds since the Epoch
+    timer_t                    an arithmetic type                    Timer identifier for POSIX.1b interval
+                                                                     timer functions
+    uid_t                      integer                               Numeric user identifier
+
+- For certain types in this table, SUSv3 requires that the type be IMPLEMENTED as an ARITHMETIC TYPE. This
+means that the IMPLEMENTATION may CHOOSE the UNDERLYING TYPE as EITHER an INTEGER or a FLOATING-POINT
+(real or complex) type.
+- When discussing the data types in this Table in LATER CHAPTERS, we'll often make statements that some type
+"is an integer type [specified by SUSv3]". This means that SUSv3 REQUIRES the type to be DEFINED as
+an INTEGER, but DOESN'T REQUIRE that a PARTICULAR native integer type (e.g., short, int, or long) be used.
+(Often, we WON'T say WHICH particular native data type is ACTUALLY used to REPRESENT each of the system data
+types in Linux, because a PORTABLE APPLICATION should be written so that it DOESN'T CARE WHICH data type is
+used).
+
+- When PRINTING values of one of the numeric system data types shown in Table 3-1 (e.g., pid_t and uid_t),
+we MUST be CAREFUL to NOT INCLUDE a REPRESENTATION DEPENDENCY in the "printf()" call. A representation
+dependency can occur because C's argument promotion rules CONVERT values of type 'short' to 'int', but LEAVE
+values of type 'int' and 'long' UNCHANGED. This means that, DEPENDING on the DEFINITION of the system data
+type, EITHER an 'int' or 'long' is passed in the "printf()" call. However, because "printf()" has NO WAY to
+DETERMINE the TYPES of its ARGUMENTS at RUN TIME, the CALLER must EXPLICITLY provide this information using
+the "%d" or "%ld" FORMAT SPECIFIER. The PROBLEM is that SIMPLY CODING one of these specifiers WITHIN the
+"printf()" call CREATES an IMPLEMENTATION DEPENDENCY. The USUAL SOLUTION is to use the "%ld" specifier and
+ALWAYS CAST the corresponding value to 'long', like so:
+     #   pid_t mypid; 
+   
+     #   mypid = getpid();        /* Returns PID of calling process */
+     #   printf("My PID IS %ld\n", (long) mypid);
+
+- We make ONE EXCEPTION to the above technique. Because the 'off_t' data type is the SIZE of a 'long long'
+in some compilation environments, we CAST 'off_t' values to THIS TYPE and USE the "%lld" specifier.
+
+     Note:  The C99 standard defined the 'z' length modifier for "printf()" to INDICATE that the following
+          integer conversion CORRESPONDS to a 'size_t' or 'ssize_t' type. Thus, we COULD write "%zd" instead
+          of using "%ld" plus a cast for these types. Although this SPECIFIER is AVAILABLE in "glibc", we
+          AVOID IT because it is NOT AVAILABLE on ALL UNIX implementations.
+            The C99 standard ALSO DEFINES the 'j' length modifier, which SPECIFIES that the CORRESPONDING
+          ARGUMENT is of type 'intmax_t' (or 'uintmax_t'), an integer type that is GUARANTEED to be LARGE
+          ENOUGH to be ABLE to REPRESENT an integer of ANY TYPE. Ultimately, the use of an (intmax_t) cast
+          plus the "%jd" specifier SHOULD REPLACE the (long) cast plus the "%ld" specifier as the BEST WAY
+          of printing numeric system data type values, since the FORMER approach ALSO HANDLES 'long long'
+          values and ANY extended integer types such as 'int128_t'. However, (again) we AVOID this technique
+          since it is NOT POSSIBLE on ALL UNIX implementations.
+
+##########################################################################################################

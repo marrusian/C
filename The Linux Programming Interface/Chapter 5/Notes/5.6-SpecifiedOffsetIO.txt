@@ -1,0 +1,40 @@
+##########################################################################################################
+- The "pread()" and "pwrite()" system calls operate JUST LIKE "read()" and "write()", EXCEPT that the file
+I/O is performed at the LOCATION SPECIFIED by "offset", RATHER THAN at the CURRENT FILE OFFSET. The FILE
+OFFSET is LEFT UNCHANGED by these calls.
+
+- Prototypes and dependencies:
+      #include <unistd.h>
+
+      ssize_t pread(int fd, void *buf, size_t count, off_t offset);
+                               Returns number of bytes read, 0 on EOF, or -1 on error
+      ssize_t pwrite(int fd, void *buf, size_t count, off_t offset);
+                               Returns number of bytes written, or -1 on error
+
+- Calling "pread()" is EQUIVALENT to ATOMICALLY performing the following calls: 
+      # off_t orig;
+ 
+      # orrig = lseek(fd, 0, SEEK_CUR);  /* Save current offset */
+      # lseek(fd, offset, SEEK_SET);
+      # s = read(fd, buf, len);
+      # lseek(fd, orig, SEEK_SET);       /* Restore original file offset */
+
+- For BOTH "pread()" AND "pwrite()", the file referred to by "fd" MUST be SEEKABLE (i.e., a FILE DESCRIPTOR
+on which it is PERMISSIBLE to call "lseek()").
+
+- These system calls can be PARTICULARLY USEFUL in MULTITHREADED applications. As we'll see, ALL of the
+THREADS in a process SHARE the SAME FILE DESCRIPTOR TABLE. This means that the FILE OFFSET for EACH open file
+is GLOBAL to ALL THREADS. Using "pread()" or "pwrite()", MULTIPLE THREADS can SIMULTANOUSLY perform I/O on
+the same file descriptor WITHOUT BEING AFFECTED by CHANGES made to the file offset by OTHER THREADS. 
+- If we attempted to use "lseek()" plus "read()" (or "write()") instead, then we would create a RACE CONDITION
+similar to the one that we described when discussing the 'O_APPEND' flag in Section 5.1 (the "pread()" and
+"pwrite()" system calls can SIMILARLY be USEFUL for AVOIDING RACE CONDITIONS in applications where MULTIPLE
+PROCESSES have FILE DESCRIPTORS referring to the SAME open file description).
+
+     Note: If we are REPETEADLY performing "lseek()" calls followed by file I/O, then the "pread()" and
+          "pwrite()" system calls can ALSO offer a PERFORMANCE ADVANTAGE in some cases. This is because the
+          COST of a SINGLE "pread()" (or "pwrite()") system call is LESS than the COST of TWO system calls:
+          "lseek()" and "read()" (or "write()"). However, the COST of system calls is USUALLY DWARFED by the
+          TIME REQUIRED to ACTUALLY PERFORM I/O.
+
+##########################################################################################################

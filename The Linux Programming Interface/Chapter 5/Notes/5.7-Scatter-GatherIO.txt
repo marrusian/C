@@ -1,0 +1,78 @@
+##########################################################################################################
+- The "readv()" and "writev()" system call perform SCATTER-GATHER I/O.
+
+- Prototypes and dependencies:
+        #include <sys/uio.h>
+ 
+        ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+                                Returns number of bytes read, 0 on EOF, or -1 on error
+        ssize_t writev(int fd, const struct ioved *iov, int iovcnt);
+                                Returns number of bytes written, or -1 on error
+
+- Instead of accepting a SINGLE BUFFER of data to be READ or WRITTEN, these functions transfer MULTIPLE
+BUFFERS of data in a SINGLE system call. The SET of BUFFERS to be TRANSFERRED is DEFINED by the ARRAY "iov".
+The integer "count" specifies the NUMBER OF ELEMENTS in "iov". Each element of "iov" is a STRUCTURE of the
+following form:
+         # struct iovec{
+         #    void *iov_base;    /* Start address of buffer */
+         #    size_t iov_len;    /* Number of bytes to transfer to/from buffer */
+         # };
+
+       Note:  SUSv3 allows an implementation to PLACE a LIMIT on the NUMBER OF ELEMENTS in "iov". An
+            implementation can ADVERTISE it's LIMIT by defining 'IOV_MAX' in <limits.h> or at RUN TIME via
+            the RETURN from the call "sysconf(_SC_IOV_MAX)". SUSv3 REQUIRES that this LIMIT be AT LEAST 16.
+            On Linux, 'IOV_MAX' is defined as 1024, which CORRESPONDS to the KERNEL'S LIMIT on the size of
+            of this vector (defined by the kernel constant 'UIO_MAXIOV');
+              However, the "glibc" WRAPPER FUNCTIONS for "readv()" and "writev()" SILENTLY do some EXTRA WORK.
+            If the system call FAILS because "iovcnt" is TOO LARGE, then the WRAPPER ffunction TEMPORARILY
+            ALLOCATES a SINGLE BUFFER that is LARGE ENOUGH to hold ALL of the items described by "iov" and
+            PERFORMS a "read()" and "write()" call.
+
+----------------------------------------------------------------------
+a) Scatter input:
+
+- The "readv()" system call performs SCATTER INPUT: it reads a CONTIGUOUS SEQUENCE OF BYTES from the file
+referred to by the file descriptor "fd" and PLACES ("SCATTERS") these bytes INTO the BUFFERS specified by
+"iov". Each of the buffers, STARTING WITH the one defined by iov[0], is COMPLETELY FILLED before "readv()"
+proceeds to the NEXT buffer.
+
+- An IMPORTANT PROPERTY of "readv()" is that it COMPLETES ATOMICALLY; that is, from the POV of the CALLING
+PROCESS, the kernel performs a SINGLE DATA TRANSFER between the file referred to by "fd" and user memory.
+This means, for example, that WHEN READING from a file, we CAN BE SURE that the RANGE of BYTES read is
+CONTIGUOUS, EVEN if ANOTHER process (or thread) sharing the SAME file offset ATTEMPTS to MANIPULATE the offset
+at the SAME TIME as the "readv()" call.
+
+- On SUCCESSFUL COMPLETION, "readv()" returns the number of bytes read, or 0 if EOF was encountered. The
+CALLER must EXAMINE this count to VERIFY whether ALL REQUESTED BYTES were READ. If INSUFFICIENT DATA was
+available, then ONLY SOME of the buffers may have been filled, and the LAST of these may be ONLY PARTIALLY
+filled.
+----------------------------------------------------------------------
+b) Gather output:
+
+- The "writev()" system call performs GATHER OUTPUT. It CONCATENATES ("GATHERS") data from ALL of the BUFFERS
+specified by "iov" and WRITES them as a SEQUENCE of CONTIGUOUS BYTES to the file referred to by the file
+descriptor "fd". The buffers are GATHERED in ARRAY ORDER, starting with the buffer defined by iov[0].
+
+- Like "readv()", "writev()" COMPLETES ATOMICALLY, with ALL DATA being TRANSFERRED in a SINGLE OPERATION from
+user memory to the file referred to by fd. Thus, when writing to a REGULAR FILE, we CAN BE SURE that ALL of
+the REQUESTED DATA is written CONTIGUOUSLY to the file, RATHER THAN being INTERSPERSED with writes by OTHER
+processes (or threads).
+
+- As with "write()", a PARTIAL WRITE is POSSIBLE. Therefore, we MUST CHECK the return value from "writev()"
+to see if ALL REQUESTED BYTES were written.
+----------------------------------------------------------------------
+
+- The PRIMARY ADVANTAGES of "readv()" and "writev()" are CONVENIENCE and SPEED. For example, we could REPLACE
+a call to "writev()" by either:
+     1) Code that ALLOCATES a SINGLE LARGE BUFFER, copies the data to be written from other locations in the
+        process's address space into that buffer, and then calls "write()" to output the buffer;
+     2) A series of "write()" calls that output the buffers INDIVIDUALLY.
+
+- The FIRST of these options, while SEMANTICALLY EQUIVALENT to using "writev()", leaves us with the
+INCONVENIENCE (and INEFFICIENCY) of ALLOCATING buffers and COPYING data in USER SPACE.
+
+- The SECOND option is NOT semantically equivalent to a single call to "writev()", since the "write()" calls
+are NOT PERFORMED ATOMICALLY. Furthermore, performing a SINGLE "writev()" call is CHEAPER than performing
+MULTIPLE "write()" calls.
+
+##########################################################################################################

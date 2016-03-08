@@ -1,0 +1,22 @@
+##########################################################################################################
+- The "write()" system call writes data to an open file.
+
+- Prototype and dependencies:
+     #include <unistd.h>
+
+     ssize_t write(int fd, const void *buffer, size_t count);
+                             Returns number of bytes writen, or -1 on error
+
+- The arguments to "write()" are SIMILAR to those for "read()": "buffer" is the ADDRESS of the data to be
+WRITTEN; "count" is the NUMBER OF BYTES to WRITE from "bufer"; and "fd" is a FILE DESCRIPTOR referring to
+the file to which DATA is to be WRITTEN.
+
+- On success, "write()" returns the number of bytes ACTUALLY WRITTEN; this MAY BE LESS than "count". For a
+disk file, POSSIBLE REASONS for such a PARTIAL WRITE are that the disk was FILLED or that the process
+RESOURCE LIMIT on FILE SIZES was REACHED (the relevant limit is "RLIMIT_FSIZE").
+
+- When performing I/O on a disk file, a SUCCESSFUL RETURN from "write()" DOESN'T GUARANTEE that the data has
+been transferred to disk, because the kernel performs BUFFERING of DISK I/O in order to REDUCE DISK ACTIVITY
+and EXPEDITE "write()" calls.
+
+##########################################################################################################

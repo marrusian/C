@@ -1,0 +1,56 @@
+##########################################################################################################
+- Each UNIX implementation specifies a RANGE of STANDARD STRUCTURES that are used in various system calls
+and library functions. As an example, consider the 'sembuf' structure, which is used to represent a SEMAPHORE
+OPERATION to be PERFORMED by the "semop()" system call:
+      #  struct sembuf{
+      #     unsigned short sem_num;        /* Semaphore number */
+      #     short          sem_op;         /* Operation to be performed */
+      #     short          sem_flg;        /* Operation flags */
+      #  };
+
+- Although SUSv3 SPECIFIES structures such as 'sembuf', it is IMPORTANT to REALIZE the following:
+    a) In general, the ORDER of FIELD DEFINITIONS within such structures is NOT SPECIFIED.
+    b) In SOME cases, EXTRA implementation-specific fields may be INCLUDED in such structures.
+
+- Consequently, it is NOT PORTABLE to use a structure initializer such as the following:
+      struct sembuf s = {3, -1, SEM_UNDO};
+
+- Although this initializer WILL WORK on Linux, it WON'T WORK on ANOTHER IMPLEMENTATION where the FIELDS in
+the 'sembuf' structure are DEFINED in DIFFERENT ORDER. To PORTABLY INITIALIZE such structures, we MUST use
+EXPLICIT assignment statements, as in the following:
+     # struct sembuf s;
+
+     # s.sem_num = 3;
+     # s.sem_op = -1;
+     # s.sem_flg = SEM_UNDO;
+
+- If we are using C99, then we can EMPLOY that language's NEW SYNTAX for structure initializers to WRITE an
+EQUIVALENT INITIALIZATION:
+     # struct sembuf s = {.sem_num = 3, .sem_op = -1, sem_flg = SEM_UNDO};
+
+- Considerations about the ORDER of the MEMBERS of standard structures ALSO APPLY if we want to WRITE the
+CONTENTS of a STANDARD STRUCTURE to a FILE. To do this PORTABLY, we CAN'T SIMPLY do a BINARY WRITE of the
+structure. Instead, the STRUCTURE FIELDS must be WRITTEN INDIVIDUALLY (probably in text form) in a
+SPECIFIED ORDER.
+
+- In some cases, a MACRO may NOT BE DEFINED on ALL UNIX implementations. For example, the "WCOREDUMP()" macro
+(which checks whether a child process produced a core dump file) is WIDELY AVAILABLE, but it is NOT SPECIFIED
+in SUSv3. Therefore, this macro MIGHT NOT BE PRESENT on some UNIX implementations. In order to PORTABLY HANDLE
+such possibilities, we can use the C preprocessor "#ifdef" directive, as in the following example:
+     #ifdef WCOREDUMP
+        /* Use WCOREDUMP() macro */
+     #endif
+
+- In some cases, the header files REQUIRED to prototype various system calls and library functions VARY across
+UNIX implementations (in this book, we show the requirements on Linux and note any variations from SUSv3).
+- Some of the function synopses in this book show a PARTICULAR header file with the ACCOMPANYING COMMENT
+"/* For portability */". This INDICATES that the header file is NOT REQUIRED on Linux or by SUSv3, but because
+SOME OTHER (especially OLDER) IMPLEMENTATIONS may REQUIRE it, we SHOULD INCLUDE it in PORTABLE programs.
+
+     Note: For many of the functions that it specified, POSIX.1-1990 required that the header <sys/types.h>
+          be included BEFORE ANY OTHER headers associated with the function. However, this requirement was
+          reduntant, because most contemporary UNIX implementations DID NOT REQUIRE applications to include
+          this header for these functions. Consequently, SUSv1 REMOVED this requirement. Nevertheless, when
+          writing PORTABLE PROGRAMS, it is WISE to make this one of the FIRST HEADER FILES INCLUDED.
+
+##########################################################################################################

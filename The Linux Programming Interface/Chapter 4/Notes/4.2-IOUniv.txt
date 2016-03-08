@@ -1,0 +1,13 @@
+##########################################################################################################
+- One of the DISTINGUISHING FEATURES of the UNIX I/O model is the concept of UNIVERSALITY of I/O. This means
+that the SAME FOUR SYSTEM CALLS - "open()", "read()", "write()", and "close()" - are used to PERFORM I/O on
+ALL TYPES of files, including DEVICES such as TERMINALS. Consequently, if we write a program USING ONLY these
+system calls, that program WILL WORK on ANY TYPE of FILE.
+
+- Universality of I/O is achieved by ENSURING that EACH FILE SYSTEM and DEVICE DRIVER implements the SAME SET
+of I/O system calls. Because details SPECIFIC to the file system or device are HANDLED within the KERNEL, we
+can GENERALLY IGNORE device-specific factors when writing application programs. When ACCESS to SPECIFIC
+FEATURES of a file system or device is REQUIRED, a program can use the catchall "ioctl()" system call, which
+PROVIDES an INTERFACE to FEATURES that FALL OUTSIDE of the UNIVERSAL I/O model.
+
+##########################################################################################################

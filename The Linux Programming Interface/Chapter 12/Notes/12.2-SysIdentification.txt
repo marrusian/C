@@ -1,0 +1,57 @@
+###########################################################################################################
+- The "uname()" system call returns a RANGE of IDENTIFYING INFORMATION about the HOST SYSTEM on which an
+application is running, in the structure pointed to by "utsbuf":
+           DEP: #include <sys/utsname.h>               PROTO: int uname(struct utsname *utsbuf);
+                                                       RET: Returns 0 on success, or -1 on error
+
+- The "utsbuf" argument is a POINTER to a "utsname" STRUCTURE, which is DEFINED as follows:
+         # define _UTSNAME_LENGTH 65
+
+         # struct utsname{
+         #    char sysname[_UTSNAME_LENGTH];    /* Implementation name */
+         #    char nodename[_UTSNAME_LENGTH];   /* Node name on network */
+         #    char release[_UTSNAME_LENGTH];    /* Implementation release level */
+         #    char version[_UTSNAME_LENGTH];    /* Release version level */
+         #    char machine[_UTSNAME_LENGTH];    /* Hardware on which system is running */
+            #ifdef _GNU_SOURCE                  /* Following is Linux-specific */
+              char domainname[_UTSNAME_LENGTH]; /* NIS domain name of host */
+            #endif
+         # };
+
+- SUSv3 SPECIFIES "uname(), but LEAVES the LENGTHS of the various fields of the "utsname" structure UNDEFINED,
+REQUIRING ONLY that the STRINGS be TERMINATED by a NULL BYTE. On LINUX, these fields are each 65-BYTES LONG,
+INLUDING space for the TERMINATING NULL BYTE. On SOME UNIX implementations, these fields are SHORTER;
+on OTHERS (e.g., Solaris), they RANGE UP TO 257 BYTES.
+
+- The "sysname", "release", "version", and "machine" fields of the "utsname" structure are AUTOMATICALLY SET
+by the KERNEL.
+
+                    Note:  On Linux, three files in the directory "/proc/sys/kernel" PROVIDE ACCESS to the
+                         SAME INFORMATION as is returned in the "sysname", "release", and "version" fields
+                         of the "utsname" structure. These READ-ONLY FILES are, respectively, "ostype",
+                         "osrelease", and "version". Another file, "/proc/version", INCLUDES the SAME
+                         INFORMATION as in these files, and ALSO INCLUDES INFORMATION about the KERNEL
+                         COMPILATION STEP (i.e., the NAME of the USER that PERFORMED the COMPILATION, the
+                         NAME of HOST on which the COMPILATION was PERFORMED, and the "GCC" VERSION used).
+
+- The "nodename" field RETURNS the VALUE that was SET using the "sethostname()" system call (see the manual
+page for details of this system call). Often, this NAME is SOMETHING LIKE the HOSTNAME PREFIX from the
+system's DNS DOMAIN NAME.
+
+- The "domainname" field RETURNS the VALUE that was SET using the "setdomainname()" system call (again, see
+the manual page for details of this system call). This is the "Network Information Services (NIS)" domain name
+of the host (which is NOT THE SAME THING as the host's DNS domain name).
+
+                    Note:  The "gethostname()" system call, which is the CONVERSE of "sethostname()",
+                         RETRIEVES the SYSTEM HOSTNAME. The system hostname is ALSO VIEWABLE and SETTABLE
+                         using the "hostname(1)" command and the Linux-specific "/proc/sys/kernel/hostname"
+                         file. 
+                           The "getdomainname() system call, which is the CONVERSE of "setdomainname()",
+                        RETRIEVES the NIS DOMAIN NAME. The NIS domain name is ALSO VIEWABLE AND SETTABLE
+                        using the "domainname(1)" command and the Linux-specific "/proc/sys/kernel/domainname"
+                        file.
+                           The "sethostname()" and "setdomainname()" system calls are RARELY USED in
+                        application programs. Normally, the HOSTNAME and NIS DOMAIN NAME are ESTABLISHED at
+                        BOOT TIME by STARTUP SCRIPTS.
+
+###########################################################################################################

@@ -1,0 +1,79 @@
+##########################################################################################################
+- Using the (BASH) I/O redirection syntax "2>&1" informs the shell that we wish to have standard error (file
+descriptor 2) REDIRECTED to the SAME PLACE to which STANDARD OUTPUT (file descriptor 1) is being SENT. Thus,
+the following command would (since the shell evaluates I/O directions from LEFT to RIGHT) send BOTH standard
+output AND standard error to the file "result.log":
+        $ ./myscript > results.log 2>&1
+
+- The shell ACHIEVES the REDIRECTION of standard error by DUPLICATING file descriptor 2 so that it REFERS to
+the SAME OPEN FILE DESCRIPTION as file descriptor 1. This EFFECT can be ACHIEVED by using the "dup()" and
+"dup2()" system calls.
+
+- Note that it is NOT SUFFICIENT for the shell to SIMPLY OPEN the "result.log" file TWICE: once on descriptor
+1 and once on descriptor 2. One REASON for this is that the TWO FILE DESCRIPTORS would NOT SHARE a FILE OFFSET
+pointer, and hence could end up OVERWRITING each other's output. Another reason is that the file MAY NOT BE
+a DISK FILE. Consider the following command, which sends standard error down the SAME PIPE as standard output:
+        $ ./myscript 2>&1 | less
+
+- The "dup()" call takes "oldfd", an open file descriptor, and RETURNS a NEW DESCRIPTOR that REFERS to the
+SAME open file description. The NEW DESCRIPTOR is GUARANTEED to be the LOWEST-NUMBERED UNUSED FILE DESCRIPTOR.
+
+- Prototype and dependencies:
+        #include <unistd.h>
+
+        int dup(int oldfd);
+                      Returns (new) file descriptor on success, or -1 on error
+
+- To make the code using "dup()" SIMPLER, and to ENSURE we ALWAYS GET the FILE DESCRIPTOR we WANT, we can use
+"dup2()":
+ 
+        #include <unistd.h>
+
+        int dup2(int oldfd, int newfd);
+                       Returns (new) file descriptor on success, or -1 on error
+
+- The "dup2()" system call makes a DUPLICATE of the FILE DESCRIPTOR given in "oldfd" using the DESCRIPTOR
+NUMBER SUPPLIED in "newfd". If the file descriptor specified in "newfd" is ALREADY OPEN, "dup2()" CLOSES it
+FIRST (any ERROR that OCCURS during this close is SILENTLY IGNORED; The closing and reuse of "newfd" are
+performed atomically, which avoids the possibility that "newfd" is reused between the two steps in a
+signal handler or a parallel thread that allocates a file descriptor).
+
+- If "oldfd" is NOT a VALID file scriptor, then "dup2()" FAILS with the error 'EBADF' and "newfd" is NOT
+CLOSED. If "oldfd" is a VALID file descriptor, and "oldfd" and "newfd" have the SAME VALUE, then "dup2()"
+DOES NOTHING - "newfd" is NOT closed, and "dup2()" returns the "newfd" as its function result.
+
+- A further interface that provides some EXTRA FLEXIBILITY for DUPLICATING file descriptors is the "fcntl()
+F_DUPFD" operation:
+        # newfd = fctnl(oldfd, F_DUPFD, startfd);
+
+- This call makes a DUPLICATE of "oldfd" by using the LOWEST UNUSED file descriptor GREATER THAN OR EQUAL to
+"startfd". This is useful if we want a GUARANTEE that the NEW DESCRIPTOR ("newfd") falls in a CERTAIN RANGE
+of values. Calls to "dup()" and "dup2()" can ALWAYS be RECODED as calls to "close()" and "fcntl()", ALTHOUGH
+the FORMER CALLS are MORE CONCISE (also note that some of the "errno" error codes return by "dup2()" and
+"fcntl()" DIFFER).
+
+- From the relationship between file descriptors and open files, we can see that DUPLICATE file descriptors
+SHARE the SAME FILE OFFSET value and STATUS FLAGS in their SHARED OPEN FILE DESCRIPTION. However, the NEW
+file descriptor has ITS OWN SET of FILE DESCRIPTOR FLAGS, and its close-on-exec flag (FD_CLOEXEC) is ALWAYS
+TURNED OFF. The interfaces that we describe next allow EXPLICIT CONTROL of the NEW FILE DESCRIPTOR'S
+close-on-exec flag.
+
+- The "dup3()" system call performs the SAME TASK as "dup2()", but ADDS an ADDITIONAL ARGUMENT, "flags", that
+is a BIT-MASK that MODIFIES the BEHAVIOUR of the system call.
+        #define _GNU_SOURCE
+        #include <unistd.h>
+
+        int dup3(int oldfd, int newfd, int flags);
+                               Returns (new) file descriptor on success, or -1 on error
+
+- Currently, "dup3()" supports ONE FLAG, 'O_CLOEXEC', which CAUSES the kernel to ENABLE the close-on-exec flag
+(FD_CLOEXEC) for the NEW FILE DESCRIPTOR. This flag is USEFUL for the SAME REASONS as the "open()" O_CLOEXEC
+flag.
+      Note: The "dup3()" system call is NEW in Linux 2.6.27, and is LINUX-SPECIFIC !!!
+
+- Since Linux2.6.24, Linux ALSO SUPPORTS an ADDITIONAL "fcntl()" operation for DUPLICATING file descriptors:
+'F_DUPFD_CLOEXEC'. This flag does the SAME THING as 'F_DUPFD, but ADDITIONALLY SETS the close-on-exec flag
+(FD_CLOEXEC) for the NEW FILE DESCRIPTOR.
+      Note: 'F_DUPFD_CLOEXEC' is NOT SPECIFIED in SUSv3, BUT is SPECIFIED in SUSv4.
+
+##########################################################################################################

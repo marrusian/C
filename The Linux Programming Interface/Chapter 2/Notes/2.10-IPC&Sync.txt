@@ -1,0 +1,21 @@
+##########################################################################################################
+- A running Linux system consists of NUMEROUS PROCESSES, many of which OPERATE INDEPENDENTLY of each other.
+Some processes, however, COOPERATE to achieve their intended purposes, and these processes NEED METHODS OF
+COMMUNICATING with one another and SYNCHRONIZING their actions.
+- One way for processes to communicate is by READING and WRITING information in disk files. However, for
+many applications, this is TOO SLOW and INFLEXIBLE.
+- Therefore, Linux, like all MODERN UNIX implementations, provides a RICH SET OF MECHANISMS for
+INTERPROCESS COMMUNICATION (IPC), including the following:
+  a) SIGNALS, which are used to indicate that an EVENT has OCCURED;
+  b) PIPES (familiar to shell users as the | operator) and FIFOs, which can be used to TRANSFER DATA
+     between processes;
+  c) SOCKETS, which can be used to TRANSFER DATA from one process to another, either on the SAME HOST
+     COMPUTER or on DIFFERENT HOSTS connected by a network;
+  d) FILE LOCKING, which allows a process to LOCK REGIONS OF A FILE in order to PREVENT other processes
+     from READING or UPDATING the file contents;
+  e) MESSAGE QUEUES, which are used to EXCHANGE MESSAGES (packets of data) between processes;
+  f) SEMAPHORES, which are used to SYNCHRONIZE the ACTIONS of processes;
+  g) SHARED MEMORY, which allows TWO OR MORE processes to SHARE A PIECE OF MEMORY. When one process CHANGES
+     the contents of the shared memory, ALL of the OTHER processes can IMMEDIATELY SEE the changes.
+
+##########################################################################################################

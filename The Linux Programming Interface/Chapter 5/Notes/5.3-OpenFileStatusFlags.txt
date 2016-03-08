@@ -1,0 +1,52 @@
+##########################################################################################################
+- One use of "fcntl()" is to RETRIEVE or MODIFY the ACCESS MODE and OPEN FILE STATUS FLAGS of an open file
+(these are the values set by the "flags" argument specified in the call to "open()"). To RETRIEVE these
+settings, we specify "cmd" as 'F_GETFL':
+         # int flags, accessMode;
+ 
+         # flags = fcntl(fd, F_GETFL);     /* Third argument is NOT required */
+         # if(flags == -1)
+         #    errExit("fcntl");
+
+- After the above piece of code, we COULD TEST if the file was OPENED for SYNCHRONIZED WRITES as follows:
+         # if(flags & O_SYNC)
+         #    printf("Writes are synchronized\n");
+
+      Note: SUSv3 REQUIRES that ONLY status flags that were specified during an "open()" or a later "fcntl()"
+           'F_SETFL' should be SET on an open file. However, Linux DEVIATES from this in one respect: if an
+           application was COMPILED using one of the techniques (described in Section 5.10) for opening LARGE
+           FILES, then 'O_LARGEFILE' will ALWAYS BE SET in the flags RETRIEVED by 'F_GETFL'.
+
+- Checking the ACCESS MODE of the file is SLIGHTLY MORE COMPLEX, since the 'O_RDONLY' (0), 'O_WRONLY' (1),
+and 'O_RDWR' (2) constants DON'T CORRESPOND to SINGLE BITS in the open file STATUS FLAGS. Therefore, to MAKE
+this CHECK, we MASK the "flags" value with the constant 'O_ACCMODE', and THEN TEST for EQUALITY with one of
+the constants:
+         # accessMode = flags & O_ACCMODE:
+         # if(accessMode == O_WRONLY || accessMode == O_RDWR)
+         #    printf("File is writtable\n");
+
+- We can use the "fcntl() F_SETFL" command to MODIFY some of the open file STATUS FLAGS. The FLAGS that CAN
+be MODIFIED are 'O_APPEND', 'O_NONBLOCK', 'O_NOATIME', 'O_ASYNC', and 'O_DIRECT'. Attempts to modify OTHER
+FLAGS are IGNORED (Some other UNIX implementations allow "fcntl()" to modify other flags, such as 'O_SYNC').
+
+- Using "fcntl()" to modify open file status flags is PARTICULARLY USEFUL in the following cases:
+    a) The file was NOT OPENED by the CALLING PROGRAM, so that it had NO CONTROL over the FLAGS used in the
+      "open()" call (e.g., the file may be one of the three standard descriptors that are opened BEFORE the
+      program is started).
+    b) The file descriptor was OBTAINED from a system call OTHER THAN "open()". Examples of such system calls
+      are "pipe()", which creates a PIPE and returns TWO FILE DESCRIPTORS referring to EITHER END of the pipe,
+      and "socket()", which creates a SOCKET and returns a FILE DESCRIPTOR referring to the socket.
+
+- To MODIFY the open file status flags, we use "fctnl()" to RETRIEVE a COPY of the EXISTING FLAGS, then MODIFY
+the BITS we WISH TO CHANGE, and FINALLY make a FURTHER CALL to "fctnl()" to UPDATE the FLAGS. Thus, to ENABLE
+the 'O_APPEND' flag, we would write the following:
+          # int flags;
+  
+          # flags = fcntl(fd, F_GETFL);
+          # if(flags == -1)
+          #    errExit("fcntl");
+          # flags |= O_APPEND;
+          # if(fnctl(fd, F_SETFL, flags) == -1)
+          #    errExit("fcntl");
+
+##########################################################################################################

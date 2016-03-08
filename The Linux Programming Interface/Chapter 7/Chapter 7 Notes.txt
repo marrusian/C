@@ -1,0 +1,256 @@
+- RESIZING the HEAP (i.e. allocating or deallocating memory) is actually as simple as TELLING the KERNEL to
+ADJUST its IDEA of WHERE the process's PROGRAM BREAK is. Initially, the PROGRAM BREAK lies JUST PAST THE END
+of the UNINITIALIZED DATA SEGMENT (i.e., the SAME LOCATION as &end).
+
+- After the PROGRAM BREAK is INCREASED, the program MAY ACCESS ANY ADDRESS in the NEWLY ALLOCATED AREA, but
+NO PHYSICAL MEMORY PAGES are ALLOCATED yet. The kernel AUTOMATICALLY ALLOCATES NEW PHYSICAL PAGES on the
+FIRST ATTEMPT by the process to ACCESS ADDRESSES in those PAGES.
+
+- Traditionally, the UNIX system has provided TWO system calls for MANIPULATING the PROGRAM BREAK, and these
+are BOTH AVAILABLE on Linux: "brk()" and "sbrk()":
+            DEP: #include <unistd.h>           PROTO: int brk(void *end_data_segment);
+                        RET: Returns 0 on success, or -1 on error
+
+            DEP: #include <unistd.h>           PROTO: void *sbrk(intptr_t increment);
+                        RET: Returns previous program break on success, or (void*)-1 on error
+
+- The "brk()" system call SETS the PROGRAM BREAK to the LOCATION SPECIFIED by "end_data_segment". Since
+VIRTUAL MEMORY is ALLOCATED in UNITS OF PAGES, "end_data_segment" is effectively ROUNDED UP to the NEXT PAGE
+BOUNDARY.
+
+- Attempts to SET the program break BELOW its INITIAL VALUE (i.e., below &end), are LIKELY to RESULT in
+UNEXPECTED BEHAVIOUR, such as a SEGMENTATION FAULT (the SIGSEGV signal) when TRYING to ACCESS DATA in 
+NOW NONEXISTENT PARTS of the INITIALIZED or UNINITIALIZED DATA SEGMENTS. The PRECISE UPPER LIMIT on where
+the PROGRAM BREAK can be set DEPENDS on a RANGE OF FACTORS, including:
+        a) The process RESOURCE LIMIT for the SIZE of the DATA SEGMENT (RLIMIT_DATA);
+        b) Location of MEMORY MAPPINGS, SHARED MEMORY SEGMENTS, and SHARED LIBRARIES.
+
+- A call to "sbrk()" ADJUSTS the PROGRAM BREAK by ADDING "increment" to it (on Linux, "sbrk()" is a LIBRARY
+FUNCTION implemented on TOP of "brk()"). The "intptr_t" type used to declare "increment" is an INTEGER DATA
+TYPE.
+
+- The call "sbrk(0)" returns the CURRENT SETTING of the program break WITHOUT CHANGING it. This can be USEFUL
+if we want to TRACK the SIZE of the HEAP, perharps in ORDER to MONITOR the BEHAVIOUR of a MEMORY ALLOCATION
+PACKAGE.
+
+               Note:  SUSv2 specified "brk()" and "sbrk()" (marking them LEGACY).
+                      SUSv3 REMOVED their SPECIFICATIONS.
+
+#############################################################################################################
+- In general, C programs use the MALLOC family of functions to ALLOCATE and DEALLOCATE memory on the heap.
+These functions OFFER SEVERAL ADVANTAGES over "brk()" and "sbrk()". In particular, they:
+       - Are STANDARDIZED as part of the C language;
+       - Are EASIER TO USE in THREADED PROGRAMS.
+       - Provide a SIMPLE INTERFACE that ALLOWS MEMORY to be ALLOCATED in SMALL UNITS;
+       - Allow us to ARBITRARILY DEALLOCATE blocks of memory, which are MAINTAINED on a FREE LIST and RECYCLED
+         in FUTURE CALLS to ALLOCATE memory.
+
+- The BLOCK of MEMORY RETURNED by "malloc()" is ALWAYS ALIGNED on a BYTE BOUNDARY suitable for EFFICIENT
+ACCESS to ANY TYPE of C data structure. In practice, this MEANS that it is ALLOCATED on an 8-BYTE or 16-BYTE
+BOUNDARY on MOST ARCHITECTURES.
+
+                Note:  SUSv3 specifies that the call "malloc(0)" may return EITHER "NULL" or a POINTER to a
+                     SMALL PIECE of MEMORY that CAN (and SHOULD) be FREED with "free()". On Linux, malloc(0)
+                     FOLLOWS the LATTER BEHAVIOUR.
+
+- The "free()" function DEALLOCATES a BLOCK OF MEMORY pointed to by its "ptr" argument, which SHOULD be an
+ADDRESS PREVIOUSLY RETURNED by "malloc()" or one of the OTHER heap memory allocation functions.
+
+- In general, "free()" DOESN'T LOWER the PROGRAM BREAK, but INSTEAD ADDS the BLOCK OF MEMORY to a LIST of
+FREE BLOCKS that are RECYCLED by FUTURE CALLS to "malloc()". This is done for SEVERAL REASONS:
+       a) The BLOCK OF MEMORY being FREED is typically somewhere in the MIDDLE of the HEAP, RATHER than at the
+          END, so that LOWERING the PROGRAM BREAK is NOT POSSIBLE.
+
+       b) It MINIMIZES the NUMBER of "sbrk()" CALLS that the program must perform (as we recall, system calls
+          have a SMALL but SIGNIFICANT OVERHEAD).
+
+       c) In many cases, LOWERING the BREAK would NOT HELP programs that ALLOCATE LARGE AMOUNTS of MEMORY,
+          since they typically tend to HOLD ON to ALLOCATED MEMORY or REPEATEDLY RELEASE and REALLOCATE
+          MEMORY, RATHER than RELEASE IT ALL and then CONTINUE TO RUN for an EXTENDED PERIOD OF TIME.
+
+- If the argument given to "free()" is a NULL pointer, then the call does NOTHING (in other words, it is NOT
+AN ERROR to give a NULL pointer to "free()"). However, making ANY USE of "ptr" AFTER the CALL to "free()" -
+for example, passing it to "free()" a SECOND TIME - is an ERROR that can LEAD to UNPREDICTABLE RESULTS.
+
+                Note:  The "glibc free()" function CALLS "sbrk()" to lower the program break ONLY WHEN the
+                     FREE BLOCK at the TOP END is "SUFFICIENTLY" LARGE, where "SUFFICIENT" is DETERMINED by
+                     PARAMETERS controlling the operation of the "malloc" package (128 kB is a typical value).
+                     This REDUCES the NUMBER of "sbrk()" CALLS (i.e., the number of "brk()" system calls) that
+                     must be made.
+
+- When a process TERMINATES, ALL of its MEMORY is RETURNED to the SYSTEM, including HEAP MEMORY allocated by
+functions in the "malloc" package. In programs that ALLOCATE MEMORY and continue using it until program
+termination, it is COMMON to OMIT calls to "free()", RELYING on this behaviour to AUTOMATICALLY FREE the
+MEMORY. This can be ESPECIALLY USEFUL in programs that allocate MANY BLOCKS of memory, since adding MULTIPLE
+CALLS to "free()" could be EXPENSIVE in terms of CPU time, as well as perhaps being COMPLICATED to CODE.
+
+- Although relying on process termination to automatically free memory is ACCEPTABLE for MANY programs, there
+are a COUPLE OF REASONS enforcing WHY it can be DESIRABLE to EXPLICITLY FREE all allocated memory:
+         a) Explicitly calling "free()" may make the program MORE READABLE and MAINTAINABLE in the face of
+            FUTURE MODIFICATIONS.
+ 
+         b) If we are using a "malloc" DEBUGGING LIBRARY to find MEMORY LEAKS in a program, then ANY MEMORY
+            that is NOT EXPLICITLY FREED will be REPORTED as a MEMORY LEAK. This can COMPLICATE the TASK of
+            finding REAL MEMORY LEAKS.
+
+#############################################################################################################
+- The IMPLEMENTATION of "malloc()" is STRAIGHT FORWARD. It first SCANS the list of memory blocks PREVIOUSLY
+RELEASED by "free()" in order to FIND one whose SIZE is >= to its REQUIREMENTS (DIFFERENT strategies may be
+employed for this scan, DEPENDING on the IMPLEMENTATION; for example: first-fit, next-fit, or best-fit).
+If the block is EXACTLY the RIGHT SIZE, then it is RETURNED to the CALLER. If it is LARGER, then it is SPLIT,
+so that a BLOCK of the CORRECT SIZE is RETURNED to the CALLER and a SMALLER FREE BLOCK is LEFT on the FREE
+LIST.
+
+- If NO BLOCK on the FREE LIST is LARGE ENOUGH, then "malloc()" calls "sbrk()" to ALLOCATE MORE MEMORY.
+To REDUCE the number of CALLS to "sbrk()", RATHER than ALLOCATING EXACTLY the number of bytes REQUIRED,
+"malloc()" INCREASES the PROGRAM BREAK in LARGER UNITS (some MULTIPLE of the VIRTUAL MEMORY PAGE SIZE),
+PUTTING the EXCESS MEMORY onto the FREE LIST.
+
+- Looking at the implementation of "free()", things start to become more interesting. When "free()" PLACES
+a BLOCK OF MEMORY onto the FREE LIST, it KNOWS the SIZE of that BLOCK via a TRICK: when "malloc()" ALLOCATES
+the BLOCK, it ALLOCATES EXTRA BYTES to HOLD an INTEGER containing the SIZE of the BLOCK. This INTEGER is
+LOCATED at the BEGINNING of the BLOCK; the ADDRESS actually RETURNED to the caller POINTS to the LOCATION
+just PAST THIS LENGTH VALUE.
+
+- When a BLOCK is PLACED on the (doubly linked) FREE LIST, "free()" USES the BYTES on the BLOCK ITSELF in
+order to ADD the BLOCK to the LIST. As blocks are deallocated and reallocated over time, the blocks of the
+free list will become INTERMINGLED with blocks of allocated, in-use memory.
+
+- To AVOID memory allocation errors/bugs, we should observe the following rules:
+        a) After we ALLOCATE a BLOCK OF MEMORY, we should be CAREFUL to NOT TOUCH any BYTES OUTSIDE the RANGE
+           of that BLOCK. This could occur, for example, as a result of faulty pointer arithmetic or
+           off-by-one errors in loops updating the contents of a block.
+
+        b) It is an ERROR to FREE the SAME PIECE of ALLOCATED MEMORY more than once. With "glibc" on Linux,
+           we often get a SEGMENTATION VIOLATION (SIGSEGV signal). This is good, because it ALERTS us that we
+           have made a PROGRAMMING ERROR. However, more generally, FREEING the SAME memory TWICE leads to
+           UNPREDICTABLE BEHAVIOUR.
+
+        c) We should NEVER call "free()" with a POINTER VALUE that WASN'T OBTAINED by a CALL to one of the
+           functions in the "malloc" PACKAGE.
+
+        d) If we are writing a LONG-RUNNING PROGRAM (e.g., a shell or a network daemon process) that
+           REPEATEDLY ALLOCATES MEMORY for various purposes, then we should ENSURE that we DEALLOCATE ANY
+           MEMORY after we have FINISHED using it. Failure to do so means that the HEAP will STEADILY GROW
+           until we reach the LIMITS of AVAILABLE VIRTUAL MEMORY, at which point FURTHER ATTEMPTS to ALLOCATE
+           MEMORY will FAIL. Such a condition is known as a MEMORY LEAK.
+
+#############################################################################################################
+- The "calloc()" function ALLOCATES MEMORY for an ARRAY of IDENTICAL ITEMS:
+             DEP: #include <stdlib.h>          PROTO: void *calloc(size_t numitems, size_t size);
+                  RET: Returns pointer to allocated memory on success, or NULL on error
+
+- Unlike "malloc()", "calloc()" INITIALIZES the ALLOCATED MEMORY to 0.
+
+- The "realloc()" function is used to RESIZE (usually ENLARGE) a BLOCK OF MEMORY that was PREVIOUSLY ALLOCATED
+by one of the functions in the "malloc" package:
+             DEP: #include <stdlib.h>          PROTO: void *realloc(void *ptr, size_t size);
+                  RET: Returns pointer to allocated memory on success, or NULL on error    
+
+- The "ptr" argument is a POINTER to a BLOCK OF MEMORY that is to be RESIZED. The "size" argument specifies
+the desired NEW SIZE of the BLOCK.
+
+- On success, "realloc()" RETURNS a POINTER to the LOCATION of the RESIZED BLOCK. This may be DIFFERENT from
+its location BEFORE the CALL. On ERROR, "realloc()" returns NULL and LEAVES the BLOCK pointed to by "ptr"
+UNTOUCHED (SUSv3 REQUIRES this).
+
+- When "realloc()" INCREASES the SIZE of a BLOCK of ALLOCATED MEMORY, it DOESN'T INITIALIZE the ADDITIONALLY
+ALLOCATED bytes.
+
+- Memory allocated using "calloc()" and "realloc()" should be DEALLOCATED with "free()".
+
+              Note: The call "realloc(ptr, 0)" is EQUIVALENT to calling "free(ptr)" followed by "malloc(0)".
+                    If "ptr" is specified as NULL, then "realloc()" is EQUIVALENT to calling "malloc(size)".
+
+- For the USUAL case, where we are INCREASING the SIZE of the BLOCK OF MEMORY, "realloc()" attempts to
+COALESCE the BLOCK with an IMMEDIATELY FOLLOWING block of memory on the FREE LIST, if one exists and is
+LARGE ENOUGH. If the block LIES AT THE END of the HEAP, then "realloc()" EXPANDS the HEAP. If the block of
+memory LIES IN THE MIDDLE of the HEAP, and there is INSUFFICIENT free space IMMEDIATELY following it,
+"realloc()" ALLOCATES a NEW block of memory and COPIES ALL EXISTING DATA from the OLD BLOCK to the NEW BLOCK.
+This LAST CASE is COMMON and CPU-intensive. In general, it is ADVISABLE to MINIMIZE the USE of "realloc()".
+
+- Because "realloc()" MAY MOVE the block of memory, ANY POINTERS that REFERRED to locations INSIDE the block
+BEFORE the "realloc()" call MAY NO LONGER be VALID after the call. The ONLY TYPE OF REFERENCE to a location
+WITHIN the BLOCK that is GUARANTEED to REMAIN VALID is one formed by adding an offset to the pointer to the
+start of the block.
+
+- The "memalign()" and "posix_memalign()" functions are DESIGNED to ALLOCATE MEMORY starting at an address
+ALIGNED at a specified POWER-OF-TWO BOUNDARY, a feature that is useful for some applications:
+             DEP: #include <malloc.h>          PROTO: void *memalign(size_t boundary, size_t size);
+                  RET: Returns pointer to allocated memory on success, or NULL on error
+
+- The "memalign()" function ALLOCATES "size" bytes starting at an address ALIGNED to a MULTIPLE of "boundary"
+which MUST be a POWER-OF-TWO. The ADDRESS of the ALLOCATED MEMORY is RETURNED as the function RESULT.
+
+- The "memalign()" function is NOT PRESENT on all UNIX implementations. Most other UNIX implementations that
+provide "memalign()" REQUIRE the INCLUSION of <stdlib.h> INSTEAD of <malloc.h> in order to obtain the function
+declaration.
+
+- SUSv3 DOESN'T SPECIFY "memalign()", but INSTEAD SPECIFIES a SIMILAR FUNCTION, named "posix_memalign()". This
+function is a RECENT CREATION of the STANDARDS COMMITTEES, and appears on ONLY a FEW UNIX implementations:
+       DEP: #include <stdlib.h>      PROTO: int posix_memalign(void **memptr, size_t alignment, size_t size);
+             RET: Returns 0 on success, or a positive error number on error.
+
+- The "posix_memalign()" function DIFFERS from "memalign()" in TWO RESPECTS:
+        a) The address of the allocated memory is returned in "memptr".
+        b) The memory is aligned to a multiple of "alignment", which must be a power-of-two multiple of
+           sizeof(void*) (4 or 8 bytes on MOST hardware architectures).
+
+- Blocks of memory ALLOCATED using "memalign()" and "posix_memalign()" SHOULD be DEALLOCATED with "free()".
+
+              Note:  On some UNIX implementations, it is NOT POSSIBLE to call "free()" on a BLOCK of memory
+                   ALLOCATED via "memalign()", BECAUSE the "memalign()" implementation USES "malloc()" to
+                   ALLOCATE a BLOCK of memory, and then RETURNS a POINTER to an ADDRESS with a SUITABLE
+                   ALIGNMENT in that block. The "glibc" implementation of "memalign()" DOESN'T SUFFER this
+                   LIMITATION.
+
+#############################################################################################################
+- Like the functions in the "malloc" package, "alloca()" ALLOCATES MEMORY DYNAMICALLY. However, INSTEAD of
+OBTAINING memory from the HEAP, "alloca()" OBTAINS memory from the STACK by INCREASING the SIZE of the STACK
+FRAME. This is possible because the calling function is the one whose stack frame is, by definition, on the
+TOP of the stack. Therefore, there is SPACE ABOVE the FRAME for EXPANSION, which can be ACCOMPLISHED by
+SIMPLY MODIFYING the VALUE of the STACK POINTER:
+             DEP: #include <alloca>          PROTO: void *alloca(size_t size);
+                  RET: Returns pointer to allocated block of memory
+
+- We need NOT - indeed, MUST NOT - CALL "free()" to DEALLOCATE MEMORY allocated with "alloca()". Likewise,
+it is NOT POSSIBLE to USE "realloc()" to RESIZE a BLOCK of memory ALLOCATED by "alloca()".
+
+- Although "alloca()" is NOT PART of SUSv3, it is PROVIDED on MOST UNIX implementations and is thus REASONABLY
+PORTABLE.
+
+               Note:  Older versions of "glibc", and some other UNIX implementations (mainly BSD derivatives),
+                    require the inclusion of <stdlib.h> instead of <alloca.h> to obtain the declaration of
+                    "alloca()".
+
+- If the STACK OVERFLOWS as a CONSEQUENCE of calling "alloca()", then PROGRAM BEHAVIOUR is UNPREDICTABLE.
+In particular, we DON'T GET a NULL return to INFORM US of the ERROR (In fact, in this circumstance, we MAY
+RECEIVE a 'SIGSEGV' signal). 
+
+- Note that we CAN'T USE "alloca()" WITHIN a FUNCTION ARGUMENT LIST, as in this example:
+         # func(x, alloca(size), z);     /* WRONG! */
+
+- This is BECAUSE the STACK SPACE ALLOCATED by "alloca()" would APPEAR in the MIDDLE of the SPACE for the
+FUNCTION ARGUMENTS (which are PLACED at FIXED locations WITHIN the STACK FRAME). Instead, we MUST USE code
+such as this:
+         # void *y = alloca(size);
+         # func(x, y, z);
+
+- Using "alloca()" to ALLOCATE MEMORY has a FEW ADVANTAGES over "malloc()":
+         a) Allocating blocks of memory is FASTER with "alloca()" THAN with "malloc()", because "alloca()"
+            is IMPLEMENTED by the COMPILER as INLINE CODE that DIRECTLY ADJUSTS the STACK POINTER.
+            Furthermore, "alloca()" DOESN'T NEED to MAINTAIN a LIST of FREE BLOCKS.
+
+         b) The MEMORY that it ALLOCATES is AUTOMATICALLY FREED when the STACK FRAME is REMOVED; that is,
+            when the function that called "alloca()" returns. This is so because the CODE EXECUTED during
+            function return RESETS the VALUE of the STACK POINTER REGISTER to the END of the PREVIOUS FRAME
+            (i.e., ASSUMING a DOWNWARDLY growing stack, to the address JUST ABOVE the START of the CURRENT
+            FRAME). Since we DON'T NEED to do the work of ENSURING that ALLOCATED MEMORY is FREED on ALL
+            RETURN PATHS from a function, CODING of SOME FUNCTIONS becomes MUCH SIMPLER.
+
+- Using "alloca()" can be ESPECIALLY USEFUL if we EMPLOY "longjmp()" or "siglongjmp()" to perform a NONLOCAL
+GOTO from a SIGNAL HANDLER. In this case, it is DIFFICULT or EVEN IMPOSSIBLE to AVOID MEMORY LEAKS if we
+ALLOCATED MEMORY in the JUMPED-OVER functions using "malloc()". By contrast, "alloca()" AVOID this problem
+COMPLETELY, since, as the STACK is UNWOUND by these calls, the ALLOCATED MEMORY is AUTOMATICALLY FREED.
+
+#############################################################################################################

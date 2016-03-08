@@ -1,0 +1,25 @@
+##########################################################################################################
+- For EACH PROCESS, the kernel PROVIDES the SPECIAL VIRTUAL DIRECTOY "/dev/fd". This directory contains
+filenames of the form "/dev/fd/n", where 'n' is a NUMBER corresponding to ONE of the OPEN FILE DESCRIPTORS for
+the process. Thus, for example, "dev/fd/0" is STANDARD INPUT for the process (the "dev/fd" feature is NOT
+SPECIFIED by SUSv3, but SEVERAL other UNIX implementations PROVIDE this feature).
+
+- On SOME SYSTEMS (but NOT Linux), opening one of the files in the "/dev/fd" directory is EQUIVALENT to
+DUPLICATING the CORRESPONDING FILE DESCRIPTOR. Thus, the following statements are EQUIVALENT:
+            # fd = open("/dev/fd/1", O_WRONLY);
+            # fd = dup(1);                        /* Duplicate standard output */
+
+- On LINUX, opening one of the files in "/dev/fd" is EQUIVALENT to REOPENING the ORIGINAL FILE; that is, the
+NEW FILE DESCRIPTOR is ASSOCIATED with a NEW OPEN FILE DESCRIPTION (and thus has DISTINCT file status flags
+AND file offset).
+
+- The "flags" argument of the "open()" call IS interpreted, so that we should TAKE CARE to SPECIFY the SAME
+ACESS MODE as was used by the ORIGINAL descriptor. Specifying OTHER flags, such as 'O_CREAT', is MEANINGLESS
+(and IGNORED) in this context.
+
+        Note:  "dev/fd" is actually a SYMBOLIC LINK to the Linux-specific "/proc/self/id" directory. The
+             LATTER is a SPECIAL CASE of the Linux-specific "/proc/PID/fd" directories, EACH of which
+             contains SYMBOLIC LINKS corresponding to ALL of the files HELD OPEN by a PROCESS.
+
+
+##########################################################################################################

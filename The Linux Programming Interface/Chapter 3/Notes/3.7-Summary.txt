@@ -1,0 +1,25 @@
+##########################################################################################################
+- System calls ALLOW PROCESSES to REQUEST SERVICES from the KERNEL. Even the SIMPLEST system calls have a
+SIGNIFICANT OVERHEAD by comparison with a USER-SPACE function call, since the system must TEMPORARILY SWITCH
+to KERNEL MODE to EXECUTE the system call, and the KERNEL must VERIFY system call arguments and TRANSFER DATA
+between USER MEMORY and KERNEL MEMORY.
+
+- The standard C library provides a MULTITUDE of LIBRARY FUNCTIONS that PERFORM a WIDE RANGE of TASKS. Some
+library functions EMPLOY SYSTEM CALLS to do their work; others performs tasks ENTIRELY WITHIN USER SPACE. On
+Linux, the usual standard C library implementation that is used is "glibc".
+
+- Most system calls and library functions return a STATUS indicating WHETHER a call has SUCCEEDED or FAILED.
+Such status returns should ALWAYS be CHECKED.
+
+- We discussed various GUIDELINES and TECHNIQUES that can HELP us write PORTABLE SYSTEM PROGRAMS that RUN on
+ANY standards-conformant system.
+
+- When COMPILING an application, we can DEFINE various FEATURE TEST MACROS that CONTROL the DEFINITIONS
+EXPOSED by HEADER FILES. This is useful if we want to ENSURE that a PROGRAM CONFORMS to some FORMAL or
+IMPLEMENTATION-DEFINED standard(s).
+
+- We can IMPROVE the PORTABILITY of system programs by USING the SYSTEM DATA TYPES defined in various
+standards, RATHER THAN native native C types. SUSv3 specifies a WIDE RANGE of system data types that an
+IMPLEMENTATION should SUPPORT and that an APPLICATION should EMPLOY.
+
+##########################################################################################################

@@ -1,0 +1,17 @@
+##########################################################################################################
+- Each program executed by the shell is STARTED in a NEW PROCESS. For example, the SHELL creates THREE
+PROCESSES to execute the following pipeline of commands:
+     $ ls -l | sort -k5n | less
+
+- All major shells (except Bourne Shell) provide an INTERACTIVE FEATURE called JOB CONTROL, which ALLOWS the
+user to SIMULTANEOUSLY EXECUTE and MANIPULATE multiple commands or pipelines. In job-control shells, all of
+the processes in a pipeline are placed in a new PROCESS GROUP (or JOB). In the SIMPLE CASE of a shell command
+line containing a SINGLE COMMAND, a new process group containing JUST A SINGLE PROCESS is created. Each process
+in a process group has the SAME integer PROCESS GROUP IDENTIFIER (PGID), which is the same as the PID of one
+of the processes in the group, termed the PROCESS GROUP LEADER.
+
+- The kernel allows for VARIOUS ACTIONS, notably the DELIVERY OF SIGNALS, to be performed on ALL MEMBERS of a
+PROCESS GROUP. Job-control shells use this feature to allow the user to SUSPEND or RESUME ALL of the processes
+in a pipeline.
+
+##########################################################################################################

@@ -1,0 +1,22 @@
+############################################################################################################
+- On MOST UNIX implementations (Linux is a LITTLE DIFFERENT, as explained in Section 9.5), the EFFECTIVE user
+ID and group ID, in CONJUNCTION with the SUPPLEMENTARY group IDs, are used to DETERMINE the PERMISSIONS
+GRANTED to a PROCESS when it tries to PERFORM VARIOUS OPERATIONS (i.e., SYSTEM CALLS). For example, these
+identifiers DETERMINE the PERMISSIONS GRANTED to a PROCESS when it ACCESSES RESOURCES such as FILES and
+System V IPC objects, which THEMSELVES have ASSOCIATED UIDs and GIDs determining TO WHOM they BELONG.
+The EFFECTIVE UID is ALSO USED by the KERNEL to DETERMINE WHETHER one process can SEND a SIGNAL to another.
+
+- A PROCESS whose EFFECTIVE UID is 0 (the UID of "root") has ALL of the PRIVILEGES of the SUPERUSER. Such a
+process is referred to as a "PRIVILEGED PROCESS". Certain system calls can be executed ONLY by PRIVILEGED
+PROCESSES.
+
+                  Note: In Chapter 39, we describe Linux's implementation of CAPABILITIES, a SCHEME that
+                       DIVIDES the PRIVILEGES GRANTED to a SUPERUSER into a number of DISTINCT UNITS that can
+                       be INDEPENDENTLY enabled and disabled.
+
+- Normally, the EFFECTIVE UIDs and GIDs have the SAME VALUES as the CORRESPONDING REAL IDs, but there are
+TWO WAYS in which the EFFECTIVE IDs can ASSUME DIFFERENT values:
+      1) Through the use of SYSTEM CALLS that we discuss in Section 9.7;
+      2) Through the EXECUTION of set-user-ID and set-group-ID programs.
+
+############################################################################################################

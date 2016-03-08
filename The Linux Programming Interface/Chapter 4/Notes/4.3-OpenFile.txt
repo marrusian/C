@@ -1,0 +1,185 @@
+##########################################################################################################
+- The "open()" system call either:
+     - Opens an existing file;
+   or
+     - Creates and opens a new file;
+
+- Prototype and dependencies:
+     #include <sys/stat.h>
+     #include <fcntl.h>
+
+     int open(const char *pathname, int flags, ... /* mode_t mode */);
+                                   Returns file descriptor on success, or -1 on error
+
+- The file to be opened is identified by the "pathname" argument. If "pathname" is a symbolic link, it is
+DEREFERENCED. On success, "open()" returns a FILE DESCRIPTOR that is used to REFER to the FILE in SUBSEQUENT
+system calls. If an error occurs, "open()" returns -1 and "errno" is SET ACCORDINGLY.
+- The "flags" argument is a BIT MASK that specifies the "ACCESS MODE" for the file, using ONE of the following
+CONSTANTS:
+      Access mode    Description
+      O_RDONLY       Opens the file for READING ONLY
+      O_WRONLY       Opens the file for WRITING ONLY
+      O_RDWR         Opens the file for BOTH reading and writing
+
+   Note: Early UNIX implementations used the numbers 0, 1 and 2 INSTEAD of the names shown above. Most modern
+        UNIX implementations define these constants to have those values. Thus, we can see that O_RDWR is
+        NOT EQUIVALENT to O_RDONLY | O_WRONLY; the LATTER COMBINATION is a LOGICAL ERROR.
+
+- When "open()" is used to CREATE a new file, the "mode" bit-mask argument specifies the PERMISSIONS to be
+PLACED on the FILE (the 'mode_t' data type used to type "mode" is an INTEGER TYPE specified in SUSv3). If
+the "open()" call DOESN'T SPECIFY 'O_CREAT', "mode" can be OMITTED.
+
+- We note that the "mode" argument can be specified as a NUMBER (typically in OCTAL) or, PREFERABLY, by ORing
+(|) together ZERO or MORE of the PERMISSION BIT-MASK CONSTANTS.  
+
+- SUSv3 specifies that if "open()" succeeds, it is GUARANTEED to use the LOWEST-NUMBERED UNUSED FILE
+DESCRIPTOR for the process. We can use this feature to ENSURE that a FILE is OPENED using a PARTICULAR file
+descriptor.
+
+- We now consider the "flags" argument in MORE DETAIL. Table 4-3 summarizes the FULL SET of CONSTANTS that
+can be bit-wise ORed (|) in "flags". The final column indicates WHICH o these constants are STANDARDIZED in
+SUSv3 or SUSv4.
+
+- Table 4-3: Values for the "flags" arguments of "open()":
+    ----------------------------------------------------------------------
+    | Flag      |  Purpose                                         | SUS?|
+    |-----------|--------------------------------------------------|-----|
+    |O_RDONLY   | Open for READING ONLY                            |  v3 |
+    |O_WRONLY   | Open for WRITING ONLY                            |  v3 |
+    |O_RDWR     | Open for READING and WRITING                     |  v3 |
+    |-----------|--------------------------------------------------|-----|
+    |O_CLOEXEC  | Set the close-on-exec flag (since Linux 2.6.23)  |  v4 |
+    |O_CREAT    | Create file if it DOESN'T ALREADY EXIST          |  v3 |
+    |O_DIRECTORY| Fail if "pathname" is NOT A DIRECTORY            |  v4 |
+    |O_EXCL     | With O_CREAT: create file EXCLUSIVELY            |  v3 |
+    |O_LARGEFILE| Used on 32-bit systems to open LARGE FILES       |     |
+    |O_NOCTTY   | Don't let "pathname" become the controlling TTY  |  v3 |
+    |O_NOFOLLOW | Don't dereference symbolic links                 |  v4 |
+    |O_TRUNC    | Truncate existing file to zero length            |  v3 |
+    |-----------|--------------------------------------------------|-----|
+    |O_APPEND   | Writes are ALWAYS APPENDED to EOF                |  v3 |
+    |O_ASYNC    | Generate a SIGNAL when I/O is POSSIBLE           |     |
+    |O_DIRECT   | File I/O bypasses buffer cache                   |     |
+    |O_DSYNC    | Provide SYNCHRONIZED I/O data integrity (2.6.33) |  v3 |
+    |O_NOATIME  | Don't update file last access time on read()     |     |
+    |O_NONBLOCK | Open in NONBLOCKING mode                         |  v3 |
+    |O_SYNC     | Make file writes SYNCHRONOUS                     |  v3 |
+    ----------------------------------------------------------------------
+
+- The CONSTANTS in Table 4-3 are DIVIDED into the following GROUPS:
+    a) File ACCESS MODE FLAGS: These are the O_RDONLY, O_WRONLY, and O_RDWR flags described earlier. They
+                               can be retrieved using the "fcntl() F_GETFL" operation.
+
+    b) File CREATION FLAGS: These are the flags shown in the SECOND PART of Table 4-3. They CONTROL various
+                            aspects of the BEHAVIOR of the "open()" call, as well as OPTIONS for SUBSEQUENT
+                            I/O operations. These flags CAN'T be RETRIEVED or CHANGED.
+
+    c) Open file STATUS FLAGS: These are the remaining flags in Table 4-3. They CAN be RETRIEVED and MODIFIED
+                               using the "fcntl() F_GETFL and F_SETFL" operations. These flags are sometimes
+                               simply called the "FILE STATUS FLAGS".
+
+      Note: Since kernel 2.6.22, the Linux-specific files in the directory "/proc/PID/fdinfo" can be READ to
+           OBTAIN INFORMATION about the FILE DESCRIPTORS of ANY PROCESS on the system. There is one file in
+           this directory for EACH of the PROCESS'S OPEN FILE DESCRIPTORS, with a NAME that MATCHES the
+           NUMBER of the DESCRIPTOR. The "pos" field in this file show the CURRENT FILE OFFSET. The "flags"
+           field is an OCTAL NUMBER that SHOWS the FILE ACCESS MODE FLAGS and OPEN FILE STATUS FLAGS
+           (to DECODE this number, we need to look at the numeric values of these flags in the C library
+            header files).
+
+- Details for the "flags" constants are as follows:
+     a) O_APPEND - Writes are ALWAYS APPENDED to the EOF.
+
+     b) O_CREAT  - If the file DOESN'T ALREADY EXIST, it is CREATED as a NEW, EMPTY FILE. This flag is
+                   effective even if the file is being opened ONLY for READING. If we specify O_CREAT,
+                   then we MUST SUPPLY a "mode" argument in the "open()" call; otherwise, the PERMISSIONS
+                   of the NEW FILE will be SET so some RANDOM VALUE from the STACK.
+
+     c) O_DIRECT - Allows file I/O to BYPASS the buffer cache. The "_GNU_SOURCE" FTM must be defined in
+                   order to make this constant definition available from <fcntl.h>.
+
+     d) O_DIRECTORY - Return an error ("errno" equals 'ENOTDIR') if "pathname" is NOT A DIRECTORY. This flag
+                      is an EXTENSION designed SPECIFICALLY for IMPLEMENTING "opendir()". The "_GNU_SOURCE"
+                      FTM must be defined in order to make this constant definition available from <fcntl.h>.
+
+     e) O_DSYNC (since Linux 2.6.33) - Perform file writes according to the requirements of synchronized
+                                       I/O data integrity completion.
+
+     g) O_EXCL - This flag is used in CONJUNCTION with 'O_CREAT' to INDICATE that if the file ALREADY EXISTS,
+                 it SHOULD NOT be OPENED; instead, "open()" SHOULD FAIL, with "errno" set to 'EEXIST'.
+                 In other words, this flag ALLOWS the CALLER to ENSURE that it is the process CREATING the
+                 file. The check for existence and the creation of the file are performed ATOMICALLY. When
+                 BOTH 'O_CREAT' and 'O_EXCL' are SPECIFIED in "flags", "open()" FAILS (with the error EEXIST)
+                 if "pathname" is a SYMBOLIC LINK. SUSv3 requires this behaviour so that a PRIVILEGED
+                 APPLICATION can create a file in a KNOWN LOCATION without there being a possibility that a
+                 symbolic link would cause the file to be created in a DIFFERENT LOCATION (e.g., a system
+                 directory), which would have SECURITY IMPLICATIONS.
+
+     h) O_LARGEFILE - Open the file with LARGE FILE SUPPORT. This flag is used on 32-bit system in order
+                      to work with large files. Although it is NOT SPECIFIED in SUSv3, the 'O_LARGEFILE'
+                      flag is found on SEVERAL other UNIX implementations. On 64-bit Linux implementations,
+                      this flag has NO EFFECT.
+
+     i) O_NOATIME - Don't update the file last access time (the "st_atime field) when reading from this file.
+                    To use this flag, the EUID of the calling process MUST MATCH the OWNER of the file, or
+                    the process must be PRIVILEGED (CAP_FOWNER); otherwise, "open()" FAILS with the error
+                    'EPERM'. This flag is a NONSTANDARD Linux extension. To EXPOSE its definition from
+                    <fcntl.h>, we must define the "_GNU_SOURCE" FTM. The 'O_NOATIME' flag is INTENDED for
+                    use by INDEXING and BACKUP PROGRAMS. Its use can SIGNIFICANTLY REDUCE the amount of
+                    DISK ACTIVITY, because repeated disk seeks back and forth across the disk are
+                    NOT REQUIRED to read the contents of a file and to update the last access time in the
+                    file's i-node. 
+
+     j) O_NOFOLLOW - Normally, "open()" DEREFERENCES "pathname" if it is a SYMBOLIC LINK. However, if the
+                     'O_NOFOLLOW' flag is specified, the "open()" FAILS (with "errno" set to 'ELOOP') if
+                     "pathname" is a symbolic link. This flag is useful, ESPECIALLY in PRIVILEGED PROGRAMS,
+                     for ENSURING that "open()" doesn't DEREFERENCE a symbolic link. To expose the definition
+                     of this flag from <fcntl.h>, we must define the "_GNU_SOURCE" FTM.
+
+     l) O_NONBLOCK - Open the file in NONBLOCKING MODE.
+
+     m) O_SYNC     - Open the file for SYNCHRONOUS I/O.
+
+     n) O_TRUNC    - If the file ALREADY EXISTS and is a REGULAR FILE, then TRUNCATE it to ZERO LENGTH,
+                     DESTROYING any EXISTING DATA. On Linux, truncation occurs whether the file is being
+                     opened for reading or writing (in BOTH cases, we MUST have WRITE PERMISSION on the
+                     file). SUSv3 leaves the combination of 'O_RDONLY' and 'O_TRUNC' UNSPECIFIED, but most
+                     other UNIX implementations behave in the same way as Linux.
+
+- If an error occurs while trying to open the file, "open()" returns -1, and "errno" identifies the CAUSE of
+the error. The following are SOME POSSIBLE ERRORS that can occur (in ADDITION to those ALREADY NOTED when
+describing the "flags" argument above):
+   a) EACCES - The file permissions DON'T ALLOW the CALLING PROCESS to OPEN the file in the mode specified
+               by "flags". Alternatively, because of DIRECTORY PERMISSIONS, the file COULD NOT BE ACCESSED,
+               or the file DID NOT EXIST and COULD NOT BE CREATED.
+
+   b) EISDIR - The specified file is a DIRECTORY, and the caller ATTEMPTED to OPEN it for WRITING. This ISN'T
+               ALLOWED (on the other hand, there are occasions when it can be USEFUL to OPEN a DIRECTORY for
+               READING).
+
+   c) EMFILE - The process RESOURCE LIMIT on the NUMBER of OPEN FILE DESCRIPTORS has been REACHED.
+
+   d) ENFILE - The SYSTEM-WIDE LIMIT on the NUMBER of OPEN FILES has been REACHED.
+
+   e) ENOENT - The specified file DOESN'T EXIST, and 'O_CREAT' was NOT SPECIFIED, or 'O_CREAT' WAS SPECIFIED,
+               and one of the DIRECTORIES in "pathname" DOESN'T EXIST or is a SYMBOLIC LINK pointing to a
+               NONEXISTENT pathname (a DANGLING LINK).
+
+   g) EROFS  - The specified file is a READ-ONLY FILE SYSTEM and the caller tried to OPEN it for WRITING.
+
+   h) ETXTBSY - The specified file is an EXECUTABLE FILE (a program) that is CURRENTLY EXECUTING. It is
+                NOT PERMITTED to MODIFY (i.e., open for writing) the EXECUTABLE file ASSOCIATED with a RUNNING
+                PROGRAM (we must FIRST TERMINATE the program in order to be ABLE TO MODIFY the EXECUTABLE
+                FILE).
+
+- The above list is INCOMPLETE: see the "open(2)" manual page for more reasons why "open()" may fail.
+
+- In early UNIX implementations, "open()" had ONLY TWO ARGUMENTS and COULD NOT be used to create a new file.
+Instead, the "creat()" system call was used to CREATE and OPEN a NEW FILE. Calling "creat()" is EQUIVALENT to
+the following "open()" call:
+        fd = open(pathname, O_WRONLY | O_CREAT | O_TRUNC, mode);
+
+- Because the "open()" flags argument provides GREATER CONTROL over HOW the file is opened (e.g., we can
+specify O_RDWR instead of O_WRONLY), "creat()" is now OBSOLETE, although it MAY STILL BE SEEN in OLDER
+PROGRAMS.
+
+##########################################################################################################

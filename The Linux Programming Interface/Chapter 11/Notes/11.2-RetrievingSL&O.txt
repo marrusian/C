@@ -1,0 +1,33 @@
+#############################################################################################################
+- The "sysconf()" function ALLOWS an application to OBTAIN the VALUES of SYSTEM LIMITS at RUN TIME:
+            DEP: #include <unistd.h>               PROTO: long sysconf(int name);
+                                                   RET: Returns value of limit specified by "name", or -1
+                                                            if limit is INDETERMINATE or an ERROR occurred
+
+- The "name" argument is one of the _SC_* constant defined in <unistd.h>, some of which are listed in the
+aforementioned table. The VALUE of the LIMIT is RETURNED as the FUNCTION RESULT.
+
+- If a LIMIT CAN'T BE DETERMINED, "sysconf()" returns -1. It MAY ALSO return -1 if an ERROR occurred
+(the ONLY SPECIFIED ERROR is 'EINVAL', indicating that "name" is NOT VALID). To DISTINGUISH the case of an
+INDETERMINATE LIMIT from an ERROR, we MUST SET "errno" to 0 BEFORE the call; if the call returns -1 and
+"errno" is set AFTER the call, then an error occured.
+
+                 Note:  The LIMIT VALUES RETURNED by "sysconf()" (as well as "pathconf()" and "fpathconf()" 
+                      are ALWAYS (long) integers. In the RATIONALE TEXT for "sysconf()", SUSv3 notes that
+                      strings were considered as possible return values, but were REJECTED because of the
+                      COMPLEXITY of implementation and use.
+
+- SUSv3 REQUIRES that the VALUE RETURNED by "sysconf()" for a PARTICULAR LIMIT be CONSTANT for the LIFETIME
+of the CALLING PROCESS. For example, we can ASSUME that the VALUE RETURNED for "_SC_PAGESIZE" WON'T CHANGE
+while a PROCESS is RUNNING.
+
+                 Note:  On Linux, there ARE some (SENSIBLE) EXCEPTIONS to the statement that limit values are
+                      constant for the life of a process. A process can use "setrlimit()" to CHANGE various
+                      process resource limits that AFFECT LIMIT VALUES reported by "sysconf()":
+                    - RLIMIT_NOFILE, which DETERMINES the NUMBER OF FILES the process MAY OPEN (_SC_OPEN_MAX);
+                    - RLIMIT_NPROC (a resource limit NOT ACTUALLY SPECIFIED in SUSv3), which is the PER-USER
+                      LIMIT on the NUMBER of PROCESSES that MAY BE CREATED by this process (_SC_CHILD_MAX);
+                    - RLIMT_STACK, which, since Linux 2.6.23, ALSO DETERMINES the LIMIT on the SPACE ALLOWED
+                      for the PROCESS'S COMMAND-LINE ARGUMENTS AND ENVIRONMENT (_SC_ARG_MAX).
+
+#############################################################################################################

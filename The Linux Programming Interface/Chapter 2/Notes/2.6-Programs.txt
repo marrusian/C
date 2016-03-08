@@ -1,0 +1,14 @@
+##########################################################################################################
+- PROGRAMS normally exist in TWO FORMS. The first form is SOURCE CODE, human-readable text consisting of
+a series of statements written in a programming language. To be executed, source code MUST BE CONVERTED
+to the SECOND FORM: BINARY MACHINE-LANGUAGE instructions that the computer can understand (this CONSTRASTS
+with a SCRIPT, which is a text file containing commands to be DIRECTLY PROCESSED by a program such as a 
+shell or other command interpreter). The two meanings of the term PROGRAM are normally considered
+synonymous, since the step of COMPILING and LINKING converts source code into semantically equivalent
+binary machine code.
+
+- A FILTER is the name often applied to a program that READS its input from STDIN, performs some
+transformation of that input, and WRITES the TRANSFORMED DATA to STDOUT. Examples of filters include: cat,
+grep, tr, sort, wc, sed, and awk.
+
+##########################################################################################################

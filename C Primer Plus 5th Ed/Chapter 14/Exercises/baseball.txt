@@ -1,0 +1,5 @@
+4 Jessie Joybat  5 2 1 1
+2 Stephen Prata  9 5 1 3
+1 George Clooney 3 1 4 0
+4 Jessie Joybay  2 1 3 2
+6 Pumba Pambu    3 0 4 1

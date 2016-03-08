@@ -1,0 +1,7 @@
+- Using the "MALLOC" family of functions, a process can DYNAMICALLY ALLOCATE and RELEASE memory on the HEAP.
+In considering the IMPLEMENTATION of these funtions, we saw that VARIOUS THINGS can GO WRONG in a program that
+MISHANDLES the BLOCKS of ALLOCATED MEMORY, and we noted that a number of DEBUGGING TOOLS are AVAILABLE to
+HELP LOCATE the SOURCE of such ERRORS.
+
+- The "alloca()" function ALLOCATES MEMORY on the STACK. This MEMORY is AUTOMATICALLY DEALLOCATED when the
+function that calls "alloca()" returns.

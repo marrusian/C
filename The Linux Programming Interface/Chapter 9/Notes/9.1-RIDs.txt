@@ -1,0 +1,15 @@
+- Every process has a SET of ASSOCIATED numeric user identifiers (UIDs) and group identifiers (GIDs).
+Sometimes, these are referred to as PROCESS CREDENTIALS. These identifiers are as follows:
+    a) Real UID and GID;
+    b) Effective UID and GID;
+    c) Saved set-user-ID and saved set-group-ID;
+    d) File-system UID and GID (Linux-specific !);
+    e) Supplementary GIDs.
+
+############################################################################################################
+- The RUID and RGID IDENTIFY the USER AND GROUP to which the PROCESS BELONGS. As part of the LOGIN PROCESS,
+a LOGIN SHELL gets its real UIDs and GIDs from the THIRD and FOURTH FIELDS of the USER'S PASSWORD RECORD in
+the "/etc/passwd" file. When a NEW PROCESS is CREATED (e.g., when the shell executes a program), it INHERITS
+these IDENTIFIERS from its PARENT.
+
+############################################################################################################

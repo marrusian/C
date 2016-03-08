@@ -1,0 +1,31 @@
+############################################################################################################
+- The SAVED set-UID and SAVED set-GID are DESIGNED for use with set-UID and set-GID programs. When a program
+is EXECUTED, the following steps (among MANY OTHERS) occur:
+     1) If the set-UID/set-GID permission bit is ENABLED on the EXECUTABLE, then the EFFECTIVE UID/GID of the
+        process is MADE THE SAME as the OWNER of the EXECUTABLE. If the set-UID/set-GID bit is NOT SET, then
+        NO CHANGE is made to the EFFECTIVE UID/GID of the process.
+
+     2) The VALUES for the SAVED set-UID and SAVED set-GID are COPIED from the CORRESPONDING EFFECTIVE IDs.
+        This copying occurs REGARDLESS of WHETHER the set-UID and set-GID bit is set on the file being
+        executed.
+
+- As an EXAMPLE of the EFFECT of the ABOVE STEPS, suppose that a process whose REAL UID, EFFECTIVE UID, and
+SAVED set-UID are ALL SET to 1000, execs a set-UID program OWNED by "root" (UID 0). After the exec, the UIDs
+of the process will be changed as follows:
+        real=1000   effective=0   saved=0
+
+- Various system calls ALLOW a set-UID program to SWITCH its EFFECTIVE UID between the values of the REAL UID
+and the SAVED set-UID. Analogous system calls ALLOW a set-GID program to MODIFY its EFFECTIVE GID. In this
+manner, the program can TEMPORARILY DROP and REGAIN whatever privileges are associated with the UID/GID of the
+execed file (in other words, the program can move between the states of potentially being privileged and
+actually operating with privilege). As we'll elaborate in Section 38.2, it is SECURE PROGRAMMING PRACTICE for
+set-UID and set-GID programs to OPERATE UNDER the UNPRIVILEGED (i.e. REAL) ID WHENEVER the program DOESN'T
+ACTUALLY NEED to perform any operations associated with the PRIVILEGED (i.e., SAVED SET) ID.
+
+                 Note:  The SAVED set-UID and SAVED set-GID are SOMETIMES SYNONYMOUSLY REFERRED to as the
+                      "SAVED UID" and "SAVED GID".   
+                        The SAVED set-IDs are a System V invention ADOPTED by POSIX. They were NOT PROVIDED on
+                      releases of BSD prior to 4.4. The INITIAL POSIX.1 standard made SUPPORT for these IDs
+                      OPTIONAL, but LATER STANDARDS (starting with FIPS 151-1 in 1988) made support MANDATORY.
+
+############################################################################################################

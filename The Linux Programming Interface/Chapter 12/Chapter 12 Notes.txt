@@ -1,0 +1,179 @@
+- In OLDER UNIX implementations, there was typically NO EASY WAY to INTROSPECTIVELY ANALYZE (or CHANGE)
+ATTRIBUTES of the KERNEL, to answer questions such as the following:
+     - How many processes are running on the system and who owns them?
+     - What files does a process have open?
+     - What files are currently locked, and which processes hold the locks?
+     - What sockets are being used on the system?
+
+- Some OLDER UNIX implementations SOLVED this problem by ALLOWING PRIVILEGED PROGRAMS to DELVE into DATA
+STRUCTURES in KERNEL MEMORY. However, this approach SUFFERED various PROBLEMS. In particular, it REQUIRED
+SPECIALIZED KNOWLEDGE of the KERNEL DATA STRUCTURES, and these structures MIGHT CHANGE from one kernel version
+to the next, REQUIRING PROGRAMS that DEPENDED on them to be REWRITTEN.
+
+- In order to PROVIDE EASIER ACCESS to KERNEL INFORMATION, many MODERN UNIX implementations provide a "/proc"
+VIRTUAL FILE SYSTEM. This file system RESIDES under the "/proc" directory and contains various files that
+EXPOSE kernel information, allowing processes to CONVENIENTLY READ that information, and CHANGE IT in SOME
+CASES, using NORMAL FILE I/O system calls. The "/proc" file system is said to be "VIRTUAL" because the FILES
+and SUBDIRECTORIES that it contains DON'T RESIDE on a DISK. Instead, the kernel CREATES them "ON THE FLY" as
+processes ACCESS them.
+
+                    Note: - Some other sources use the term "PSEUDO FILE SYSTEM" synonymously.
+                          - The "Virtual File System", described in Section 14.5, is a term used to refer to
+                            a SPECIFIC COMPONENT of the Linux kernel. This usage is UNRELATED to the term
+                            as used when describing the "/proc" file system.
+
+- Although MANY UNIX implementations PROVIDE a "/proc" file system, SUSv3 DOESN'T SPECIFY this file system;
+the DETAILS described next are LINUX-SPECIFIC.
+
+###########################################################################################################
+- For EACH PROCESS on the system, the KERNEL provides a CORRESPONDING DIRECTORY named "/proc/PID", where 'PID'
+is the ID of the process. Within this directory are VARIOUS files and subdirectories CONTAINING INFORMATION
+about the PROCESS. For example, we can obtain information about the "init" process, which always has the
+process ID 1, by looking at files under the directory "/proc/1".
+
+- Among the FILES in each "/proc/PID" directory, there is one NAMED "status", which provides a range of
+information about the process. As indicated by the "since" comments (in the original text illustration)
+accompanying the file output, the FORMAT of this file has EVOLVED OVER TIME with NEW FIELDS ADDED (and in a
+FEW CASES, REMOVED) in various kernel versions (aside from the Linux 2.6 changes noted, Linux 2.4 added the
+Tgid, TracerPid, FDSize, and Threads fields).
+
+- The fact that the CONTENTS of this file have CHANGED OVER TIME raises a general point about the use of
+"/proc" files: when these files consist of MULTIPLE ENTRIES, we SHOULD PARSE them DEFENSIVELY - in this case,
+LOOKING for a MATCH on a LINE containing a PARTICULAR STRING (e.g., "PPid:"), RATHER than PROCESSING the file
+by (logical) line number.
+
+- Here are SOME OTHER FILES found in each "/proc/PID" directory:
+    ---------------------------------------------------------------------------------
+    | File    | Description (process attribute)                                     |
+    ---------------------------------------------------------------------------------
+    | cmdline | Command-line arguments delimited by '\0'                            |
+    | cwd     | Symbolic link to current working directory                          |
+    | environ | Environment list NAME=value pairs, delimited by '\0'                |
+    | exe     | Symbolic link to file being executed                                |
+    | fd      | Directory containing symbolic links to files opened by this process |
+    | maps    | Memory mappings                                                     |
+    | mem     | Process virtual memory (must "lseek()" to VALID OFFSET before I/O)  |
+    | mounts  | Mount points for this process                                       | 
+    | root    | Symbolic link to root directory                                     |
+    | status  | Various information (e.g., PIDs, credentials, memory usage, signals)|
+    | task    | Contains one subdirectory for each thread in process (Linux 2.6)    |
+    ---------------------------------------------------------------------------------
+
+- The "proc/PID/fd" directory contains ONE SYMBOLIC LINK for EACH FILE DESCRIPTOR that the PROCESS has OPEN.
+Each of these symbolic links has a NAME that MATCHES the DESCRIPTOR NUMBER; for example, "/proc/1968/fd/1" is
+a SYMBOLIC LINK to the STANDARD OUTPUT of PROCESS 1968.
+
+- As a CONVENIENCE, ANY PROCESS can ACCESS its OWN "/proc/PID" directory using the symbolic link "/proc/self".
+
+--------------------------------------------------------------------------------------------------------
+- Linux 2.4 added the notion of THREAD GROUPS to PROPERLY SUPPORT the POSIX THREADING MODEL. Since some
+attributes are DISTINCT for the THREADS in a THREAD GROUP, Lnux 2.4 added a "task" subdirectory under the
+"/proc/PID" directory. For EACH THREAD in this PROCESS, the KERNEL PROVIDES a SUBDIRECTORY named
+"/proc/PID/task/TID", where 'TID' is the THREAD ID of the thread (this is the SAME NUMBER as would be RETURNED
+by a call to "gettid()" in the thread). 
+
+- Under each "/proc/PID/task/TID" subdirectory is a SET of files and directories EXACTLY LIKE those that are
+found under "/proc/PID". Since threads SHARE MANY ATTRIBUTES, much of the information in these files is THE
+SAME for EACH of the THREADS in the PROCESS. However, where it MAKES SENSE, these files show DISTINCT
+INFORMATION for EACH THREAD. For example, in the "/proc/PID/task/TID/status" files for a THREAD GROUP,
+State, Pid, SigPnd, SigBlk, CapInh, CapPrm, CapEff, and CapBnd are some of the fields that MAY BE DISTINCT
+for each thread.
+
+###########################################################################################################
+- Various files and subdirectories under "/proc" PROVIDE ACCESS to SYSTEM-WIDE INFORMATION (see Figure 12-1).
+
+- The following table SUMMARIZES the GENERAL PURPOSE of the "/proc" subdirectories shown in Figure 12-1:
+    ------------------------------------------------------------------------------------------
+    | Directory        | Information exposed by files in this directory                      |
+    ------------------------------------------------------------------------------------------
+    | /proc            | Various system information                                          |
+    | /proc/net        | Status information about NETWORKING and SOCKETS                     |
+    | /proc/sys/fs     | Settings related to FILE SYSTEMS                                    |
+    | /proc/sys/kernel | Various general KERNEL SETTINGS                                     |
+    | /proc/sys/net    | NETWORKING and SOCKETS SETTINGS                                     |
+    | /proc/sys/vm     | Memory-management settings                                          |
+    | /proc/sysvipc    | Information about System V IPC objects                              |
+    ------------------------------------------------------------------------------------------
+
+- Files under "/proc" are OFTEN ACCESSED using SHELL SCRIPTS (most "/proc" files that contain MULTIPLE VALUES
+can be EASILY PARSED with a SCRIPTING LANGUAGE such as Python or Perl). For example, we can MODIFY and VIEW
+the CONTENTS of a "/proc" file using SHELL COMMANDS as follows:
+         # echo 1000000 > "/proc/sys/kernel/pid_max"
+         # cat /proc/sys/kernel/pid_max
+           1000000
+
+- "/proc" files can ALSO be ACCESSED from a PROGRAM using NORMAL FILE I/O system calls. Some RESTRICTIONS
+apply WHEN ACCESSING these files:
+    - Some "/proc" files are READ-ONLY; that is, they exist ONLY to DISPLAY KERNEL INFORMATION and CAN'T be
+      used to MODIFY that information. This applies to MOST FILES under the "/proc/PID" directories.
+    
+    - Some "/proc" files can be ONLY READ by the FILE OWNER (or by a PRIVILEGED PROCESS). For example, ALL
+      FILES under "/proc/PID" are OWNED by the USER who OWNS the CORRESPONDING PROCESS, and on some of these
+      files (e.g., "/proc/PID/environ"), READ PERMISSION is ONLY GRANTED to the FILE OWNER.
+
+    - Other than the files in the "/proc/PID" subdirectories, MOST FILES under "/proc" are OWNED by "root",
+      and the FILES that are MODIFIABLE can be ONLY MODIFIED by "root".
+
+- The "/proc/PID" directories are VOLATILE. Each of these DIRECTORIES come into EXISTENCE when a PROCESS with
+the CORRESPONDING PID is CREATED and DISAPPEARS when that PROCESS TERMINATES. This means that if we DETERMINE
+that a particular "/proc/PID" directory EXISTS, then we need to CLEANLY HANDLE the POSSIBILITY that the
+process has TERMINATED, and the CORRESPONDING "/proc/PID" directory has been DELETED, by the time we TRY to
+OPEN A FILE in that directory.
+
+###########################################################################################################
+- The "uname()" system call returns a RANGE of IDENTIFYING INFORMATION about the HOST SYSTEM on which an
+application is running, in the structure pointed to by "utsbuf":
+           DEP: #include <sys/utsname.h>               PROTO: int uname(struct utsname *utsbuf);
+                                                       RET: Returns 0 on success, or -1 on error
+
+- The "utsbuf" argument is a POINTER to a "utsname" STRUCTURE, which is DEFINED as follows:
+         # define _UTSNAME_LENGTH 65
+
+         # struct utsname{
+         #    char sysname[_UTSNAME_LENGTH];    /* Implementation name */
+         #    char nodename[_UTSNAME_LENGTH];   /* Node name on network */
+         #    char release[_UTSNAME_LENGTH];    /* Implementation release level */
+         #    char version[_UTSNAME_LENGTH];    /* Release version level */
+         #    char machine[_UTSNAME_LENGTH];    /* Hardware on which system is running */
+            #ifdef _GNU_SOURCE                  /* Following is Linux-specific */
+              char domainname[_UTSNAME_LENGTH]; /* NIS domain name of host */
+            #endif
+         # };
+
+- SUSv3 SPECIFIES "uname(), but LEAVES the LENGTHS of the various fields of the "utsname" structure UNDEFINED,
+REQUIRING ONLY that the STRINGS be TERMINATED by a NULL BYTE. On LINUX, these fields are each 65-BYTES LONG,
+INLUDING space for the TERMINATING NULL BYTE. On SOME UNIX implementations, these fields are SHORTER;
+on OTHERS (e.g., Solaris), they RANGE UP TO 257 BYTES.
+
+- The "sysname", "release", "version", and "machine" fields of the "utsname" structure are AUTOMATICALLY SET
+by the KERNEL.
+
+                    Note:  On Linux, three files in the directory "/proc/sys/kernel" PROVIDE ACCESS to the
+                         SAME INFORMATION as is returned in the "sysname", "release", and "version" fields
+                         of the "utsname" structure. These READ-ONLY FILES are, respectively, "ostype",
+                         "osrelease", and "version". Another file, "/proc/version", INCLUDES the SAME
+                         INFORMATION as in these files, and ALSO INCLUDES INFORMATION about the KERNEL
+                         COMPILATION STEP (i.e., the NAME of the USER that PERFORMED the COMPILATION, the
+                         NAME of HOST on which the COMPILATION was PERFORMED, and the "GCC" VERSION used).
+
+- The "nodename" field RETURNS the VALUE that was SET using the "sethostname()" system call (see the manual
+page for details of this system call). Often, this NAME is SOMETHING LIKE the HOSTNAME PREFIX from the
+system's DNS DOMAIN NAME.
+
+- The "domainname" field RETURNS the VALUE that was SET using the "setdomainname()" system call (again, see
+the manual page for details of this system call). This is the "Network Information Services (NIS)" domain name
+of the host (which is NOT THE SAME THING as the host's DNS domain name).
+
+                    Note:  The "gethostname()" system call, which is the CONVERSE of "sethostname()",
+                         RETRIEVES the SYSTEM HOSTNAME. The system hostname is ALSO VIEWABLE and SETTABLE
+                         using the "hostname(1)" command and the Linux-specific "/proc/sys/kernel/hostname"
+                         file. 
+                           The "getdomainname() system call, which is the CONVERSE of "setdomainname()",
+                        RETRIEVES the NIS DOMAIN NAME. The NIS domain name is ALSO VIEWABLE AND SETTABLE
+                        using the "domainname(1)" command and the Linux-specific "/proc/sys/kernel/domainname"
+                        file.
+                           The "sethostname()" and "setdomainname()" system calls are RARELY USED in
+                        application programs. Normally, the HOSTNAME and NIS DOMAIN NAME are ESTABLISHED at
+                        BOOT TIME by STARTUP SCRIPTS.
+
+###########################################################################################################

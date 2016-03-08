@@ -1,0 +1,7 @@
+- The "/proc" file system EXPOSES a range of KERNEL INFORMATION to application programs. Each "/proc/PID"
+subdirectory contains file and subdirectories that PROVIDE INFORMATION about the PROCESS whose ID MATCHES PID.
+Various other files and directories under "/proc" EXPOSE SYSTEM-WIDE INFORMATION that programs CAN READ and,
+in SOME CASES, MODIFY.
+
+- The "uname()" system call ALLOWS US to DISCOVER the UNIX implementation and the TYPE OF MACHINE on which an
+application is running.

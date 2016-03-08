@@ -1,0 +1,82 @@
+##########################################################################################################
+- The KERNEL maintains a SINGLE HIERARCHICAL DIRECTORY structure to organize ALL FILES in the system (this
+contrasts with OSs such as Microsoft Windows, where EACH disk device has its OWN DIRECTORY HIERARCHY). At
+the BASE of this hierarchy is the ROOT DIRECTORY, named '/' (slash). All files and directories are
+CHILDREN or further removed DESCENDANTS of the root directory.
+
+- Within the file system, each file is marked with a TYPE, indicating WHAT KIND of file it is. One of these
+file types denotes ORDINARY DATA FILES, which are usually called REGULAR or PLAIN files, to DISTINGUISH
+them from other file types. These other file types include DEVICES, PIPES, DIRECTORIES, and SYMBOLIC LINKS.
+- The term FILE is commonly used to denote a FILE of ANY TYPE, not just a regular file.
+
+- A DIRECTORY is a SPECIAL FILE whose contents take the form of a TABLE of filenames coupled with
+references to the corresponding files. This filename-plus-reference association is called a LINK, and files
+may have MULTIPLE LINKS, and thus MULTIPLE NAMES, in the same or in different directories.
+- Directories may contain links BOTH to FILES and to OTHER DIRECTORIES. The links between directories
+ESTABLISH the DIRECTORY HIERARCHY.
+- Every directory contains AT LEAST two entries: 
+   a) '.' (dot), which is a link to the directory ITSELF;
+   b) '..' (dot-dot), which is a link to its PARENT DIRECTORY, the directory ABOVE in the hierarchy.
+  Note: Every directory, EXCEPT the ROOT DIRECTORY, has a parent.
+
+- Like a normal link, a SYMBOLIC LINK provides an ALTERNATIVE NAME for a file. But whereas a normal link
+is a filename-plus-pointer entry in a directory list, a symbolic link is a SPECIALLY MARKED FILE containing
+the name of ANOTHER FILE (in other words, a symbolic link has a filename-plus-pointer entry in a directory,
+and the file REFFERED TO by the POINTER contains a STRING that NAMES ANOTHER FILE). This latter file is
+often called the TARGET of the symbolic link, and it is common to say that the symbolic link "points" or
+"refers" to the target file. When a pathname is specified in a system call, in most circumstances, the
+kernel AUTOMATICALLY DEREFERENCES (or synonymously, FOLLOWS) each symbolic link in the pathname, REPLACING
+it with the filename to which it points. This process may hapen recursively if the target of a symbolic
+link is itself a symbolic link (the kernel IMPOSES LIMITS on the NUMBER OF DEREFERENCES to handle the
+possibility of CIRCULAR CHAINS of symbolic links). If a symbolic link refers to a file that DOESN'T EXISTS,
+it is said to be a DANGLING LINK.
+- Often, HARD LINK and SOFT LINK are used as alternative terms for NORMAL and SYMBOLIC LINKS. 
+
+- On most Linux file systems, file names can be up to 255 characters long. Filenames may contain ANY
+characters except slashes (/) and null characters (\0). However, it is ADVISABLE to employ ONLY the
+65-character set ([-._a-zA-Z0-9]) that is refferd to in SUSv3 as the PORTABLE FILENAME CHARACTER SET.
+- We should AVOID the use of characters in filenames that are NOT in the portable filename character set,
+because those caracters may have SPECIAL MEANINGS within some contexts. If a filename containing characters
+with special meanings APPEARS in such contexts, then these characters must be ESCAPED (\) to INDICATE that
+they SHOULD NOT be INTERPRETED with those special meanings.
+- We should also AVOID filenames beginning with a hyphen (-), since such filenames may be MISTAKEN for
+OPTIONS when specified in a shell command.
+
+- A PATHNAME is a STRING consisting of an OPTIONAL INITIAL SLASH (/) followed by a SERIES of filenames
+separated by slashes. All but the last of these component filenames identifies a DIRECTORY (or a symbolic
+link that RESOLVES to a directory). The series of component filenames PRECEDING the FINAL SLASH is
+sometimes referred to as the DIRECTORY PART of a pathname, while the name FOLLOWING the FINAL SLASH is
+sometimes referred to as the FILE or BASE PART of the pathname.
+- A pathname describes the LOCATION of a file within the SDH, and is either ABSOLUTE or RELATIVE:
+   a) An ABSOLUTE PATHNAME begins with a slash (/) and specifies the location of a file with RESPECT TO THE
+      ROOT DIRECTORY. Examples are: "/usr/include", "/home/mtk/.bashrc", "/" etc.
+   b) A RELATIVE PATHNAME specifies the location of a file RELATIVE TO A PROCESS'S CURRENT WORKING
+      DIRECTORY, and is DISTINGUISHED from an absolute pathname by the ABSENCE of an initial slash.
+      Examples are: "include/sys/types.h", "../mtk/.bashrc" etc.
+
+- Each process has a CURRENT WORKING DIRECTORY (sometimes just referred to as the process's WORKING
+DIRECTORY or CURRENT DIRECTORY). This is the process's "current location" within the SDH, and it is from
+this directory that relative pathnames are interpreted for the process. 
+- A process INHERITS its CWD from its PARENT PROCESS. A LOGIN SHELL has its initial CWD set to the
+location named in the HOME DIRECTORY FIELD of the user's PASSWORD FILE ENTRY.
+
+- Each file has an ASSOCIATED user ID (UID) and group ID (GID) that DEFINE the OWNER of the file and the
+group to which it BELONGS. The ownership of a file is used to DETERMINE the ACCESS RIGHTS available to
+users of the file.
+- For the purpose of ACCESSING a file, the system DIVIDES users into THREE CATEGORIES:
+   a) The OWNER of the file (sometimes termed the USER of the file);
+   b) The users who are members of the group matching the file's GID (termed GROUP);
+   c) The rest of the world (termed OTHER).
+- Three permission bits may be set for EACH of these categories of users:
+   a) READ permission allows the contents of the file to be READ;
+   b) WRITE permission allows MODIFICATION of the contents of the file;
+   c) EXECUTE permission allows EXECUTION of the file, which is either a PROGRAM or a SCRIPT to be
+      processed by some interpreter.
+- These permissions may ALSO be set on DIRECTORIES, although their meanings are SLIGHTLY DIFFERENT:
+   a) READ permission allows the contents of (i.e., the filenames in) the directory to be LISTED;
+   b) WRITE permission allows the contents of the directory to be CHANGED (i.e., filenames can be ADDED,
+      REMOVED, and CHANGED);
+   c) EXECUTE (sometimes called SEARCH) permission allows ACCESS to files WITHIN the directory (subject to
+      the permissions on the files themselves).
+
+##########################################################################################################

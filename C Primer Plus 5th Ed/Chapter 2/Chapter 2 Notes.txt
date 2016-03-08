@@ -1,0 +1,101 @@
+- There are 5 types of statements in the C language:
+   - Declaration statements;
+   - Assignment statements;
+   - Function statements;
+   - Control statements;
+   - Null statements.
+
+- The effect of an "#include" directive is the same as if we had typed the entire contents of the
+header file into our file at the point where the "#include" line appears. In effect, it's a
+cut-and-paste operations, providing a convenient way of sharing information.
+
+- The #include statement is an example of a C PREPROCESSOR DIRECTIVE. In general, C compilers perform
+some preparatory work on source code before compiling; this is termed PREPROCESSING.
+
+- Header files contain information used by the compiler to build the final executable program. For
+example, they may define constants or indicate the names of functions and how they should be used
+(prototypes), but the actual code for a function is in a library file of precompiled code, NOT in a 
+header file. The linker takes care of finding the library code we need.
+
+- Part of the C philosophy is : "avoid carrying unnecessary weight". This principle of economic use of
+resources makes C popular for embedded programming.
+
+- The C90 standard grudgingly tolerated the "main()" form, but the C99 and C11 standard don't. Another
+form is "void main()", which some compilers allow it, but NONE of the standards have ever listed it
+as a recognized option. Stick to the standard form "int main()".
+
+- C99 added a second style of comments, one popularized by C++ and Java, which uses the symbols "//"
+to create comments that are confined to a single line. This newer form is a response to a potential
+problem with the old form.
+
+- Traditionally, C has required that variables be declared at the beginning of a block with no other
+kind of statement allowed to come before any of the declarations. C99 and C11, however, following the
+practice of C++, let us place declarations about anywhere in a block.
+
+- With C99 and C11 we can make the name of an identifier as long as we want, but the compiler need
+only consider the first 63 characters as significant. For external identifiers, only 31 characters
+need to be recognized. 
+
+- OSs an the C library often use identifiers with one or two initial underscore characters, so it's 
+better to avoid that usage. The standard labels beginning with one or two underscore characters,
+such as library identifiers, are RESERVED (i.e. it's not a syntax error to use them, but it could lead
+to name conflicts).
+
+- There are four good reasons to declare variables:
+   a) Putting all the variables in one place makes it easier for a a reader to grasp what the program
+   is about. This is particularly true if we give our variables meaningful name. If the name doesn't
+   suffice, use comments to explain what the variables represent. Documenting a program in this
+   manner is one of the basic techniques of good programming.
+   b) Thinking about which variables to declare encourages us to do some planning before plunging into
+   writing a program.
+   c) Declaring variables helps prevent one of programming's more subtle and hard-to-find bugs - that
+   of mispelled variable names.
+   d) Our C program will NOT compile if we don't declare our variables.
+
+- The "f" in "printf()" is a reminder that this is a FORMATTING print function. Each type of data has
+its own specifier.
+
+- The return statement in "main()" has a practical use with some operating systems, including Linux
+and Unix.
+
+- Few tips on improving the readability of a program(those are just readability CONVENTIONS):
+  - Choose meaningful variable names;
+  - Use comments;
+  - Use blank lines to separate one conceptual section of a function from another;
+  - Use one line per statement.
+
+- A prototype informs the compiler about the functions to be used. The C90 standard added prototypes,
+and older compilers might not recognize them. A prototype declares to the compiler that we are using
+a particular function, so it's called a FUNCTION DECLARATION. It also specifies the properties of a
+function (i.e. its return type and its arguments).
+
+- The C standard recomments that we provide function prototypes for all functions we use. The standard
+"include" files take care of this task for the standard library functions.
+
+- By tracing the program step-by-step manually, keeping track of each variable, we monitor the program
+state. The PROGRAM STATE is simply the set of values of all the variables at a given point in
+program execution (i.e. a snapshot of the current state of computation).
+
+- Keywords are the vocabulary of C. Because they are special to C, we can't use them as identifiers.
+
+- C90 Keywords: auto, break, case, char, const, continue, default, do, double, else, enum, extern,
+ float, for, goto, if, int, long, register, return, short, signed, sizeof, static, struct,
+ switch, typedef, union, unsigned, void, volatile, while.
+
+- C99 Keywords: inline, restrict, _Bool, _Complex, _Imaginary.
+
+- C11 Keywords: _Alignas, _Alignof, _Atomic, _Generic, _Noreturn, _Static_assert, _Thread_local.
+
+###############################################################################################
+
+Review Answers:
+
+1. The basic modules of a C program are called functions.
+
+2. A syntax error is a violation of C's language rules. Example: int a, int b;
+
+3. A semantic error is a valid C statement which contains an error in meaning (i.e a logic error).
+
+6. "int" and "char" are the C keywords.
+
+7. printf("There were %d words and %d lines.", words, lines);

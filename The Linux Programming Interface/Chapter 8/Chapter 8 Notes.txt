@@ -1,0 +1,367 @@
+- The system PASSWORD FILE, "/etc/passwd", contains ONE LINE for EACH USER ACCOUNT on the system. Each LINE is
+COMPOSED of SEVEN FIELDS separated by colons (:), as in the following example:
+     mtk:x:1000:100:Michael Kerrisk:/home/mtk:/bin/bash
+
+- In order, these fields are as follows:
+    1) LOGIN NAME - This is the UNIQUE NAME that the user MUST ENTER in order to LOG IN. Often, this is ALSO
+                    CALLED the USERNAME. We can ALSO CONSIDER the LOGIN NAME to be the HUMAN-READABLE
+                    (symbolic) IDENTIFIER corresponding to the NUMERIC USER IDENTIFIER. Programs such as
+                    "ls(1)" display THIS name, RATHER than the numeric user ID associated with the file, when
+                    asked to show the OWNERSHIP of a file (as in "ls -l").
+
+    2) ENCRYPTED PASSWORD - This field contains a 13-character ENCRYPTED PASSWORD. If the PASSWORD FIELD
+                            contains ANY OTHER STRING - in particular, a string of OTHER THAN 13-characters -
+                            then LOGINS to this ACCOUNT are DISABLED, since such a string CAN'T REPRESENT a
+                            VALID ENCRYPTED PASSWORD. Note, however, that this field is IGNORED if SHADOW
+                            PASSWORDS have been ENABLED (which is TYPICAL). In this case, the PASSWORD FIELD
+                            "/etc/passwd" CONTAINS the LETTER 'x', and the ENCRYPTED PASSWORD is INSTEAD
+                            STORED in the SHADOW PASSWORD FILE. If the PASSWORD FIELD in "/etc/passwd" is
+                            EMPTY, then NO PASSWORD is REQUIRED to LOG IN to this account (this is true EVEN
+                            IF shadow passwords are enabled).
+
+             Note:  Here, we ASSUME that PASSWORDS are ENCRYPTED using Data Encryption Standard ("DES"), the
+                  HISTORICAL and STILL WIDELY USED UNIX password-encryption scheme. It is POSSIBLE to REPLACE
+                  "DES" with OTHER SCHEMES, such as MD5, which PRODUCES a 128-bit "MESSAGE DIGEST" (a KIND of
+                  HASH) of its input. This value is STORED as a 32-character string in the PASSWORD
+                  (or SHADOW PASSWORD) file.
+
+    3) USER ID (UID) - This is the NUMERIC ID for this USER. If this FIELD has the VALUE 0, then this ACCOUNT
+                       has SUPERUSER PRIVILEGES. There is NORMALLY ONE such account, with the LOGIN NAME
+                       "root". On Linux 2.2 and EARLIER, UIDs are MAINTAINED as 16-bit values, ALLOWING the
+                       RANGE [0, 65,535]; on Linux 2.4 and LATER, they are STORED using 32-bits, allowing a
+                       MUCH LARGER range (i.e., [0, 2^32-1]).
+
+             Note:  It is POSSIBLE (but UNUSUAL) to have MORE THAN ONE record in the PASSWORD FILE with the
+                  SAME UID, thus permitting MULTIPLE LOGIN NAMES for the SAME UID. This allows MULTIPLE USERS
+                  to ACCESS the SAME RESOURCES (e.g., files) using DIFFERENT PASSWORDS. The DIFFERENT LOGIN
+                  NAMES can be ASSOCIATED with DIFFERENT SETS of GIDs.
+
+    4) GROUP ID (GID) - This is the NUMERIC ID of the FIRST of the GROUPS of which this user is a MEMBER.
+                        Further GROUP MEMBERSHIPS for this user are DEFINED in the SYSTEM GROUP FILE.
+
+    5) COMMENT - This field holds text about the user. This text is displayed by various programs, such as
+                 "finger(1)".
+
+    6) HOME DIRECTORY - This is the INITIAL DIRECTORY into which the USER is PLACED after LOGGING IN. This
+                        field BECOMES the VALUE of the "HOME" environment variable.
+
+    7) LOGIN SHELL - This is the program to which CONTROL is TRANSFERRED once the user is LOGGED IN. Usually,
+                     this is ONE of the SHELLS, such as "bash", BUT it can be ANY PROGRAM. If this field is
+                     EMPTY, then the LOGIN SHELL DEFAULTS to "bin/sh", the Bourne Shell. This field BECOMES
+                     the VALUE of the "SHELL" environment variable.
+
+- On a STAND-ALONE SYSTEM, ALL the PASSWORD INFORMATION resides in the file "/etc/passwd". However, if we are
+using a SYSTEM such as Network Information System (NIS) or Lightweight Directory Access Protocol (LDAP) to
+DISTRIBUTE PASSWORDS in a NETWORK ENVIRONMENT, then PART or ALL of this INFORMATION resides on a REMOTE 
+SYSTEM. As long as programs accessing password information EMPLOY functions like "getpwnam()", "getpwuid()"
+and so on, the use of NIS or LDAP is TRANSPARENT to applications. SIMILAR comments APPLY regarding the
+SHADOW PASSWORD and GROUP FILES.
+
+#############################################################################################################
+- Historically, UNIX systems maintained ALL USER INFORMATION, including the ENCRYPTED PASSWORD, in 
+"etc/passwd". This presented a SECURITY PROBLEM. Since various UNPRIVILEGED system utilities NEEDED to have
+READ ACCESS to OTHER INFORMATION in the PASSWORD FILE, it HAD to be MADE READABLE to ALL USERS. This OPENED
+the DOOR for PASSWORD-CRACKING programs, which try encrypting large lists of likely passwords (e.g., standard
+dictionary words or people's names) to see if they match the encrypted password of a user. The SHADOW PASSWORD
+file, "/etc/shadow", was DEVISED as a METHOD of PREVENTING such ATTACKS. The idea is that ALL of the
+NONSENSITIVE USER INFORMATION resides in the PUBLICLY READABLE "PASSWORD FILE", while ENCRYPTED PASSWORDS are
+MAINTAINED in the "SHADOW PASSWORD FILE", which is READABLE ONLY by PRIVILEGED programs.
+
+- In ADDITION to the LOGIN NAME, which provides the MATCH to the CORRESPONDING RECORD in the PASSWORD FILE,
+and the ENCRYPTED PASSWORD, the SHADOW PASSWORD FILE also contains a number of OTHER SECURITY-RELATED fields.
+Further details on these fields can be found in the "shadow(5)" manual page.
+
+- SUSv3 DOESN'T SPECIFY shadow passwords. Not all UNIX implementations provide this feature, and on
+implementations where IT IS provided, the DETAILS of FILE LOCATIONS and APIs VARY.
+
+#############################################################################################################
+- For various ADMINISTRATIVE purposes, in particular, CONTROLLING ACCESS to FILES and OTHER SYSTEM RESOURCES,
+it is USEFUL to ORGANIZE USERS into GROUPS.
+
+- The SET OF GROUPS to which a user BELONGS is DEFINED by the combination of the GID field in the USER'S
+PASSWORD ENTRY and the GROUPS under which the user is LISTED in the GROUP FILE. This strange SPLIT of
+information ACROSS TWO FILES is HISTORICAL in origin. In EARLY UNIX implementations, a USER could be a MEMBER
+of ONLY ONE GROUP AT A TIME. A user's INITIAL GROUP MEMBERSHIP at LOGIN was DETERMINED by the GID field of
+the PASSWORD FILE and could be CHANGED thereafter using the "newgrp(1)" command, which REQUIRED the USER to
+SUPPLY the GROUP PASSWORD (IF the GROUP was PASSWORD PROTECTED). 4.2BSD introduced the CONCEPT of MULTIPLE
+SIMULTANEOUS GROUP MEMBERSHIPS, which was later STANDARDIZED in POSIX.1-1990. Under this scheme, the GROUP
+FILE listed the EXTRA GROUP MEMBERSHIPS of EACH USER (The "groups(1)" command DISPLAYS the GROUPS of which the
+SHELL PROCESS is a MEMBER, or, if ONE OR MORE USERNAMES are SUPPLIED as COMMAND-LINE ARGUMENTS, then the
+GROUP MEMBERSHIPS of THOSE USERS).
+
+- The GROUP FILE, "/etc/group", contains ONE LINE for EACH GROUP in the system. Each LINE is COMPOSED of FOUR
+COLON-SEPARATED (:) FIELDS, as in the following examples:
+        users:x:100:
+        jambit:x:106:claus,felli,frank,harti,markus,martin,mtk,paul
+
+- In order, these fields are as follows:
+    1) GROUP NAME - This is the NAME of the GROUP. Like the LOGIN NAME in the PASSWORD FILE, we can CONSIDER
+                    this to be the HUMAN-READABLE (symbolic) IDENTIFIER corresponding to the NUMERIC GROUP
+                    IDENTIFIER.
+ 
+    2) ENCRYPTED PASSWORD - This field contains an OPTIONAL PASSWORD for the GROUP. With the ADVENT of
+                            MULTIPLE GROUP MEMBERSHIPS, GROUP PASSWORDS are nowadays RARELY USED on UNIX
+                            systems. Nevertheless, it is POSSIBLE to PLACE a PASSWORD on a GROUP (a PRIVILEGED
+                            USER can do this using the "gpasswd" command). If a user is NOT A MEMBER of the
+                            GROUP, "newgrp(1)" REQUESTS this password BEFORE starting a new shell whose
+                            group memberships include that group. If PASSWORD SHADOWING is ENABLED, then this
+                            field is IGNORED (in this case, it contains JUST the LETTER 'x') and the ENCRYPTED
+                            PASSWORDS are ACTUALLY KEPT in the SHADOW GROUP FILE, "/etc/gshadow", which can be
+                            ACCESSED ONLY by PRIVILEGED users and programs. GROUP PASSWORDS are ENCRYPTED in
+                            a SIMILAR FASHION to USER PASSWORDS.
+
+    3) GROUP ID (GID) - This is the NUMERIC ID for this GROUP. There is NORMALLY ONE GROUP defined with the
+                        GID 0, named "root" (like the "etc/passwd" record with UID 0, but UNLIKE the UID 0,
+                        this GROUP has NO SPECIAL PRIVILEGES). On Linux 2.2 and EARLIER, GIDs are MAINTAINED
+                        as 16-bit values, ALLOWING the RANGE [0, 65,535]; on Linux 2.4 and LATER, they are
+                        STORED using 32-bits.
+
+    4) USER LIST - This is a COMMA-SEPARATED LIST of NAMES of USERS who are MEMBERS of this GROUP (this list
+                   CONSISTS of USERNAMES rather than UIDs, since, as NOTED EARLIER, UIDs are NOT NECESSARILY
+                   UNIQUE in the PASSWORD FILE).
+
+#############################################################################################################
+- The "getpwnam()" and "getpwuid()" functions RETRIEVE RECORDS from the PASSWORD FILE:
+         DEP: #include <pwd.h>        PROTO: struct passwd *getpwnam(const char *name);
+                                      PROTO: struct passwd *getpwuid(uid_t uid);
+
+               RET: Both return a pointer on success, or NULL on ERROR
+                    (see main text for description of the "not found" case)
+
+- Given a LOGIN NAME in "name", the "getpwnam()" function returns a pointer to a STRUCTURE of the following
+type, containing the corresponding information from the PASSWORD RECORD:
+            # struct passwd{
+            #     char *pw_name;      /* Login name (username) */
+            #     char *pw_passwd;    /* Encrypted password */
+            #     uid_t pw_uid;       /* User ID */
+            #     gid_t pw_gid;       /* Group ID */
+            #     char *pw_gecos;     /* Comment (user information) */
+            #     char *pw_dir;       /* Initial working (home) directory */
+            #     char *pw_shell;     /* Login shell */
+            # };
+
+- The "pw_gecos" and "pw_passwd" fields of the "passwd" structure are NOT DEFINED in SUSv3, but ARE AVAILABLE
+on MOST UNIX implementations. The "pw_passwd" field contains VALID information ONLY IF password shadowing is
+NOT ENABLED (programmatically, the SIMPLEST WAY to DETERMINE whether PASSWORD SHADOWING is ENABLED is to
+FOLLOW a SUCCESSFUL "getpwnam()" call with a call to "getspnam()", to see IF it returns a SHADOW PASSWORD
+RECORD for the SAME USERNAME). Some OTHER IMPLEMENTATIONS provide ADDITIONAL, NONSTANDARD FIELDS in this
+STRUCTURE.
+
+              Note:  The "pw_gecos" field DERIVES ITS NAME from EARLY UNIX implementations, where this field
+                   CONTAINED INFORMATION that was USED for COMMUNICATING with a MACHINE running the General
+                   Electric Comprehensive Operating System (GECOS). Although this usage has LONG SINCE BECOME
+                   OBSOLETE, the FIELD NAME has SURVIVED, and the FIELD is USED for RECORDING INFORMATION
+                   about the USER.
+
+- The "getpwuid()" functions returns EXACTLY the SAME INFORMATION as "getpwnam()", but it does a LOOKUP using
+the NUMERIC USER ID supplied in the argument "uid".
+
+- Both "getpwnam()" and "getpwuid()" return a POINTER to a STATICALLY ALLOCATED STRUCTURE. This structure is
+OVERWRITTEN on EACH CALL to EITHER of these FUNCTIONS (or to the "getpwent()" function).
+ 
+              Note:  Because they return a pointer to STATICALLY ALLOCATED MEMORY, "getpwnam()" and
+                   "getpwuid()" are NOT REENTRANT. In fact, the SITUATION is EVEN MORE COMPLEX, since the
+                   RETURNED "passwd" STRUCTURE contains pointers to OTHER INFORMATION (e.g, the "pw_name"
+                   field) that is ALSO STATICALLY ALLOCATED. Similar statements apply to the "getgrnam()" and
+                   "getgrgid()" functions).
+                     SUSv3 SPECIFIES an EQUIVALENT SET of REENTRANT FUNCTIONS - "getpwnam_r()","getpwuid_r()",
+                   "getgrnam_r()", and "getgrgid_r()" - that INCLUDE as ARGUMENTS both a "passwd" (or "group")
+                    STRUCTURE and a BUFFER AREA to HOLD the OTHER STRUCTURES to which the FIELDS of the 
+                    "passwd" or "group" STRUCTURE point. The number of bytes REQUIRED for this ADDITIONAL
+                    BUFFER can be OBTAINED using the call "sysconf(_SC_GETPW_R_SIZE_MAX)"
+                    (or "sysconf(_SC_GETGR_R_SIZE_MAX)" in the case of GROUP-RELATED functions).
+
+- According to SUSv3, if a MATCHING "passwd" RECORD CAN'T BE FOUND, then "getpwnam()" and "getpwuid()" should
+return NULL and LEAVE "errno" UNCHANGED. This means that we SHOULD BE ABLE to DISTINGUISH the ERROR and the 
+"NOT FOUND" CASES using code such as the following:
+        # struct passwd *pwd;
+         
+        # errno = 0;
+        # pwd = getpwnam(name);
+        # if(!pwd){
+        #    if(!errno)
+        #       /* Not Found */;
+        #    else
+        #       /* Error */; 
+        # }  
+
+- However, a number of UNIX implementations DON'T CONFORM to SUSv3 on this point. If a MATCHING "passwd"
+RECORD is NOT FOUND, then these functions return NULL and SET "errno" to a NONZERO VALUE, such as "ENOENT" or
+"ESRCH". Before version 2.7, "glibc" produced the error 'ENOENT' for this case, but SINCE VERSION 2.7, "glibc"
+CONFORMS to the SUSv3 REQUIREMENTS. This VARIATION across implementations ARISES in part because POSIX.1-1990
+DID NOT REQUIRE these functions to SET "errno" on ERROR and ALLOWED them to SET "errno" for the "NOT FOUND"
+case. The UPSHOT of ALL OF THIS is that it ISN'T REALLY POSSIBLE to PORTABLY DISTINGUISH the ERROR and the
+"NOT FOUND" cases when using these functions.
+
+- The "getgrnam()" and "getgrgid()" functions RETRIEVE RECORDS from the GROUP FILE:       
+         DEP: #include <grp.h>        PROTO: struct group *getgrnam(const char *name);
+                                      PROTO: struct group *getgrgid(gid_t gid);    
+
+               RET: Both return a pointer on success, or NULL on ERROR
+                    (see main text for description of the "not found" case) 
+
+- The "getgrnam()" function LOOKS UP group information BY GROUP NAME, and the "getgrgid()" functions performs
+lookups BY GROUP ID. Both functions return a pointer to a STRUCTURE of the following type:
+            # struct group{
+            #     char *gr_name;    /* Group name */
+            #     char *gr_passwd;  /* Encrypted password (if not password shadowing) */
+            #     gid_t gr_gid;     /* Group ID */
+            #     char **gr_mem;    /* NULL-terminated ARRAY OF POINTERS to NAMES of MEMBERS LISTED in
+                                       "/etc/group" */
+            # };
+
+              Note:  The "gr_passwd" field of the GROUP STRUCTURE is NOT SPECIFIED in SUSv3, but IS AVAILABLE
+                   on MOST UNIX implementations.
+
+- As with the CORRESPONDING PASSWORD FUNCTIONS mentioned above, this STRUCTURE is OVERWRITTEN on EACH CALL
+to EITHER of these FUNCTIONS.
+
+- If these functions CAN'T FIND a MATCHING GROUP RECORD, then they show the SAME VARIATIONS in BEHAVIOUR that
+we described for "getpwnam()" and "getpwuid()".
+
+- The "setpwent()", "getpwent()", and "endpwent()" functions are used to perform SEQUENTIAL SCANS of the
+RECORDS in the PASSWORD FILE:
+         DEP: #include <pwd.h>     PROTO: struct passwd *getpwent(void);   
+                                   RET: Returns pointer on success, or NULL on END OF STREAM or ERROR.
+    
+                                   PROTO: void setpwent(void);
+                                   PROTO: void endpwent(void);
+
+- The "getpwent()" function returns RECORDS from the PASSWORD FILE ONE BY ONE, returning NULL when there are
+NO MORE RECORDS (or an ERROR occurs). On the first call, "getpwent()" AUTOMATICALLY OPENS the PASSWORD FILE.
+When we have FINISHED with the FILE, we call "endpwent()" to CLOSE IT.
+
+- We can walk through the ENTIRE PASSWORD FILE printing login names and user IDs with the following code:
+               # struct passwd *pwd;
+               #
+               # while(!(pwd = getpwent()))
+               #    printf("%-8s %5ld\n", pwd->pw_name, (long) pwd->pw_uid);
+               #
+               # endpwent();
+
+- The "endpwent()" call is NECESSARY so that ANY SUBSEQUENT "getpwent()" CALL (perhaps in SOME OTHER PART of
+our program or in SOME LIBRARY FUNCTION that we call) will REOPEN the PASSWORD FILE and START from the
+BEGINNING. On the OTHER HAND, if we are PART-WAY THROUGH the file, we can use the "setpwent()" function to
+RESTART from the BEGINNING.
+
+- The "getgrent()", "setgrent()", and "endgrent()" functions PERFORM ANALOGOUS TASKS for the GROUP FILE. 
+The PROTOTYPES of these FUNCTIONS are SIMILAR to those of the PASSWORD FILE FUNCTIONS.
+
+- The following functions are used to RETRIEVE INDIVIDUAL RECORDS from the SHADOW PASSWORD FILE and to SCAN
+ALL RECORDS in that file:
+         DEP: #include <shadow.h>   PROTO: struct spwd *getspnam(const char *name);
+                                    RET: Returns pointer on success, or NULL on NOT FOUND or ERROR.
+
+                                    PROTO: struct spwd *getspent(void);
+                                    RET: Returns pointer on success, or NULL on END OF STREAM or ERROR
+
+                                    PROTO: void setspent(void);
+                                    PROTO: void endspent(void);
+
+- Their operation is SIMILAR to the CORRESPONDING PASSWORD FILE FUNCTIONS. These functions AREN'T SPECIFIED
+in SUSv3, and AREN'T PRESENT on ALL UNIX implementations.
+
+- The "getspnam()" and "getspent()" function return POINTERS to a STRUCTURE of type 'spwd'. This STRUCTURE has
+the following form:
+
+              # struct spwd{
+              #    char *sp_namp;         /* Login name (username) */
+              #    char *sp_pwdp;         /* Encrypted password */
+              # 
+              #    /* 
+              #     * Remaining fields support "PASSWORD AGING", an OPTIONAL feature that FORCES USERS
+              #     * to REGULARLY CHANGE their PASSWORDS, so that EVEN IF an ATTACKER MANAGES to OBTAIN
+              #     * a PASSWORD, it will EVENTUALLY CEASE to be USABLE
+              #    */
+
+              #    long sp_lstchg;        /* Time of LAST PASSWORD CHANGE (days since 1 Jan 1970) */
+              #    long sp_min;           /* Min. number of days between password changes */
+              #    long sp_max;           /* Max. number of days before change required */
+              #    long sp_warn;          /* Number of days beforehand that user is WARNED of
+              #                              upcoming password expiration */
+              #    long sp_inact;         /* Number of days after expiration that account is
+              #                              considered inactive and locked */
+              #    long sp_expire;        /* Date when account expires (days since 1 Jan 1970) */
+              #    unsigned long sp_flag; /* Reserved for future use */
+              # };
+
+#############################################################################################################
+- Some applications REQUIRE that users AUTHENTICATE themselves. Authentication typically takes the form of
+a USERNAME (LOGIN NAME) and a PASSWORD. An application MAY MAINTAIN its OWN DATABASE of USERNAMES and
+PASSWORDS for this purpose. Sometimes, however, it is NECESSARY or CONVENIENT to ALLOW USERS to ENTER their
+STANDARD USERNAME and PASSWORD as DEFINED in "/etc/passwd" and "/etc/shadow" (we ASSUME a SYSTEM where
+PASSWORD SHADOWING is ENABLED). Network applications that provide SOME FORM of LOGIN to a REMOTE SYSTEM, such
+as "ssh" and "ftp", are TYPICAL EXAMPLES of such programs. These applications MUST VALIDATE a USERNAME and
+a PASSWORD in the SAME WAY that the STANDARD "LOGIN" PROGRAM does.
+
+- For SECURITY REASONS, UNIX systems ENCRYPT PASSWORDS using a ONE-WAY ENCRYPTION ALGORITHM, which means that
+there is NO METHOD of RE-CREATING the ORIGINAL PASSWORD from its ENCRYPTED FORM. Therefore, the ONLY WAY of
+VALIDATING a CANDIDATE PASSWORD is to ENCRYPT IT using the SAME METHOD and CHECK if the ENCRYPTED RESULT
+MATCHES the VALUE STORED in "/etc/shadow". The ENCRYPTION ALGORITHM is ENCAPSULATED in the "crypt()" function:
+         DEP: #define _XOPEN_SOURCE
+              #include <unistd.h>    PROTO: char *crypt(const char *key, const char *salt);
+                                     RET: Returns pointer to STATICALLY ALLOCATED STRING containing
+                                          ENCRYPTED PASSWORD on SUCCESS, or NULL on ERROR.
+
+- The "crypt()" algorithm takes a "key" (i.e., a PASSWORD) of UP TO 8 CHARACTERS, and APPLIES a VARIATION of
+the Data Encryption Standard (DES) algorithm to it. The "salt" argument is a 2-character string whose value is
+used to PERTURB (VARY) the ALGORITHM, a TECHNIQUE DESIGNED to make it MORE DIFFICULT to CRACK the ENCRYPTED
+PASSWORD. The function returns a POINTER to a STATICALLY ALLOCATED 13-character string that is the ENCRYPTED
+PASSWORD.
+
+              Note:  As noted earlier, OTHER ALGORITHMS may be used INSTEAD of DES. For example, MD5 yields a
+                   34-character string STARTING with a DOLLAR SIGN ($), which ALLOWS "crypt()" to DISTINGUISH
+                   DES-encrypted passwords from MD5-encrypted passwords. 
+                     In our discussion of PASSWORD ENCRYPTION, we are using the word "encryption" somewhat
+                   LOOSELY. Accurately, DES uses the GIVEN PASSWORD STRING as an ENCRYPTION KEY to ENCODE a
+                   FIXED BIT STRING, while MD5 is a COMPLEX TYPE of HASHING FUNCTION. The result in BOTH CASES
+                   is the SAME: an UNDECIPHERABLE and IRREVERSIBLE TRANSFORMATION of the INPUT PASSWORD.
+
+- BOTH the "salt" argument and the ENCRYPTED PASSWORD are COMPOSED of CHARACTERS SELECTED from the
+64-character set [a-zA-z0-9/.]. Thus, the 2-character "salt" argument can CAUSE the ENCRYPTION ALGORITHM to
+VARY in ANY of 64*64 = 4096 DIFFERENT WAYS. This means that INSTEAD of PREENCRYPTING an ENTIRE DICTIONARY and
+CHECKING the ENCRYPTED PASSWORD against ALL WORDS in the DICTIONARY, a CRACKER would NEED to CHECK the
+PASSWORD against 4096 ENCRYPTED VERSIONS of the DICTIONARY.
+
+- The ENCRYPTED PASSWORD returned by "crypt()" CONTAINS a COPY of the ORIGINAL "salt" value as its FIRST TWO
+CHARACTERS. This means that when ENCRYPTING a CANDIDATE PASSWORD, we can OBTAIN the APPROPRIATE "salt" value
+from the ENCRYPTED PASSWORD value ALREADY STORED in "/etc/shadow" (programs such as "passwd(1)" GENERATE a 
+RANDOM "salt" value when ENCRYPTING a NEW PASSWORD). In fact, the "crypt()" function IGNORES ANY CHARACTERS
+in the "salt" string BEYOND the FIRST TWO. Therefore, we can SPECIFIY the ENCRYPTED PASSWORD ITSELF as the
+"salt" argument.
+
+- In order to use "crypt()" on Linux, we MUST COMPILE programs with the "-lcrypt" option, so that they are
+LINKED against the CRYPT LIBRARY.
+
+- We can READ users' passwords using the "getpass()" function:
+         DEP: #define _BSD_SOURCE
+              #include <unistd.h>    PROTO: char *getpass(const char *prompt);
+                                     RET: Returns pointer to STATICALLY ALLOCATED input password
+                                          string on success, or NULL on error.
+
+- The "getpass()" function first DISABLES ECHOING and ALL PROCESSING of TERMINAL SPECIAL CHARACTERS (such as
+the "INTERRUPT" character, normally CTRL-C) (it will be explained how to CHANGE these TERMINAL SETTINGS in
+Chapter 62). It then PRINTS the STRING pointed to by "prompt", and READS a LINE OF INPUT, returning the
+null-terminated INPUT STRING with the trailing newline STRIPPED, as its function result (this string is
+STATICALLY ALLOCATED, and so will be OVERWRITTEN in a SUBSEQUENT CALL to "getpass()"). Before returning,
+"getpass()" RESTORES the TERMINAL SETTINGS to their ORIGINAL STATES.
+
+              Note:  The program in Listing 8-2 SIZES the CHARACTER ARRAY holding a USERNAME using the value
+                   returned by "sysconf(_SC_LOGIN_NAME_MAX)", which YIELDS the MAXIMUM SIZE of a USERNAME on
+                   the HOST SYSTEM.
+
+- Listing 8-2 illustrates an IMPORTANT SECURITY POINT. Programs that READ a PASSWORD should IMMEDIATELY
+ENCRYPT that PASSWORD and ERASE the UNENCRYPTED VERSION from MEMORY. This MINIMIZES the POSSIBILITY of a
+PROGRAM CRASH producing a CORE DUMP FILE that could be READ to DISCOVER the PASSWORD. 
+
+              Note:  There are OTHER POSSIBLE WAYS in which the UNENCRYPTED PASSWORD could be EXPOSED. For 
+                   example, the PASSWORD could be READ from the SWAP FILE by a PRIVILEGED PROGRAM if the
+                   VIRTUAL MEMORY PAGE containing the PASSWORD is SWAPPED OUT. Alternatively, a process with
+                   SUFICIENT PRIVILEGE could READ "/dev/mem" (a VIRTUAL DEVICE that PRESENTS the PHYSICAL
+                   MEMORY of a computer as a SEQUENTIAL STREAM OF BYTES) in an ATTEMPT to DISCOVER the PASSWD.
+                     The "getpass()" function APPEARED in SUSv2, which MARKED it "LEGACY", noting that the
+                   NAME was MISLEADING and the function provided FUNCTIONALITY that was in any case EASY to 
+                   IMPLEMENT. The SPECIFICATION of "getpass()" was REMOVED in SUSv3. It nevertheless appears
+                   on MOST UNIX implementations.
+
+#############################################################################################################

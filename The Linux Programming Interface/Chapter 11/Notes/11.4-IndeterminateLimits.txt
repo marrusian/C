@@ -1,0 +1,29 @@
+#############################################################################################################
+- On occasion, we MAY FIND that SOME SYSTEM LIMIT is NOT DEFINED by an implementation limit constant
+(e.g., PATH_MAX), and that "sysconf()" or "pathconf()" INFORMS US that the LIMIT (e.g., _PC_PATH_MAX) is
+INDETERMINATE. In this case, we can EMPLOY ONE of the following STRATEGIES: 
+        a) When writing an application to be PORTABLE ACROSS MULTIPLE UNIX IMPLEMENTATIONS, we could ELECT to
+           USE the MINIMUM LIMIT VALUE SPECIFIED by SUSv3. These are the constants with names of the form
+           "_POSIX_*_MAX", described earlier. Sometimes, this approach MAY NOT BE VIABLE, because the LIMIT
+           is UNREALISTICALLY LOW, as in the cases of "_POSIX_PATH_MAX" and "_POSIX_OPEN_MAX";
+ 
+        b) In SOME CASES, a PRATICAL SOLUTION may be to IGNORE the CHECKING OF LIMITS, and INSTEAD perform the
+           RELEVANT SYSTEM or LIBRARY FUNCTION CALL (similar arguments can ALSO APPLY with respect to some of
+           the SUSv3 OPTIONS). If the call FAILS and "errno" indicates that the error occured BECAUSE some
+           SYSTEM LIMIT was EXCEEDED, then we can TRY AGAIN, MODIFYING the APPLICATION BEHAVIOUR AS NECESSARY.
+           For example, MOST UNIX IMPLEMENTATIONS impose a LIMIT on the number of REALTIME SIGNALS that can
+           be QUEUED to a process. Once this limit is REACHED, ATTEMPTS to SEND FURTHER SIGNALS
+           (using "sigqueue()") FAIL with the error 'EAGAIN'. In this case, the SENDING PROCESS could SIMPLY
+           RETRY, perhaps after SOME DELAY INTERVAL. Similarly, attempting to OPEN A FILE whose name is TOO
+           LONG yields the error 'ENAMETOOLONG', and an application COULD DEAL with this by TRYING AGAIN with
+           a SHORTER NAME. 
+
+        c) We can write OUR OWN program or function to EITHER DEDUCE or ESTIMATE the LIMIT. In each case, the
+           relevant "sysconf()" or "pathconf()" call is made, and if this limit is INDETERMINATE, the function
+           returns a "GOOD GUESS" value. While NOT PERFECT, such a solution is OFTEN VIABLE IN PRACTICE.
+
+        d) We can EMPLOY A TOOL such as "GNU Autoconf", an EXTENSIBLE TOOL that can determine the EXISTENCE
+           and SETTINGS of various system features and limits. The "Autoconf" program produces HEADER FILES
+           based on the information it determines, and these files can then be included in C programs.
+
+#############################################################################################################

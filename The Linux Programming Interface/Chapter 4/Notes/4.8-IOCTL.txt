@@ -1,0 +1,27 @@
+##########################################################################################################
+- The "ioctl()" system call is a GENERAL-PURPOSE MECHANISM for performing FILE and DEVICE OPERATIONS that 
+FALL OUTSIDE the UNIVERSAL I/O MODEL described earlier.
+
+- Prototype and dependencies:
+     #include <sys/ioctl.h>
+
+     int ioctl(int fd, int request, ... /* argp */);
+                        Value returned on success depends on "request", or -1 on error
+
+- The "fd" argument is an open file descriptor for the DEVICE or FILE upon which the CONTROL OPERATION
+specified by "request" is to be PERFORMED. Device-specific header files define constants that can be passed
+in the "request" argument.
+
+- As indicated by the standard C ellipsis (...) notation, the THIRD argument to "ioctl()", which we label
+"argp", can be of ANY TYPE. The VALUE of the "request" argument ENABLES "ioctl()" to DETERMINE what TYPE of
+VALUE to EXPECT in "argp". Typically, "argp" is a POINTER to EITHER an INTEGER or a STRUCTURE; in some cases,
+it is UNUSED.
+
+        Note: The ONLY specification that SUSv3 makes for "ioctl()" is for operations to control "STREAMS"
+             devices (the "STREAMS" facility is a System V feature that is NOT SUPPORTED by the mainline
+             Linux kernel, although a few add-on implementations have been developed). NONE of the other
+             "ioctl()" operations described later is specified in SUSv3. However, the "ioctl()" call has
+             been part of the UNIX system since early versions, and consequently several of the "ioctl()"
+             operations that we describe later are provided on MANY other UNIX implementations.
+
+##########################################################################################################

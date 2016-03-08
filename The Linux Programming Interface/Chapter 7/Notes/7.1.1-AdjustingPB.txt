@@ -1,0 +1,40 @@
+#############################################################################################################
+- RESIZING the HEAP (i.e. allocating or deallocating memory) is actually as simple as TELLING the KERNEL to
+ADJUST its IDEA of WHERE the process's PROGRAM BREAK is. Initially, the PROGRAM BREAK lies JUST PAST THE END
+of the UNINITIALIZED DATA SEGMENT (i.e., the SAME LOCATION as &end).
+
+- After the PROGRAM BREAK is INCREASED, the program MAY ACCESS ANY ADDRESS in the NEWLY ALLOCATED AREA, but
+NO PHYSICAL MEMORY PAGES are ALLOCATED yet. The kernel AUTOMATICALLY ALLOCATES NEW PHYSICAL PAGES on the
+FIRST ATTEMPT by the process to ACCESS ADDRESSES in those PAGES.
+
+- Traditionally, the UNIX system has provided TWO system calls for MANIPULATING the PROGRAM BREAK, and these
+are BOTH AVAILABLE on Linux: "brk()" and "sbrk()":
+            DEP: #include <unistd.h>           PROTO: int brk(void *end_data_segment);
+                        RET: Returns 0 on success, or -1 on error
+
+            DEP: #include <unistd.h>           PROTO: void *sbrk(intptr_t increment);
+                        RET: Returns previous program break on success, or (void*)-1 on error
+
+- The "brk()" system call SETS the PROGRAM BREAK to the LOCATION SPECIFIED by "end_data_segment". Since
+VIRTUAL MEMORY is ALLOCATED in UNITS OF PAGES, "end_data_segment" is effectively ROUNDED UP to the NEXT PAGE
+BOUNDARY.
+
+- Attempts to SET the program break BELOW its INITIAL VALUE (i.e., below &end), are LIKELY to RESULT in
+UNEXPECTED BEHAVIOUR, such as a SEGMENTATION FAULT (the SIGSEGV signal) when TRYING to ACCESS DATA in 
+NOW NONEXISTENT PARTS of the INITIALIZED or UNINITIALIZED DATA SEGMENTS. The PRECISE UPPER LIMIT on where
+the PROGRAM BREAK can be set DEPENDS on a RANGE OF FACTORS, including:
+        a) The process RESOURCE LIMIT for the SIZE of the DATA SEGMENT (RLIMIT_DATA);
+        b) Location of MEMORY MAPPINGS, SHARED MEMORY SEGMENTS, and SHARED LIBRARIES.
+
+- A call to "sbrk()" ADJUSTS the PROGRAM BREAK by ADDING "increment" to it (on Linux, "sbrk()" is a LIBRARY
+FUNCTION implemented on TOP of "brk()"). The "intptr_t" type used to declare "increment" is an INTEGER DATA
+TYPE.
+
+- The call "sbrk(0)" returns the CURRENT SETTING of the program break WITHOUT CHANGING it. This can be USEFUL
+if we want to TRACK the SIZE of the HEAP, perharps in ORDER to MONITOR the BEHAVIOUR of a MEMORY ALLOCATION
+PACKAGE.
+
+               Note:  SUSv2 specified "brk()" and "sbrk()" (marking them LEGACY).
+                      SUSv3 REMOVED their SPECIFICATIONS.
+
+#############################################################################################################

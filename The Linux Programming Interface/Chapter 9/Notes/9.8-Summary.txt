@@ -1,0 +1,18 @@
+- Each process has a number of associated user and group IDs (CREDENTIALS). The RIDs define the OWNERSHIP of
+the process. On MOST UNIX implementations, the EIDs are used to DETERMINE a process's PERMISSIONS when
+ACCESSING RESOURCES such as FILES. On Linux, however, the FSIDs are used for DETERMINING PERMISSIONS for
+ACCESSING FILES, while the EIDs are used for OTHER PERMISSION CHECKS (because the FSIDs NORMALLY have the SAME
+VALUES as the CORRESPONDING EIDs, Linux behaves in the SAME WAY as OTHER UNIX implementations when CHECKING
+FILE PERMISSIONS). A process's SUPPLEMENTARY GIDs are a further SET OF GROUPS of which the process is
+CONSIDERED to be a MEMBER for the purpose of PERMISSION CHECKING. Various system calls and library functions
+ALLOW a process to RETRIEVE and CHANGE its user and group IDs.
+
+- When a SUID program is run, the EUID of the process is SET to that of the OWNER of the FILE. This mechanism
+ALLOWS a user to ASSUME the IDENTITY, and thus the PRIVILEGES, of ANOTHER USER while running a particular
+program. Correspondingly, SGID programs CHANGE the EGID of the process running a program. The SSUID and SSGID
+ALLOW SUID and SGID programs to TEMPORARILY DROP and then LATER REASSUME PRIVILEGES. 
+
+- The UID 0 is SPECIAL. Normally, a SINGLE user account, named "root", has this UID. Processes with an EUID of
+0 are PRIVILEGED - that is, they are EXEMPT from MANY of the PERMISSION CHECKS normally performed when a
+process makes various system calls (such as those used to ARBITRARILY CHANGE the various process user and
+group IDs).
